@@ -175,73 +175,6 @@ class Signal:
 	def __str__(self):
 		return f'{type(self)} duration {self.duration}, samples {self.nsamples}, channels {self.nchannels}, samplerate {self.samplerate}'
 
-	# def __getitem__(self,key): # this enables reading out slices (index or seconds!) of a Signal object as arrays
-	# 	channel = slice(None)
-	# 	if isinstance(key, tuple):
-	# 		channel = key[1]
-	# 		key = key[0]
-	# 	if isinstance(key, int):
-	# 		return numpy.ndarray.__getitem__(self.data, key)
-	# 	if isinstance(key, float):
-	# 		return numpy.ndarray.__getitem__(self.data, round(key*self.samplerate))
-	# 	sliceattr = [v for v in [key.start, key.stop] if v is not None]
-	# 	attrisint = numpy.array([isinstance(v, int) for v in sliceattr])
-	# 	s = sum(attrisint)
-	# 	if s!=0 and s!=len(sliceattr):
-	# 		raise ValueError('Slice attributes must be all ints or all times')
-	# 	if s==len(sliceattr): # all ints
-	# 		start = key.start or 0
-	# 		stop = key.stop or self.data.shape[0]
-	# 		step = key.step or 1
-	# 		if start>=0 and stop<=self.data.shape[0]:
-	# 			return numpy.ndarray.__getitem__(self.data, (key, channel))
-	# 		else:
-	# 			startpad = numpy.max(-start, 0)
-	# 			endpad = numpy.max(stop-self.data.shape[0], 0)
-	# 			startmid = numpy.max(start, 0)
-	# 			endmid = numpy.min(stop, self.data.shape[0])
-	# 			atstart = numpy.zeros((startpad, self.data.shape[1]))
-	# 			atend = numpy.zeros((endpad, self.data.shape[1]))
-	# 			return numpy.vstack((atstart,self.data[startmid:endmid:step],atend))
-	# 	start = key.start or 0
-	# 	stop = key.stop or self.duration
-	# 	step = key.step or 1
-	# 	if int(step)!=step:
-	# 		#resampling
-	# 		raise NotImplementedError('Step size must be integer.')
-	# 	start = int(numpy.rint(start*self.samplerate))
-	# 	stop = int(numpy.rint(stop*self.samplerate))
-	# 	return self.__getitem__((slice(start,stop,step),channel))
-
-	# def __setitem__(self,key,value): # this enables writing into a slice (index or seconds!) of a Signal object
-	# 	channel=slice(None)
-	# 	if isinstance(key,tuple):
-	# 		channel=key[1]
-	# 		key=key[0]
-	# 	if isinstance(key,int):
-	# 		return self.data.__setitem__((key,channel),value)
-	# 	if isinstance(key,float):
-	# 		return self.data.__setitem__((int(numpy.rint(key*self.samplerate)),channel),value)
-	# 	sliceattr = [v for v in [key.start, key.step, key.stop] if v is not None]
-	# 	attrisint = numpy.array([isinstance(v, int) for v in sliceattr])
-	# 	s = sum(attrisint)
-	# 	if s!=0 and s!=len(sliceattr):
-	# 		raise ValueError('Slice attributes must be all ints or all times')
-	# 	if s==len(sliceattr): # all ints
-	# 		if isinstance(value,numpy.ndarray):
-	# 			value.shape = (len(value), 1)
-	# 		return self.data.__setitem__((key,channel),value)
-	# 	if key.__getattribute__('step') is not None:
-	# 		# resampling?
-	# 		raise NotImplementedError
-	# 	start = key.start
-	# 	stop = key.stop or self.duration
-	# 	if (start is not None and start<0) or stop > self.duration:
-	# 		raise IndexError('Slice bigger than object')
-	# 	if start is not None: start = int(rint(start*self.samplerate))
-	# 	stop = int(rint(stop*self.samplerate))
-	# 	return self.data.__setitem__((slice(start,stop),channel),value)
-
 	def __getitem__(self,key):
 		return self.data.__getitem__(key)
 
@@ -336,10 +269,8 @@ class Signal:
 
 class Sound(Signal):
 	# TODO: debug dynamicripple, add ability to get output of different stages of an auditory periphery model from a sound,
-	# recording and playing via soundcard module, extend vowel to include more vowels (based on own makevowel.m)
 	# add other own stim functions (transitions, babbelnoise)? Add reverb (image model) room simulation.
 	# add auditory spectrogram (filterbank) -> gammatone filterbank followed by halfwave rectification, cube root compression and 10 Hz low pass filtering
-	# add A weighting (for loudness calculation - perhaps better to implement a proper loudness model)
 	'''
 	Class for working with sounds, including loading/saving, manipulating and playing.
 	Examples:
@@ -515,7 +446,6 @@ class Sound(Signal):
 
 	@staticmethod
 	def harmoniccomplex(f0=500, duration=1., amplitude=1, phase=0, samplerate=None, nchannels=1):
-		#TODO: error after update to tone method -> debug!
 		'''
 		Returns a harmonic complex composed of pure tones at integer multiples
 		of the fundamental frequency ``f0``.
@@ -525,6 +455,10 @@ class Sound(Signal):
 		generated. In the latter each harmonic parameter is set
 		separately, and the number of harmonics generated corresponds
 		to the length of the array.
+		Example:
+		>>> sig = Sound.harmoniccomplex(f0=200, amplitude=[80,70,60,50])
+		>>> _ = sig.spectrum()
+
 		'''
 		samplerate = Sound.get_samplerate(samplerate)
 		phases = numpy.array(phase).flatten()
@@ -539,12 +473,13 @@ class Sound(Signal):
 			phases = numpy.tile(phase, Nharmonics)
 		if len(amplitudes) == 1:
 			amplitudes = numpy.tile(amplitude, Nharmonics)
-		x = amplitudes[0]*Sound.tone(f0, duration, phase = phases[0],
-							   samplerate = samplerate, nchannels = nchannels)
+		out = Sound.tone(f0, duration, phase = phases[0], samplerate = samplerate, nchannels = nchannels)
+		out.level = amplitudes[0]
 		for i in range(1,Nharmonics):
-			x += amplitudes[i]*Sound.tone(frequency=(i+1)*f0, duration=duration, phase=phases[i],
-									samplerate=samplerate, nchannels=nchannels)
-		return Sound(x,samplerate)
+			tmp = Sound.tone(frequency=(i+1)*f0, duration=duration, phase=phases[i], samplerate=samplerate, nchannels=nchannels)
+			tmp.level = amplitudes[i]
+			out += tmp
+		return out
 
 	@staticmethod
 	def whitenoise(duration=1.0, samplerate=None, nchannels=1, normalise=True):
@@ -571,7 +506,7 @@ class Sound(Signal):
 		Returns a power-law noise for the given duration. Spectral density per unit of bandwidth scales as 1/(f**alpha).
 		Example:
 		>>> noise = Sound.powerlawnoise(0.2, 1, samplerate=8000)
-
+		
 		Arguments:
 		``duration`` : Duration of the desired output.
 		``alpha`` : Power law exponent.
