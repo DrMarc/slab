@@ -32,6 +32,7 @@ try:
 except ImportError:
 	have_scipy = False
 try:
+	import matplotlib
 	import matplotlib.pyplot as plt
 	have_pyplot = True
 except ImportError:
@@ -506,7 +507,7 @@ class Sound(Signal):
 		Returns a power-law noise for the given duration. Spectral density per unit of bandwidth scales as 1/(f**alpha).
 		Example:
 		>>> noise = Sound.powerlawnoise(0.2, 1, samplerate=8000)
-		
+
 		Arguments:
 		``duration`` : Duration of the desired output.
 		``alpha`` : Power law exponent.
@@ -927,9 +928,11 @@ class Sound(Signal):
 
 	def resample(self, samplerate):
 		'Returns a resampled version of the sound.'
+		if self.nchannels > 1:
+			raise ValueError('Can only resample mono sounds.')
 		if not have_scipy:
 			raise ImportError('Resampling requires scipy.')
-		y = numpy.array(scipy.signal.resample(self, int(numpy.rint(samplerate*self.duration))), dtype='float64')
+		y = numpy.array(scipy.signal.resample(self.data.flatten(), int(numpy.rint(samplerate*self.duration))), dtype='float64')
 		return Sound(y, samplerate=samplerate)
 
 	def filter(self, f=1, type='hp'):
@@ -1017,21 +1020,19 @@ class Sound(Signal):
 			if sleep:
 				time.sleep(self.duration)
 
-	def spectrogram(self, low=None, high=None, log_power=True, other=None, plot=True, **kwds):
+	def spectrogram(self, window_dur=0.005, dyn_range = 120, other=None, plot=True):
 		'''
 		Plots a spectrogram of the sound
 		Arguments:
-		``low=None``, ``high=None``
-			If these are left unspecified, it shows the full spectrogram,
-			otherwise it shows only between ``low`` and ``high`` in Hz.
-		``log_power=True``
-			If True the colour represents the log of the power.
-		``**kwds``
-			Are passed to Pylab's ``specgram`` command.
-		Returns the values returned by pylab's ``specgram``, namely
-		``(pxx, freqs, bins, im)`` where ``pxx`` is a 2D array of powers,
-		``freqs`` is the corresponding frequencies, ``bins`` are the time bins,
-		and ``im`` is the image axis.
+		``window_dur``
+			Duration of time window for short-term FFT (*0.005sec*)
+		``dyn_range``
+			Dynamic range in dB to plot (*120*)
+		```other```
+			If a sound object is given, subtract the waveform and plot the difference spectrogram.
+		Returns the values returned by scipy.signal's ``spectrogram``, namely
+		``(power, freqs, times)`` where ``power`` is a 2D array of powers,
+		``freqs`` is the corresponding frequencies, and ``times`` are the time bins.
 		'''
 		if self.nchannels > 1:
 			raise ValueError('Can only plot spectrograms for mono sounds.')
@@ -1039,36 +1040,37 @@ class Sound(Signal):
 			x = self.data.flatten() - other.data.flatten()
 		else:
 			x = self.data.flatten()
-		pxx, freqs, bins, im = plt.specgram(x, Fs=self.samplerate, **kwds)
-		if low is not None or high is not None:
-			restricted = True
-			if low is None:
-				low = 0
-			if high is None:
-				high = numpy.amax(freqs)
-			I = numpy.logical_and(low <= freqs, freqs <= high)
-			I2 = numpy.where(I)[0]
-			I2 = [numpy.max(numpy.min(I2) - 1, 0), numpy.min((numpy.max(I2) + 1, len(freqs) - 1))]
-			Z = pxx[I2[0]:I2[-1], :]
-		else:
-			restricted = False
-			Z = pxx
-		if log_power:
-			Z[Z < 1e-20] = 1e-20 # no zeros because we take logs
-			Z = 10 * numpy.log10(Z)
-		Z = numpy.flipud(Z)
+		# set default for step_dur optimal for Gaussian windows.
+		step_dur = window_dur/numpy.sqrt(numpy.pi)/8
+		# convert window & step durations from seconds to numbers of samples
+		window_nsamp = Sound.in_samples(window_dur, self.samplerate) * 2
+		step_nsamp = Sound.in_samples(step_dur, self.samplerate)
+		# make the window. A Gaussian filter needs a minimum of 6σ - 1 samples, so working
+		# backward from window_nsamp we can calculate σ.
+		window_sigma = (window_nsamp+1)/6
+		window = scipy.signal.windows.gaussian(window_nsamp, window_sigma)
+		# convert step size into number of overlapping samples in adjacent analysis frames
+		noverlap = window_nsamp - step_nsamp
+		# compute the power spectral density
+		freqs, times, power = scipy.signal.spectrogram(x, mode='psd', fs=self.samplerate, scaling='density', noverlap=noverlap, window=window, nperseg=window_nsamp)
 		if plot:
-			if restricted:
-				plt.imshow(Z, extent=(0, numpy.amax(bins), freqs[I2[0]], freqs[I2[-1]]),
-					   origin='upper', aspect='auto')
-			else:
-				plt.imshow(Z, extent=(0, numpy.amax(bins), freqs[0], freqs[-1]),
-					   origin='upper', aspect='auto')
+			p_ref = 2e-5  # 20 μPa, the standard reference pressure for sound in air
+			power = 10 * numpy.log10(power / (p_ref ** 2))  # logarithmic power for plotting
+			# set lower bound of colormap (vmin) from dynamic range.
+			dB_max = power.max()
+			print(dB_max)
+			vmin = dB_max-dyn_range
+			print(vmin)
+			fig, ax = plt.subplots()
+			cmap = matplotlib.cm.get_cmap('Greys')
+			extent = (times.min(), times.max(), freqs.min(), freqs.max())
+			ax.imshow(power, origin='lower', aspect='auto', cmap=cmap, extent=extent, vmin=vmin, vmax=None)
 			plt.title('Spectrogram')
 			plt.xlabel('Time [sec]')
 			plt.ylabel('Frequency [Hz]')
 			plt.show()
-		return pxx, freqs, bins, im
+		else:
+			return power, freqs, times
 
 	def log_spectrogram(self, bands_per_octave=24):
 		'''
@@ -1300,7 +1302,7 @@ class HRTF():
 		'Return the list of sources'
 		return sorted(list(set(self.sources[:,1])))
 
-	def plot_tf(self,sourceidx,ear,linesep=20):
+	def plot_tf(self,sourceidx,ear,linesep=20,filename=[]):
 		"Plots a transfer functions of FIR filters for a given ear ['left','right'] at a given sourcepositions index"
 		n = 0
 		if ear == 'left':
@@ -1322,6 +1324,8 @@ class HRTF():
 		plt.axis('tight')
 		plt.xlim(4,18)
 		#layout(fig)
+		if filename:
+			plt.savefig(filename)
 		plt.show()
 
 	def remove_ctf(self): # UNFINISHED, UNTESTED!!!
