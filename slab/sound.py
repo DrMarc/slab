@@ -754,21 +754,9 @@ class Sound(Signal):
 		if have_soundcard:
 			soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
 		else:
-			if self.nchannels > 2:
-				raise ValueError("Can only play sounds with 1 or 2 channels.")
-			wavfile = 'tmp.wav'
-			self.write(wavfile, normalise=False)
-			if platform.system() == 'Windows':
-				winsound.PlaySound('%s.wav' % wavfile, winsound.SND_FILENAME)
-			elif platform.system() == 'Darwin':
-				subprocess.Popen(["afplay", wavfile])
-			else:  # Linus/Unix, install sox (sudo apt-get install sox libsox-fmt-all)
-				try:
-					subprocess.Popen(["play", wavfile])
-				except:
-					raise NotImplementedError('Install sox [sudo apt-get install sox libsox-fmt-all] to play sounds on Unix/Linux systems.')
-			if sleep:
-				time.sleep(self.duration)
+			raise NotImplementedError('Need module soundcard for cross-platform playing (https://github.com/bastibe/SoundCard).')
+		if sleep:
+			time.sleep(self.duration)
 
 	def spectrogram(self, window_dur=0.005, dyn_range = 120, other=None, plot=True):
 		'''
