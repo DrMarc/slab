@@ -470,7 +470,7 @@ class Sound(Signal):
 		'''
 		samplerate = Sound.get_samplerate(samplerate)
 		#duration = Sound.in_samples(duration, samplerate) # TODO: duration has to be in seconds for this function!
-		dur = int(numpy.ceil(duration))    # duration rounded up for generating purpose
+		duration = Sound.in_samples(duration, samplerate)
 		Ri = Rt*dur # modulation lag, in number of df's
 		if RO:  #compute tones freqs
 			R1 = numpy.round(2**(numpy.array(-1, 1)*BW/2)*f0/df)
@@ -573,63 +573,27 @@ class Sound(Signal):
 		if when == 'offset' or when == 'both':
 			self.data[self.nsamples-sz:, :] *= multiplier[::-1]
 
-	def shift(self, duration, fractional=False, filter_length=2048):
+	def shift(self, duration, channel = 'left'):
 		'''
-		Returns the sound delayed by duration, which can be the number of
-		samples or a length of time in seconds. Normally, only integer
-		numbers of samples will be used, but if ``fractional=True`` then
-		the filtering method from
-		`http://www.labbookpages.co.uk/audio/beamforming/fractionalDelay.html
-		will be used (introducing some small numerical errors). With this
-		method, you can specify the ``filter_length``, larger values are
-		slower but more accurate, especially at higher frequencies. The large
-		default value of 2048 samples provides good accuracy for sounds with
-		frequencies above 20 Hz, but not for lower frequency sounds. If you are
-		restricted to high frequency sounds, a smaller value will be more
-		efficient. Note that if ``fractional=True`` then
-		``duration`` is assumed to be a time not a number of samples.
-		>>> sig = Sound(numpy.ones([10,1]),samplerate=10)
-		>>> _ = sig.shift(1)
-		>>> _ = sig.shift(-1)
-		>>> _ = sig.shift(1.5,fractional=True)
+		Returns a sound object with one channel delayed with respect to
+		the other channel by duration, which can be the number of
+		samples or a length of time in seconds.
+		Shift is only implemented for 2-channel sounds.
+		>>> sig = Sound(numpy.ones([10,2]),samplerate=10)
+		>>> _ = sig.shift(1, 'left')
+		>>> _ = sig.shift(1, 'right')
 
 		'''
-		if not fractional:
-			if not isinstance(duration, int):
-				duration = int(numpy.rint(duration*self.samplerate))
-			if duration >= 0:
-				y = numpy.vstack((numpy.zeros((duration, self.nchannels)), self.data))
-				return Sound(y, samplerate=self.samplerate)
-			else:
-				return Sound(self.data[-duration:, :], samplerate=self.samplerate)
+		if self.nchannels != 2:
+			raise ValueError('Shift is intended for binaural (2-channel) signals.')
+		duration = Sound.in_samples(duration, self.samplerate)
+		if channel == 'left':
+			left = numpy.vstack((numpy.zeros((duration, 1)), self.left.data))
+			right = numpy.vstack((self.right.data, numpy.zeros((duration, 1))))
 		else:
-			if self.nchannels > 1:
-				sounds = [self.channel(i).shifted(duration, fractional=True, filter_length=filter_length) for i in range(self.nchannels)]
-				return Sound(numpy.hstack(sounds), samplerate=self.samplerate)
-			# Adapted from http://www.labbookpages.co.uk/audio/beamforming/fractionalDelay.html
-			delay = duration*self.samplerate
-			if delay >= 0:
-				idelay = int(delay)
-			elif delay < 0:
-				idelay = -int(-delay)
-			delay -= idelay
-			centre_tap = filter_length // 2
-			t = numpy.arange(filter_length)
-			x = t-delay
-			if numpy.abs(numpy.round(delay)-delay) < 1e-10:
-				tap_weight = numpy.array(x == centre_tap, dtype=float)
-			else:
-				sinc = numpy.sin(numpy.pi*(x-centre_tap))/(numpy.pi*(x-centre_tap))
-				window = 0.54-0.46*numpy.cos(2.0*numpy.pi*(x+0.5)/filter_length) # Hamming window
-				tap_weight = window*sinc
-			if filter_length < 256 or not have_scipy:
-				y = numpy.convolve(tap_weight, self.data.flatten())
-			else:
-				y = scipy.signal.fftconvolve(tap_weight, self.data.flatten())
-			y = y[filter_length//2:-filter_length//2]
-			sound = Sound(y, self.samplerate)
-			sound = sound.shift(idelay)
-			return sound
+			left = numpy.vstack((self.left.data, numpy.zeros((duration, 1))))
+			right = numpy.vstack((numpy.zeros((duration, 1)), self.right.data))
+		return Sound(numpy.hstack((left,right)), samplerate=self.samplerate)
 
 	def repeat(self, n):
 		'Repeats the sound n times'
@@ -925,12 +889,14 @@ class Sound(Signal):
 		plt.show()
 
 if __name__ == '__main__':
-	sig1 = Sound.whitenoise()
-	lev = sig1.level
-	sig1.filter((500, 1000), type='bp')
-	sig1.log_spectrogram()
-	sig2 = Sound.clicktrain()
-	sig2.level = 60
-	sig3 = Sound.crossfade(sig1, sig2, overlap=0.5)
-	sig3.play()
-	sig3.waveform()
+	# sig1 = Sound.whitenoise()
+	# lev = sig1.level
+	# sig1.filter((500, 1000), type='bp')
+	# sig1.log_spectrogram()
+	# sig2 = Sound.clicktrain()
+	# sig2.level = 60
+	# sig3 = Sound.crossfade(sig1, sig2, overlap=0.5)
+	# sig3.play()
+	# sig3.waveform()
+	sig = Sound(numpy.ones([10,2]),samplerate=10)
+	a = sig.shift(1,'left')
