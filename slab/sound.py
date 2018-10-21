@@ -1,6 +1,6 @@
-import numpy
 import array
 import time
+import numpy
 try:
 	import soundfile
 	have_soundfile = True
@@ -11,11 +11,6 @@ try:
 	have_soundcard = True
 except ImportError:
 	have_soundcard = False
-import platform
-if platform.system() == 'Windows':
-	import winsound
-else:
-	import subprocess
 try:
 	import scipy.signal
 	have_scipy = True
@@ -102,9 +97,21 @@ class Sound(Signal):
 		>>> vowel.waveform(start=0, end=.1)
 	'''
 	# instance properties
-	left = property(fget=lambda self: self.channel(0),
+	def _set_left(self, other):
+		if isinstance(other, Sound):
+			self.data[:, 0] = other.data[:, 0]
+		else:
+			self.data[:, 0] = numpy.array(other)
+
+	def _set_right(self, other):
+		if isinstance(other, Sound):
+			self.data[:, 1] = other.data[:, 0]
+		else:
+			self.data[:, 1] = numpy.array(other)
+
+	left = property(fget=lambda self: self.channel(0), fset=_set_left,
 					doc='The left channel for a stereo sound.')
-	right = property(fget=lambda self: self.channel(1),
+	right = property(fget=lambda self: self.channel(1), fset=_set_right,
 					 doc='The right channel for a stereo sound.')
 
 	def _get_level(self):
@@ -128,9 +135,9 @@ class Sound(Signal):
 		should be a value in dB, or a tuple of levels, one for each channel.
 		'''
 		rms_dB = self._get_level()
-		if self.nchannels>1:
+		if self.nchannels > 1:
 			level = numpy.array(level)
-			if level.size==1:
+			if level.size == 1:
 				level = level.repeat(self.nchannels)
 			level = numpy.reshape(level, (1, self.nchannels))
 			rms_dB = numpy.reshape(rms_dB, (1, self.nchannels))
@@ -145,7 +152,7 @@ class Sound(Signal):
 		is assumed that the unit of the sound is Pascals.
 		''')
 
-	def __init__(self,data,samplerate=None):
+	def __init__(self, data, samplerate=None):
 		if isinstance(data, str): # additional options for Sound initialization (from a file)
 			if samplerate is not None:
 				raise ValueError('Cannot specify samplerate when initialising Sound from a file.')
@@ -154,7 +161,7 @@ class Sound(Signal):
 			self.samplerate = _.samplerate
 		else:
 			# delegate to the baseclass init
-			super().__init__(data,samplerate)
+			super().__init__(data, samplerate)
 
 	# static methods (creating sounds)
 	@staticmethod
@@ -179,17 +186,17 @@ class Sound(Signal):
 		each channel.
 		'''
 		samplerate = Sound.get_samplerate(samplerate)
-		duration = Sound.in_samples(duration,samplerate)
+		duration = Sound.in_samples(duration, samplerate)
 		frequency = numpy.array(frequency)
 		phase = numpy.array(phase)
-		if frequency.size>nchannels and nchannels==1:
+		if frequency.size > nchannels and nchannels == 1:
 			nchannels = frequency.size
-		if phase.size>nchannels and nchannels==1:
+		if phase.size > nchannels and nchannels == 1:
 			nchannels = phase.size
-		if frequency.size==nchannels:
+		if frequency.size == nchannels:
 			frequency.shape = (1, nchannels)
-		if phase.size==nchannels:
-			phase.shape =(nchannels, 1)
+		if phase.size == nchannels:
+			phase.shape = (nchannels, 1)
 		t = numpy.arange(0, duration, 1)/samplerate
 		t.shape = (t.size, 1) # ensures C-order (in contrast to tile(...).T )
 		x = numpy.sin(phase + 2*numpy.pi * frequency * numpy.tile(t, (1, nchannels)))
@@ -214,19 +221,19 @@ class Sound(Signal):
 		samplerate = Sound.get_samplerate(samplerate)
 		phases = numpy.array(phase).flatten()
 		amplitudes = numpy.array(amplitude).flatten()
-		if len(phases)>1 or len(amplitudes)>1:
-			if (len(phases)>1 and len(amplitudes)>1) and (len(phases) != len(amplitudes)):
+		if len(phases) > 1 or len(amplitudes) > 1:
+			if (len(phases) > 1 and len(amplitudes) > 1) and (len(phases) != len(amplitudes)):
 				raise ValueError('Please specify the same number of phases and amplitudes')
-			Nharmonics = max(len(phases),len(amplitudes))
+			Nharmonics = max(len(phases), len(amplitudes))
 		else:
-			Nharmonics = int(numpy.floor( samplerate/(2*f0) ) )
+			Nharmonics = int(numpy.floor(samplerate/(2*f0)))
 		if len(phases) == 1:
 			phases = numpy.tile(phase, Nharmonics)
 		if len(amplitudes) == 1:
 			amplitudes = numpy.tile(amplitude, Nharmonics)
-		out = Sound.tone(f0, duration, phase = phases[0], samplerate = samplerate, nchannels = nchannels)
+		out = Sound.tone(f0, duration, phase=phases[0], samplerate=samplerate, nchannels=nchannels)
 		out.level = amplitudes[0]
-		for i in range(1,Nharmonics):
+		for i in range(1, Nharmonics):
 			tmp = Sound.tone(frequency=(i+1)*f0, duration=duration, phase=phases[i], samplerate=samplerate, nchannels=nchannels)
 			tmp.level = amplitudes[i]
 			out += tmp
@@ -240,12 +247,12 @@ class Sound(Signal):
 		>>> noise = Sound.whitenoise(1.0,nchannels=2)
 
 		To make a diotic noise:
-		>>> noise.data[:,1] = noise.data[:,0]
+		>>> noise.left = noise.right
 
 		'''
 		samplerate = Sound.get_samplerate(samplerate)
-		duration = Sound.in_samples(duration,samplerate)
-		x = numpy.random.randn(duration,nchannels)
+		duration = Sound.in_samples(duration, samplerate)
+		x = numpy.random.randn(duration, nchannels)
 		if normalise:
 			for i in range(nchannels):
 				x[:, i] = ((x[:, i] - numpy.amin(x[:, i]))/(numpy.amax(x[:, i]) - numpy.amin(x[:, i])) - 0.5) * 2
@@ -296,13 +303,13 @@ class Sound(Signal):
 	def pinknoise(duration=1.0, samplerate=None, nchannels=1, normalise=True):
 		'Returns pink noise, i.e :func:`powerlawnoise` with alpha=1'
 		return Sound.powerlawnoise(duration, 1.0, samplerate=samplerate,
-								   nchannels = nchannels, normalise=normalise)
+								   nchannels=nchannels, normalise=normalise)
 
 	@staticmethod
 	def brownnoise(duration=1.0, samplerate=None, nchannels=1, normalise=True):
 		'Returns brown noise, i.e :func:`powerlawnoise` with alpha=2'
 		return Sound.powerlawnoise(duration, 2.0, samplerate=samplerate,
-								   nchannels = nchannels, normalise=normalise)
+								   nchannels=nchannels, normalise=normalise)
 
 	@staticmethod
 	def irn(delay=0.01, gain=1, niter=16, duration=1.0, samplerate=None):
@@ -596,8 +603,15 @@ class Sound(Signal):
 		return Sound(numpy.hstack((left,right)), samplerate=self.samplerate)
 
 	def repeat(self, n):
-		'Repeats the sound n times'
+		'Repeats the sound n times.'
 		self.data = numpy.vstack((self.data,)*int(n))
+
+	def copychannel(self,n):
+		'''Copies a single-channel sound to make an n-channel sound.
+		If a multi-channel sound is supplied, all channels except the first (left) are silently dropped.'''
+		if self.nchannels > 1:
+			self = self.left
+		return Sound(numpy.repeat(self.data, n, axis=1), samplerate=self.samplerate)
 
 	@staticmethod
 	def crossfade(sound1, sound2, overlap=0.01):
