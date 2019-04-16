@@ -6,6 +6,11 @@ python -m doctest slab.py
 
 import copy
 import numpy
+try:
+	import scipy.signal
+	have_scipy = True
+except ImportError:
+	have_scipy = False
 
 _default_samplerate = 8000 # Hz
 
@@ -101,17 +106,17 @@ class Signal:
 	'''
 
 	# instance properties
-	nsamples = property(fget=lambda self:self.data.shape[0],
+	nsamples = property(fget=lambda self: self.data.shape[0],
 						doc='The number of samples in the Signal.')
-	duration = property(fget=lambda self:self.data.shape[0] / self.samplerate,
+	duration = property(fget=lambda self: self.data.shape[0] / self.samplerate,
 						doc='The length of the Signal in seconds.')
-	times = property(fget=lambda self:numpy.arange(self.data.shape[0], dtype=float) / self.samplerate,
+	times = property(fget=lambda self: numpy.arange(self.data.shape[0], dtype=float) / self.samplerate,
 						doc='An array of times (in seconds) corresponding to each sample.')
-	nchannels = property(fget=lambda self:self.data.shape[1],
+	nchannels = property(fget=lambda self: self.data.shape[1],
 						doc='The number of channels in the Signal.')
 
 	# __methods (class creation, printing, and slice functionality)
-	def __init__(self,data,samplerate=None):
+	def __init__(self, data, samplerate=None):
 		self.samplerate = Signal.get_samplerate(samplerate)
 		if isinstance(data, numpy.ndarray):
 			self.data = numpy.array(data, dtype='float')
@@ -124,7 +129,7 @@ class Signal:
 			self.samplerate = channels[0].samplerate
 		else:
 			raise TypeError('Cannot initialise Signal with data of class ' + str(data.__class__))
-		if len(self.data.shape)==1:
+		if len(self.data.shape) == 1:
 			self.data.shape = (len(self.data), 1)
 		elif self.data.shape[1] > self.data.shape[0]:
 			self.data = self.data.T
@@ -135,16 +140,16 @@ class Signal:
 	def __str__(self):
 		return f'{type(self)} duration {self.duration}, samples {self.nsamples}, channels {self.nchannels}, samplerate {self.samplerate}'
 
-	def __getitem__(self,key):
+	def __getitem__(self, key):
 		return self.data.__getitem__(key)
 
-	def __setitem__(self,key,value):
-		return self.data.__setitem__(key,value)
+	def __setitem__(self, key, value):
+		return self.data.__setitem__(key, value)
 
 	# arithmatic operators
 	def __add__(self, other):
 		new = copy.deepcopy(self)
-		if isinstance(other,type(self)):
+		if isinstance(other, type(self)):
 			new.data = self.data + other.data
 		else:
 			new.data = self.data + other
@@ -153,7 +158,7 @@ class Signal:
 
 	def __sub__(self, other):
 		new = copy.deepcopy(self)
-		if isinstance(other,type(self)):
+		if isinstance(other, type(self)):
 			new.data = self.data - other.data
 		else:
 			new.data = self.data - other
@@ -162,7 +167,7 @@ class Signal:
 
 	def __mul__(self, other):
 		new = copy.deepcopy(self)
-		if isinstance(other,type(self)):
+		if isinstance(other, type(self)):
 			new.data = self.data * other.data
 		else:
 			new.data = self.data * other
@@ -171,7 +176,7 @@ class Signal:
 
 	def __truediv__(self, other):
 		new = copy.deepcopy(self)
-		if isinstance(other,type(self)):
+		if isinstance(other, type(self)):
 			new.data = self.data / other.data
 		else:
 			new.data = self.data / other
@@ -183,14 +188,34 @@ class Signal:
 		new.data = self.data*-1
 		return new
 
+	def __len__(self):
+		return self.nsamples
+
 	# static methods (belong to the class, but can be called without creating an instance)
 	@staticmethod
-	def in_samples(ctime,samplerate):
+	def in_samples(ctime, samplerate):
 		'''Converts time values in seconds to samples.
-		This is used to enable input in either samples (int) or seconds (float) in the class.'''
-		if not isinstance(ctime, int):
-			ctime = int(numpy.rint(ctime * samplerate))
-		return ctime
+		This is used to enable input in either samples (integers) or seconds (floating point numbers) in the class.
+		ctime can be of type int, float, numpy.ndarray of numpy.int64 or numpy.float64, list of a mix of ints or floats, or tuple of a mix of ints or floats.
+		'''
+		if isinstance(ctime, (int, numpy.int64)): # single int is treated as samples
+			out = ctime
+		elif isinstance(ctime, (float, numpy.float64)):
+			out = int(numpy.rint(ctime * samplerate))
+		elif isinstance(ctime, numpy.ndarray):
+			if isinstance(ctime[0], numpy.int64):
+				out = ctime
+			elif isinstance(ctime[0], numpy.float64):
+				out = numpy.int64(numpy.rint(ctime * samplerate))
+			else:
+				ValueError('Unsupported type in numpy.ndarray (must be int64 of float 64)')
+		elif isinstance(ctime, (list, tuple)): # convert one by one
+			out = numpy.empty_like(ctime)
+			for i, c in enumerate(ctime):
+				out[i] = numpy.int64(Signal.in_samples(c, samplerate))
+		else:
+			ValueError('Unsupported type for ctime (must be int, float, numpy.ndarray of ints or floats, list or tuple)!')
+		return out
 
 	@staticmethod
 	def get_samplerate(samplerate):
@@ -216,8 +241,7 @@ class Signal:
 
 	def resize(self, L):
 		'Extends or contracts the length of the data in the object in place to have L samples.'
-		if isinstance(L,float): # support L in samples or seconds
-			L = int(numpy.rint(L*self.samplerate))
+		L = Signal.in_samples(L, self.samplerate)
 		if L == len(self.data):
 			pass # already correct size
 		elif L < len(self.data):
@@ -225,3 +249,47 @@ class Signal:
 		else:
 			padding = numpy.zeros((L - len(self.data), self.nchannels))
 			self.data = numpy.concatenate((self.data, padding))
+
+	def resample(self, samplerate):
+		'Returns a resampled version of the sound. Requires scipy.signal.'
+		if not have_scipy:
+			raise ImportError('Resampling requires scipy.signal.')
+		new_nsamples = int(numpy.rint(samplerate*self.duration))
+		new_signal = numpy.zeros((new_nsamples, self.nchannels))
+		for chan in self.nchannels:
+			new_signal[:,chan] = scipy.signal.resample(self.channel(chan), new_nsamples)
+		return Signal(new_signal, samplerate=samplerate)
+
+	def delay(self, duration=1, chan=0, filter_length=2048):
+		if chan >= self.nchannels:
+			raise ValueError('Channel must be smaller than number of channels in signal!')
+		if filter_length%2:
+			raise ValueError('Filter_length must be even!')
+		centre_tap = int(filter_length / 2)
+		t = numpy.array(range(filter_length))
+		if isinstance(duration, (int, float, numpy.int64, numpy.float64)): # just a constant delay
+			duration = Signal.in_samples(duration, self.samplerate)
+			x = t-duration
+			window = 0.54 - 0.46 * numpy.cos(2 * numpy.pi * (x+0.5) / filter_length) # Hamming window
+			if numpy.abs(duration) < 1e-10:
+				tap_weight = numpy.zeros_like(t)
+				tap_weight[centre_tap] = 1
+			else:
+				tap_weight = window * numpy.sinc(x-centre_tap)
+			self.data[:,chan] = numpy.convolve(self.data[:,chan], tap_weight, mode='same')
+		else: # dynamic delay
+			if len(duration) != self.nsamples:
+				ValueError('Duration shorter or longer than signal!')
+			duration *= self.samplerate # assuming vector in seconds, convert to samples
+			padding = numpy.zeros(centre_tap)
+			sig = numpy.concatenate((padding, self.channel(chan), padding), axis=None) # for zero-padded convolution (potential edge artifacts!)
+			for i, current_delay in enumerate(duration):
+				x = t-current_delay
+				window = 0.54 - 0.46 * numpy.cos(2 * numpy.pi * (x+0.5) / filter_length) # Hamming window
+				if numpy.abs(current_delay) < 1e-10:
+					tap_weight = numpy.zeros_like(t)
+					tap_weight[centre_tap] = 1
+				else:
+					tap_weight = window * numpy.sinc(x-centre_tap)
+					sig_portion = sig[i:i+filter_length]
+					self.data[i, chan] = numpy.convolve(sig_portion, tap_weight, mode='valid') # sig_portion and tap_weight have the same length, so the valid part of the convolution is just one sample, which gets written into the signal at the current index
