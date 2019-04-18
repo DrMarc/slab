@@ -683,7 +683,7 @@ class Sound(Signal):
 		if have_soundcard:
 			soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
 		else:
-			raise NotImplementedError('Need module soundcard for cross-platform playing (https://github.com/bastibe/SoundCard).')
+			raise NotImplementedError('Need module soundcard for cross-platform playing (pip install git+https://github.com/bastibe/SoundCard).')
 		if sleep:
 			time.sleep(self.duration)
 
