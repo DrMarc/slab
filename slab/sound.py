@@ -156,6 +156,8 @@ class Sound(Signal):
 		'''
 		Load the file given by filename (wav) and returns a Sound object.
 		'''
+		if not have_soundfile:
+			raise ImportError('You need SoundFile to read files (pip install git+https://github.com/bastibe/SoundFile.git')
 		ext = filename.split('.')[-1].lower()
 		if ext != 'wav':
 			raise NotImplementedError('Can only load aif or wav soundfiles')
@@ -777,7 +779,7 @@ class Sound(Signal):
 		# plot
 		pass
 
-	def spectrum(self, low=None, high=None, log_power=True, plot=False):
+	def spectrum(self, low=None, high=None, log_power=True, plot=True):
 		'''
 		Returns the spectrum of the sound and optionally plots it.
 		Arguments:
@@ -786,7 +788,7 @@ class Sound(Signal):
 			otherwise it shows only between ``low`` and ``high`` in Hz.
 		``log_power=True``
 			If True it returns the log of the power.
-		``plot=False``
+		``plot=True``
 			Whether to plot the output.
 		If plot=False, returns ``Z, freqs, phase``
 		where ``Z`` is a 1D array of powers, ``freqs`` is the corresponding

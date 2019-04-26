@@ -7,10 +7,19 @@ python -m doctest psychoacoustics.py
 # Staircase
 import os
 import json
-import curses
+try:
+	import curses
+	have_curses = True
+except ImportError:
+	have_curses = False
 import collections
 import numpy
-import matplotlib.pyplot as plt
+try:
+	import matplotlib
+	import matplotlib.pyplot as plt
+	have_pyplot = True
+except ImportError:
+	have_pyplot = False
 
 #TODO: add hearing tests (x-frequency treshold, Bekesy [only TDT], speech-in-noise [ask Annelies])
 class Keypress:
@@ -23,6 +32,8 @@ class Keypress:
 	'''
 	def __init__(self):
 		'Locks the terminal in cbreak mode. Use once right before getting keypresses.'
+		if not have_curses:
+			error('You need curses to use the keypress class (pip install curses (or windows-curses))')
 		self.stdscr = curses.initscr()
 		curses.noecho()
 		curses.cbreak()
@@ -178,6 +189,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):
 
 	def plot(self):
 		'Plot the trial sequence as scatter plot.'
+		if not have_pyplot:
+			raise ImportError('Plotting requires matplotlib!')
 		plt.plot(self.trials)
 		plt.xlabel('Trials')
 		plt.ylabel('Condition index')
@@ -447,6 +460,8 @@ class Staircase(collections.abc.Iterator):
 
 	def plot(self, plot_pf=True):
 		'Plot the staircase (and the psychometric function if plot_pf=True and the staicase is finished).'
+		if not have_pyplot:
+			raise ImportError('Plotting requires matplotlib!')
 		x = numpy.arange(self.this_trial_n + 1)
 		y = numpy.array(self.intensities)
 		responses = numpy.array(self.data)

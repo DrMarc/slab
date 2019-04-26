@@ -170,3 +170,11 @@ class Binaural(Sound):
 			out = Binaural(Sound.powerlawnoise(duration, 1.0, samplerate=samplerate, nchannels=2, normalise=normalise))
 			out.left = out.right
 		return out
+
+if __name__ == '__main__':
+	sig = slab.Binaural.pinknoise(duration=0.5, samplerate=44100)
+	sig.filter(kind='bp',f=[100,6000])
+	sig.ramp(when='both',duration=0.15)
+	sig_itd = sig.itd_ramp(500e-6,-500e-6)
+	sig_itd.play()
+	

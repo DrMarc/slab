@@ -168,12 +168,11 @@ class HRTF():
 		return ctf
 
 	def median_sources(self):
-		'DOC'
-		idx = numpy.where(self.sources[:,0]==0)[0]
-		return sorted(idx, key=lambda x: self.sources[x,1])
+		'Return indices of sources along the fronal median plane.'
+		return self.cone_sources(0)
 
 	def cone_sources(self,cone):
-		'Return indices of sources along an off-axis sphere slice'
+		'Return indices of sources along an off-axis sphere slice.'
 		cone = numpy.sin(numpy.deg2rad(cone))
 		azimuth = numpy.deg2rad(self.sources[:,0])
 		elevation = numpy.deg2rad(self.sources[:,1]-90)
