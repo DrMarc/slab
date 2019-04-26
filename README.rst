@@ -2,6 +2,7 @@ slab
 --------
 
 Class for working with sounds, including loading/saving, manipulating and playing:
+
 - Signals
 - Sound (inherits from Signals, methods for generating, manipulating, displaying, and analysing sound stimuli)
 - Binaural (inherits from Sound, contains convenience functions for binaural stimuli)
@@ -12,17 +13,17 @@ Class for working with sounds, including loading/saving, manipulating and playin
 Much of the basic functionality and software architecture of the Signal and Sound classes is based on brian.hears (www.briansimulator.org/docs/hears.html). The classes are used primarily to lower the entrance barrier for working with sounds in Python for students in our lab, and provide easy access to typical operations in psychoacoustics.
 
 Examples:
->>> import slab
->>> sig = slab.Sound.tone()
->>> sig.level = 80
+	>>> import slab
+	>>> sig = slab.Sound.tone()
+	>>> sig.level = 80
 
 **Properties**
->>> sig.duration
-1.0
->>> sig.nsamples
-10
->>> sig.nchannels
-2
+	>>> sig.duration
+	1.0
+	>>> sig.nsamples
+	10
+	>>> sig.nchannels
+	2
 
 **Slicing**
 Signals implement __getitem__ and __setitem___ and supports slicing.
@@ -37,7 +38,7 @@ You can also select a subset of channels:
 
 would be data in the second channel. To extract a channel as a Signal or subclass object use sig.channel(1).
 
-Signals support arithmatic operations (add, sub, mul, truediv, neg ['-sig' inverts phase]):
+Signals support arithmetic operations (add, sub, mul, truediv, neg ['-sig' inverts phase]):
 	>>> sig2 = sig * 2
 	>>> sig2[-1,1]
 	2.0
@@ -47,6 +48,7 @@ All sound generating methods can be used with duration arguments in samples (int
 One can also set the number of channels by setting the keyword argument nchannels to the desired value.
 See doc string in respective function.
 Some examples:
+
 - tone(frequency, duration, phase=0, samplerate=None, nchannels=1)
 - harmoniccomplex(f0, duration, amplitude=1, phase=0, samplerate=None, nchannels=1)
 - whitenoise(duration, samplerate=None, nchannels=1)
@@ -65,9 +67,10 @@ Some examples:
 	>>> sig.play()
 
 **Timing and sequencing**
-- sequence(*sounds, samplerate=None)
-- sig.repeat(n)
-- sig.ramp(when='both', duration=0.01, envelope=None, inplace=True)
+
+	- sequence(*sounds, samplerate=None)
+	- sig.repeat(n)
+	- sig.ramp(when='both', duration=0.01, envelope=None, inplace=True)
 
 **Plotting**
 Examples:
@@ -77,7 +80,7 @@ Examples:
 	>>> Z, freqs, phase = vowel.spectrum(low=100, high=4000, log_power=True)
 	>>> vowel.waveform(start=0, end=.1)
 
-Binaural sounds:
+**Binaural sounds**
 Binaural is a class for working with binaural sounds, including ITD and ILD manipulation. Binaural inherits all signal generation functions from the Sound class, but returns binaural signals.
 Properties:
 Binaural.left: left (0th) channel
