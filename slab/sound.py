@@ -24,6 +24,7 @@ except ImportError:
 	have_pyplot = False
 
 from slab.signals import Signal
+from slab.filter import Filter
 
 class Sound(Signal):
 	# TODO: debug dynamicripple, add ability to get output of different stages of an auditory periphery model from a sound
@@ -187,12 +188,12 @@ class Sound(Signal):
 		if phase.size == nchannels:
 			phase.shape = (nchannels, 1)
 		t = numpy.arange(0, duration, 1)/samplerate
-		t.shape = (t.size, 1) # ensures C-order (in contrast to tile(...).T )
+		t.shape = (t.size, 1) # ensures C-order
 		x = numpy.sin(phase + 2*numpy.pi * frequency * numpy.tile(t, (1, nchannels)))
 		return Sound(x, samplerate)
 
 	@staticmethod
-	def harmoniccomplex(f0=500, duration=1., amplitude=1, phase=0, samplerate=None, nchannels=1):
+	def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, nchannels=1):
 		'''
 		Returns a harmonic complex composed of pure tones at integer multiples
 		of the fundamental frequency ``f0``.
@@ -201,9 +202,10 @@ class Sound(Signal):
 		harmonics, and harmonics up to the sampling frequency are
 		generated. In the latter each harmonic parameter is set
 		separately, and the number of harmonics generated corresponds
-		to the length of the array.
+		to the length of the array. Amplitudes are relateve to full scale
+		(i.e. 0 corresponds to maximum intensity; -30 would be 30 dB softer).
 		Example:
-		>>> sig = Sound.harmoniccomplex(f0=200, amplitude=[80,70,60,50])
+		>>> sig = Sound.harmoniccomplex(f0=200, amplitude=[0,-10,-20,-30])
 		>>> _ = sig.spectrum()
 
 		'''
@@ -221,10 +223,11 @@ class Sound(Signal):
 		if len(amplitudes) == 1:
 			amplitudes = numpy.tile(amplitude, Nharmonics)
 		out = Sound.tone(f0, duration, phase=phases[0], samplerate=samplerate, nchannels=nchannels)
-		out.level = amplitudes[0]
+		lvl = out.level
+		out.level += amplitudes[0]
 		for i in range(1, Nharmonics):
 			tmp = Sound.tone(frequency=(i+1)*f0, duration=duration, phase=phases[i], samplerate=samplerate, nchannels=nchannels)
-			tmp.level = amplitudes[i]
+			tmp.level = lvl + amplitudes[i]
 			out += tmp
 		return out
 
@@ -616,42 +619,19 @@ class Sound(Signal):
 		envelope = envelope[:,None] # add an empty axis to get to the same shape as self.data: (n_samples, 1)
 		self.data *= numpy.broadcast_to(envelope, self.data.shape) # if data is 2D (>1 channel) broadcase the envelope to fit
 
-	def filter(self, f=1, kind='hp'):
+	def filter(self, f=100, kind='hp'):
 		'''
-		Filters the sound in place.
-		f: edge frequency in Hz (*1*) or tuple of frequencies for bp and notch.
+		Returns a new, filtered, Sound object.
+		f: edge frequency in Hz (*100*) or tuple of frequencies for bp and notch.
 		type: 'lp', *'hp'*, bp, 'notch'
-		TODO: For costum filter shapes f and type are tuples with frequencies
-		in Hz and corresponding attenuations in dB. If f is a numpy array it is
-		taken as the target magnitude of the spectrum (imposing one sound's
-		spectrum on the current sound).
 		Examples:
 		>>> sig = Sound.whitenoise()
 		>>> sig.filter(f=3000, kind='lp')
 		>>> _ = sig.spectrum()
 		'''
 		#n = 2**(self.nsamples-1).bit_length() # next power of 2
-		n = self.nsamples
-		n_unique_pts = int(numpy.ceil((n+1)/2))
-		st = 1 / self.samplerate
-		df = 1 / (st * n)
-		filt = numpy.zeros(n_unique_pts-1)
-		if kind == 'lp':
-			filt[:round(f/df)] = 1
-		if kind == 'hp':
-			filt[round(f/df):] = 1
-		if kind == 'bp':
-			filt[round(f[0]/df):round(f[1]/df)] = 1
-		if kind == 'notch':
-			filt[:round(f[0]/df)] = 1
-			filt[round(f[1]/df):] = 1
-		if n % 2 == 0: # even
-			filt = numpy.concatenate((filt, filt[::-1]))
-		else: # odd
-			filt = numpy.concatenate((filt, [0], filt[::-1]))
-		for chan in range(self.nchannels):
-			_fft = numpy.fft.fft(self.data[:, chan])
-			self.data[:,chan] = numpy.real(numpy.fft.ifft(filt * _fft))
+		filt = Filter.rectangular_filter(f=f, kind=kind, samplerate=self.samplerate, length=1000) # TODO: length=self.nsamples?
+		return filt.apply(self)
 
 	def aweight(self):
 		#TODO: untested! Filter all chans.
@@ -886,7 +866,7 @@ class Sound(Signal):
 		plt.show()
 
 if __name__ == '__main__':
-	sig1 = Sound.whitenoise()
+	sig1 = Sound.harmoniccomplex()
 	lev = sig1.level
 	sig1.filter((500, 1000), kind='bp')
 	sig1.log_spectrogram()
