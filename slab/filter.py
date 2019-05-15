@@ -37,23 +37,11 @@ class Filter(Signal):
 
 	'''
 
-	def estimate_impulse_length(self):
-		if self.fir:
-			impulse_length = []
-			for i in range(self.nfilters):
-				_, p, _ = signal.tf2zpk(self.channel(i), [1])
-				r = numpy.max(numpy.abs(p))
-				impulse_length.append(int(numpy.ceil(numpy.log(1e-9) / numpy.log(r))))
-			return impulse_length
-		else:
-			return None
-
 	# instance properties
 	nfilters = property(fget=lambda self: self.nchannels, doc='The number of filters in the bank.')
 	ntaps = property(fget=lambda self: self.nsamples, doc='The number of filter taps.')
 	nfrequencies = property(fget=lambda self: self.nsamples, doc='The number of frequency bins.')
 	frequencies = property(fget=lambda self: numpy.fft.rfftfreq(self.ntaps*2-1, d=1/self.samplerate) if not self.fir else None, doc='The frequency axis of the filter.') # TODO: freqs for FIR?
-	impulse_len = property(fget=estimate_impulse_length, doc='Approximate length of filter impulse responses (if fir).')
 
 	def __init__(self, data, samplerate=None, fir=True):
 		if fir and not have_scipy:
@@ -120,13 +108,13 @@ class Filter(Signal):
 		out = copy.deepcopy(sig)
 		if self.fir:
 			if self.nfilters == sig.nchannels: # filter each channel with corresponding filter
-				out.data = signal.filtfilt(self.data, [1], out.data, method="gust", irlen=max(self.impulse_len))
+				out.data = signal.lfilter(self.data, [1], out.data, axis=0)
 			elif (self.nfilters == 1) and (sig.nchannels > 1): # filter each channel
-				out.data = signal.filtfilt(self.data, [1], out.data, method="gust", irlen=max(self.impulse_len))
+				out.data = signal.lfilter(self.data, [1], out.data, axis=0)
 			elif (self.nfilters > 1) and (sig.nchannels == 1): # apply all filters in bank to signal
-				out.data = numpy.empty((sig.n_samples, self.nfilters))
+				out.data = numpy.empty((sig.nsamples, self.nfilters))
 				for filt in range(self.nfilters):
-					out.data[:, filt] = signal.filtfilt(self[:, filt], [1], sig.data, method="gust", irlen=max(self.impulse_len))
+					out.data[:, filt] = signal.lfilter(self[:, filt], [1], sig.data, axis=0).flatten()
 			else:
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		else: # FFT filter
@@ -151,23 +139,34 @@ class Filter(Signal):
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		return out
 
-	def tf(self, plot=True):
+	def tf(self, channels='all', plot=True): # implement returning/plotting specific channel or all chans!
 		'''
 		Computes the transfer function of a filter (magnitude over frequency).
+		Return transfer functions of filter at index 'channels' (int or list) or, if channels='all' (default)
+		return all transfer functions.
 		If plot=True (default) then plot the response, else return magnitude and frequency vectors.
 		'''
+		# check chan is in range of nfilters
+		if isinstance(channels, int):
+			channels = [channels]
+		elif channels == 'all':
+			channels = list(range(self.nfilters)) # now we have a list of filter indices to process
 		if self.fir:
-			w, h = signal.freqz(self.channel(0), worN=512, fs=self.samplerate)
-			h = signal.absolute(h)
+			h = numpy.empty((self.ntaps, len(channels)))
+			for idx in channels:
+				w, _h = signal.freqz(self.channel(idx), worN=512, fs=self.samplerate)
+				h[:, idx] = numpy.abs(_h)
 		else:
 			w = self.frequencies
-			h = self.data
+			h = self.data[:, channels]
 		if plot:
 			plt.plot(w, h, linewidth=2)
 			plt.xlabel('Frequency (Hz)')
 			plt.ylabel('Gain')
 			plt.title('Frequency Response')
 			plt.grid(True)
+			plt.show()
+			# TODO: return fig
 		else:
 			return w, h
 
@@ -176,10 +175,13 @@ class Filter(Signal):
 		'''
 		Inverse transfer function.
 		'''
+		# get 1/3 octave attenuation values
+		# invert
+		# design fir filter using window method
 		pass
 
 if __name__ == '__main__':
-	filt = Filter.rectangular_filter(f=15000, kind='hp', samplerate=44100)
+	filt = Filter.rectangular_filter(frequency=15000, kind='hp', samplerate=44100)
 	sig_filt = filt.apply(filt)
 	f, Pxx = scipy.signal.welch(sig_filt.data, sig_filt.samplerate, axis=0)
 	import matplotlib.pyplot as plt
