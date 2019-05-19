@@ -254,11 +254,17 @@ class Signal:
 		'Returns a resampled version of the sound. Requires scipy.signal.'
 		if not have_scipy:
 			raise ImportError('Resampling requires scipy.signal.')
-		new_nsamples = int(numpy.rint(samplerate*self.duration))
-		new_signal = numpy.zeros((new_nsamples, self.nchannels))
-		for chan in self.nchannels:
-			new_signal[:,chan] = scipy.signal.resample(self.channel(chan), new_nsamples)
-		return Signal(new_signal, samplerate=samplerate)
+		if self.samplerate == samplerate:
+			return self
+		else:
+			out = copy.deepcopy(self)
+			new_nsamples = int(numpy.rint(samplerate*self.duration))
+			new_signal = numpy.zeros((new_nsamples, self.nchannels))
+			for chan in self.nchannels:
+				new_signal[:,chan] = scipy.signal.resample(self.channel(chan), new_nsamples)
+			out.data = new_signal
+			out.samplerate = samplerate
+			return out
 
 	def delay(self, duration=1, chan=0, filter_length=2048):
 		if chan >= self.nchannels:

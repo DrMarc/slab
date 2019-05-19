@@ -616,12 +616,13 @@ class Sound(Signal):
 		pulse = numpy.concatenate((1-fall, numpy.ones(pulse_samples - 2 * fall_samples), fall))
 		pulse = numpy.concatenate((pulse, numpy.zeros(Sound.in_samples(pulse_period, self.samplerate)-len(pulse))))
 		envelope = numpy.tile(pulse, n_pulses)
-		envelope = envelope[:,None] # add an empty axis to get to the same shape as self.data: (n_samples, 1)
+		envelope = envelope[:, None] # add an empty axis to get to the same shape as self.data: (n_samples, 1)
 		self.data *= numpy.broadcast_to(envelope, self.data.shape) # if data is 2D (>1 channel) broadcase the envelope to fit
 
 	def filter(self, f=100, kind='hp'):
 		'''
-		Returns a new, filtered, Sound object.
+		Filters a sound in place. This is a convenience function to avoid calling
+		the Filter class.
 		f: edge frequency in Hz (*100*) or tuple of frequencies for bp and notch.
 		type: 'lp', *'hp'*, bp, 'notch'
 		Examples:
@@ -630,8 +631,8 @@ class Sound(Signal):
 		>>> _ = sig.spectrum()
 		'''
 		#n = 2**(self.nsamples-1).bit_length() # next power of 2
-		filt = Filter.rectangular_filter(f=f, kind=kind, samplerate=self.samplerate, length=1000) # TODO: length=self.nsamples?
-		return filt.apply(self)
+		filt = Filter.rectangular_filter(frequency=f, kind=kind, samplerate=self.samplerate, length=1000) # TODO: length=self.nsamples?
+		self.data = filt.apply(self).data
 
 	def aweight(self):
 		#TODO: untested! Filter all chans.

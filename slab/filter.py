@@ -3,25 +3,18 @@ Class for HRTFs, filterbanks, and microphone/speaker transfer functions
 '''
 
 import copy
-from scipy import signal
 import numpy
 
 try:
-	import matplotlib
 	import matplotlib.pyplot as plt
 	have_pyplot = True
 except ImportError:
 	have_pyplot = False
 try:
-	import scipy.signal
+	from scipy import signal
 	have_scipy = True
 except ImportError:
 	have_scipy = False
-
-# TODO: inverse filter
-# TODO: making standard filters (high, low, notch, bp)
-# TODO: FIR, but also FFR filters?
-# TODO: add gammatone filterbank
 
 from slab.signals import Signal # getting the base class
 
@@ -83,7 +76,7 @@ class Filter(Signal):
 				pass_zero = True
 			elif kind in ['hp', 'bp']:
 				pass_zero = False
-			filt = scipy.signal.firwin(length, frequency, pass_zero=pass_zero)
+			filt = signal.firwin(length, frequency, pass_zero=pass_zero)
 		else: # FFR filter
 			st = 1 / (samplerate/2)
 			df = 1 / (st * length)
@@ -131,10 +124,10 @@ class Filter(Signal):
 				for chan in range(sig.nchannels):
 					out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt)
 			elif (self.nfilters > 1) and (sig.nchannels == 1): # apply all filters in bank to signal
-				out.data = numpy.empty((sig.n_samples, self.nfilters))
+				out.data = numpy.empty((sig.nsamples, self.nfilters))
 				for filt in range(self.nfilters):
 					_filt = numpy.interp(sig_freq_bins, filt_freq_bins, self[:, filt])
-					out.data[:, filt] = numpy.fft.irfft(sig_rfft * _filt)
+					out.data[:, filt] = numpy.fft.irfft(sig_rfft.flatten() * _filt)
 			else:
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		return out
@@ -152,7 +145,7 @@ class Filter(Signal):
 		elif channels == 'all':
 			channels = list(range(self.nfilters)) # now we have a list of filter indices to process
 		if self.fir:
-			h = numpy.empty((self.ntaps, len(channels)))
+			h = numpy.empty((512, len(channels)))
 			for idx in channels:
 				w, _h = signal.freqz(self.channel(idx), worN=512, fs=self.samplerate)
 				h[:, idx] = numpy.abs(_h)
@@ -170,20 +163,87 @@ class Filter(Signal):
 		else:
 			return w, h
 
+	@staticmethod
+	def cos_filterbank(length=5000, bandwidth=1/3, low_lim=0, hi_lim=None, samplerate=8000):
+		"""Create ERB cosine filterbank of n_filters.
+		length: Length of signal to be filtered with the generated
+			filterbank. The signal length determines the length of the filters.
+		samplerate: Sampling rate associated with the signal waveform.
+		bandwith: of the filters (subbands) in octaves (default 1/3)
+		low_lim: Lower limit of frequency range (def  saults to 0).
+		hi_lim: Upper limit of frequency range (defaults to samplerate/2).
+		Example:
+		>>> sig = Sound.pinknoise(samplerate=44100)
+		>>> fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_lim=100, hi_lim=None, samplerate=sig.samplerate)
+		>>> fbank.tf(plot=True)
+		>>> sig_filt = fbank.apply(sig)
+		"""
+		samplerate = Signal.get_samplerate(samplerate)
+		if not hi_lim:
+			hi_lim = samplerate / 2
+		freq_bins = numpy.fft.rfftfreq(length, d=1/samplerate)
+		nfreqs = len(freq_bins)
+		ref_freq = 1000 # Hz, reference for conversion between oct and erb bandwidth
+		ref_erb = Filter._freq2erb(ref_freq)
+		erb_spacing = Filter._freq2erb(ref_freq*2**bandwidth) - ref_erb
+		h = Filter._freq2erb(hi_lim)
+		l = Filter._freq2erb(low_lim)
+		nfilters = int(numpy.round((h - l) / erb_spacing))
+		center_freqs, erb_spacing = numpy.linspace(l, h, nfilters, retstep=True)
+		center_freqs = center_freqs[1:-1] 	# we need to exclude the endpoints
+		nfilters -= 2
+		filts = numpy.zeros((nfreqs, nfilters))
+		freqs_erb = Filter._freq2erb(freq_bins)
+		for i in range(nfilters):
+			l = center_freqs[i] - erb_spacing
+			h = center_freqs[i] + erb_spacing
+			avg = center_freqs[i]  # center of filter
+			rnge = 2 * erb_spacing  # width of filter
+			filts[(freqs_erb > l) & (freqs_erb < h), i] = numpy.cos((freqs_erb[(freqs_erb > l) & (freqs_erb < h)]- avg) / rnge * numpy.pi)
+		# convert actual erb_spacing to octaves
+		bandwidth = numpy.log2(Filter._erb2freq(ref_erb + erb_spacing) / ref_freq)
+		return Filter(data=filts, samplerate=samplerate, fir=False), Filter._erb2freq(center_freqs), bandwidth
 
-	def inverse(self):
+	@staticmethod
+	def equalizing_filter(sig_in, sig_out):
 		'''
-		Inverse transfer function.
+		Generate an equalizing filter from the difference between a signal and its recording
+		through a linear time-invariant system (speaker, headphones, microphone).
+		The filter can be applied to a signal, which when played through the same system will
+		preserve the initial spectrum. The main intent of the function is to help with equalizing
+		the differences between transfer functions in a loudspeaker array.
 		'''
-		# get 1/3 octave attenuation values
-		# invert
+		if sig_in.samplerate > sig_out.samplerate: # resample higher to lower rate if necessary
+			sig_in = sig_in.resample(sig_out.samplerate)
+		else:
+			sig_out = sig_out.resample(sig_in.samplerate)
+		# make filterbank
+		fbank, centre_freqs, _ = Filter.cos_filterbank(length=1000, bandwidth=1/5, samplerate=sig_in.samplerate)
+		# get attenuation values in each subband relative to original signal
+		levels_in = fbank.apply(sig_in).level
+		levels_out = fbank.apply(sig_out).level
+		# preprocessing of the levels here to limit the n=influence of outliers
+		amp_diffs = levels_in - levels_out
+		amp_diffs = amp_diffs - numpy.max(amp_diffs) # this would disregard overall intensity diffs between speakers, rather adjust recording intesity so that the mean is the same as sig_in (always use same max)
+		# convert amps to gain values
+		amp_diffs = 10**((amp_diffs)/20.)
 		# design fir filter using window method
-		pass
+		filt = signal.firwin2(1000, freq=numpy.concatenate(([0], centre_freqs, [sig_in.samplerate/2])), gain=numpy.concatenate(([0], amp_diffs, [0])), fs=sig_in.samplerate)
+		return Filter(data=filt, samplerate=sig_in.samplerate, fir=True)
+
+	@staticmethod
+	def _freq2erb(freq_hz):
+		'Converts Hz to human ERBs, using the formula of Glasberg and Moore.'
+		return 9.265 * numpy.log(1 + freq_hz / (24.7 * 9.265))
+
+	@staticmethod
+	def _erb2freq(n_erb):
+		'Converts human ERBs to Hz, using the formula of Glasberg and Moore.'
+		return 24.7 * 9.265 * (numpy.exp(n_erb / 9.265) - 1)
 
 if __name__ == '__main__':
 	filt = Filter.rectangular_filter(frequency=15000, kind='hp', samplerate=44100)
 	sig_filt = filt.apply(filt)
-	f, Pxx = scipy.signal.welch(sig_filt.data, sig_filt.samplerate, axis=0)
-	import matplotlib.pyplot as plt
+	f, Pxx = signal.welch(sig_filt.data, sig_filt.samplerate, axis=0)
 	plt.semilogy(f, Pxx)
 	plt.show()
