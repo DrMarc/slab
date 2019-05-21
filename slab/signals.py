@@ -260,11 +260,22 @@ class Signal:
 			out = copy.deepcopy(self)
 			new_nsamples = int(numpy.rint(samplerate*self.duration))
 			new_signal = numpy.zeros((new_nsamples, self.nchannels))
-			for chan in self.nchannels:
-				new_signal[:,chan] = scipy.signal.resample(self.channel(chan), new_nsamples)
+			for chan in range(self.nchannels):
+				new_signal[:, chan] = scipy.signal.resample(self.channel(chan), new_nsamples).flatten()
 			out.data = new_signal
 			out.samplerate = samplerate
 			return out
+
+	def envelope(self):
+		'''
+		Returns the Hilbert envelope of a signal as new Signal.
+		'''
+		if not have_scipy:
+			raise ImportError('Calculating envelopes requires scipy.signal.')
+		envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))
+		filt = scipy.signal.firwin(1000, 50, pass_zero=True, fs=self.samplerate) # 50Hz lowpass filter to remove fine-structure
+		envs = scipy.signal.filtfilt(filt, [1], envs, axis=0)
+		return Signal(envs, samplerate=self.samplerate)
 
 	def delay(self, duration=1, chan=0, filter_length=2048):
 		if chan >= self.nchannels:
@@ -282,7 +293,7 @@ class Signal:
 				tap_weight[centre_tap] = 1
 			else:
 				tap_weight = window * numpy.sinc(x-centre_tap)
-			self.data[:,chan] = numpy.convolve(self.data[:,chan], tap_weight, mode='same')
+			self.data[:, chan] = numpy.convolve(self.data[:, chan], tap_weight, mode='same')
 		else: # dynamic delay
 			if len(duration) != self.nsamples:
 				ValueError('Duration shorter or longer than signal!')

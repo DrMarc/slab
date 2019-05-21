@@ -151,7 +151,7 @@ class HRTF():
 		#plt.legend(loc='upper left')
 		plt.grid()
 		plt.axis('tight')
-		plt.xlim(4, 18)
+		plt.xlim(1000, 20000)
 		#layout(fig)
 		if filename:
 			plt.savefig(filename)

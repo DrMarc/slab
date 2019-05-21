@@ -76,7 +76,7 @@ class Filter(Signal):
 				pass_zero = True
 			elif kind in ['hp', 'bp']:
 				pass_zero = False
-			filt = signal.firwin(length, frequency, pass_zero=pass_zero)
+			filt = signal.firwin(length, frequency, pass_zero=pass_zero, samplerate=samplerate)
 		else: # FFR filter
 			st = 1 / (samplerate/2)
 			df = 1 / (st * length)
@@ -205,31 +205,39 @@ class Filter(Signal):
 		return Filter(data=filts, samplerate=samplerate, fir=False), Filter._erb2freq(center_freqs), bandwidth
 
 	@staticmethod
-	def equalizing_filter(sig_in, sig_out):
+	def equalizing_filterbank(played_signal, recorded_signals, reference='max'):
 		'''
 		Generate an equalizing filter from the difference between a signal and its recording
 		through a linear time-invariant system (speaker, headphones, microphone).
 		The filter can be applied to a signal, which when played through the same system will
 		preserve the initial spectrum. The main intent of the function is to help with equalizing
 		the differences between transfer functions in a loudspeaker array.
+		played_signal: Sound or Signal object of the played waveform
+		recorded_signals:
 		'''
-		if sig_in.samplerate > sig_out.samplerate: # resample higher to lower rate if necessary
-			sig_in = sig_in.resample(sig_out.samplerate)
+		if played_signal.samplerate > recorded_signals.samplerate: # resample higher to lower rate if necessary
+			played_signal = played_signal.resample(recorded_signals.samplerate)
 		else:
-			sig_out = sig_out.resample(sig_in.samplerate)
+			recorded_signals = recorded_signals.resample(played_signal.samplerate)
 		# make filterbank
-		fbank, centre_freqs, _ = Filter.cos_filterbank(length=1000, bandwidth=1/5, samplerate=sig_in.samplerate)
+		fbank, centre_freqs, _ = Filter.cos_filterbank(length=1000, bandwidth=1/5, samplerate=played_signal.samplerate)
 		# get attenuation values in each subband relative to original signal
-		levels_in = fbank.apply(sig_in).level
-		levels_out = fbank.apply(sig_out).level
-		# preprocessing of the levels here to limit the n=influence of outliers
-		amp_diffs = levels_in - levels_out
-		amp_diffs = amp_diffs - numpy.max(amp_diffs) # this would disregard overall intensity diffs between speakers, rather adjust recording intesity so that the mean is the same as sig_in (always use same max)
-		# convert amps to gain values
-		amp_diffs = 10**((amp_diffs)/20.)
-		# design fir filter using window method
-		filt = signal.firwin2(1000, freq=numpy.concatenate(([0], centre_freqs, [sig_in.samplerate/2])), gain=numpy.concatenate(([0], amp_diffs, [0])), fs=sig_in.samplerate)
-		return Filter(data=filt, samplerate=sig_in.samplerate, fir=True)
+		levels_in = fbank.apply(played_signal).level
+		levels_in = numpy.tile(levels_in, (recorded_signals.nchannels, 1)).T # same shaoe as levels_out
+		levels_out = numpy.ones((len(centre_freqs), recorded_signals.nchannels))
+		for idx in range(recorded_signals.nchannels):
+			levels_out[:, idx] = fbank.apply(recorded_signals.channel(idx)).level
+		if reference == 'max':
+			reference = numpy.max(levels_out.flatten())
+		elif reference == 'mean':
+			reference = numpy.mean(levels_out.flatten())
+		amp_diffs = levels_in - levels_out - reference
+		freqs = numpy.concatenate(([0], centre_freqs, [played_signal.samplerate/2]))
+		filt = numpy.zeros((1000, recorded_signals.nchannels))
+		for idx in range(recorded_signals.nchannels):
+			amps = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
+			filt[:, idx] = signal.firwin2(1000, freq=freqs, gain=amps, fs=played_signal.samplerate)
+		return Filter(data=filt, samplerate=played_signal.samplerate, fir=True)
 
 	@staticmethod
 	def _freq2erb(freq_hz):
