@@ -635,7 +635,7 @@ class Sound(Signal):
 		self.data = filt.apply(self).data
 
 	def aweight(self):
-		#TODO: untested! Filter all chans.
+		#TODO: untested! Filter all chans. Move to Filter class!
 		'Returns A-weighted first channel as new sound.'
 		f1 = 20.598997
 		f2 = 107.65265
@@ -775,20 +775,10 @@ class Sound(Signal):
 		where ``Z`` is a 1D array of powers, ``freqs`` is the corresponding
 		frequencies, ``phase`` is the unwrapped phase of spectrum.
 		'''
-		if self.nchannels>1:
-			x = self.data[0,:] # silently use first channel only
-		x = self.data.flatten()
-		n = len(x)
-		fftx = numpy.fft.fft(x) # take the fourier transform
-		pxx = numpy.abs(fftx) # only keep the magnitude
-		nUniquePts = int(numpy.ceil((n+1)/2))
-		pxx = pxx[0:nUniquePts]
-		pxx = pxx/n # scale by the number of points so that the magnitude does not depend on the length of the signal
+		sig_rfft = numpy.abs(numpy.fft.rfft(self.data, axis=0))
+		freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
+		pxx = sig_rfft/len(freqs) # scale by the number of points so that the magnitude does not depend on the length of the signal
 		pxx = pxx**2 # square to get the power
-		pxx[1:] *= 2 # we dropped half the FFT, so multiply by 2 to keep the same energy, except at the DC term at p[0] (which is unique) (not sure if necessary with rfft! CHECK!)
-		freqs = numpy.linspace(0,1,len(pxx)) * (self.samplerate/2)
-		phase = numpy.unwrap(numpy.mod(numpy.angle(fftx), 2 * numpy.pi))
-		phase = phase[0:nUniquePts]
 		if low is not None or high is not None:
 			if low is None:
 				low = 0
@@ -798,14 +788,13 @@ class Sound(Signal):
 			I2 = numpy.where(I)[0]
 			Z = pxx[I2]
 			freqs = freqs[I2]
-			phase = phase[I2]
 		else:
 			Z = pxx
 		if log_power:
 			Z[Z < 1e-20] = 1e-20 # no zeros because we take logs
 			Z = 10 * numpy.log10(Z)
 		if plot:
-			plt.subplot(211)
+			plt.subplot(111)
 			plt.semilogx(freqs, Z)
 			ticks_freqs = numpy.round(32000 * 2 ** (numpy.array(range(16), dtype=float)*-1))
 			plt.xticks(ticks_freqs, map(str, ticks_freqs.astype(int)))
@@ -813,25 +802,17 @@ class Sound(Signal):
 			plt.xlim((freqs[1], freqs[-1]))
 			plt.ylabel('Power [dB/Hz]') if log_power else plt.ylabel('Power')
 			plt.title('Spectrum')
-			plt.subplot(212)
-			plt.semilogx(freqs, phase)
-			ticks_freqs = numpy.round(32000 * 2 ** (numpy.array(range(16), dtype=float)*-1))
-			plt.xticks(ticks_freqs, map(str, ticks_freqs.astype(int)))
-			plt.grid()
-			plt.xlim((freqs[1], freqs[-1]))
-			plt.xlabel('Frequency [Hz]')
-			plt.ylabel('Phase [rad]')
 			plt.show()
 		else:
-			return Z, freqs, phase
+			return Z, freqs
 
 	def spectral_centroid(self):
 		'''
 		Returns the centroid of the spectrum.
 		'''
-		Z, freqs, _ = self.spectrum(log_power=True, plot=False)
-		Z = Z + min(Z)
-		return sum(freqs*Z)/sum(Z)
+		Z, freqs = self.spectrum(log_power=True, plot=False)
+		Z = (Z + min(Z)) / sum(Z) # normalize to sum==1 (probability distribution)
+		return sum(freqs*Z)
 
 	def spectral_flux(self):
 		'''
