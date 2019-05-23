@@ -11,7 +11,7 @@ try:
 except ImportError:
 	have_pyplot = False
 try:
-	from scipy import signal
+	import scipy.signal
 	have_scipy = True
 except ImportError:
 	have_scipy = False
@@ -76,7 +76,7 @@ class Filter(Signal):
 				pass_zero = True
 			elif kind in ['hp', 'bp']:
 				pass_zero = False
-			filt = signal.firwin(length, frequency, pass_zero=pass_zero, samplerate=samplerate)
+			filt = scipy.signal.firwin(length, frequency, pass_zero=pass_zero, samplerate=samplerate)
 		else: # FFR filter
 			st = 1 / (samplerate/2)
 			df = 1 / (st * length)
@@ -101,13 +101,13 @@ class Filter(Signal):
 		out = copy.deepcopy(sig)
 		if self.fir:
 			if self.nfilters == sig.nchannels: # filter each channel with corresponding filter
-				out.data = signal.lfilter(self.data, [1], out.data, axis=0)
+				out.data = scipy.signal.lfilter(self.data, [1], out.data, axis=0)
 			elif (self.nfilters == 1) and (sig.nchannels > 1): # filter each channel
-				out.data = signal.lfilter(self.data, [1], out.data, axis=0)
+				out.data = scipy.signal.lfilter(self.data, [1], out.data, axis=0)
 			elif (self.nfilters > 1) and (sig.nchannels == 1): # apply all filters in bank to signal
 				out.data = numpy.empty((sig.nsamples, self.nfilters))
 				for filt in range(self.nfilters):
-					out.data[:, filt] = signal.lfilter(self[:, filt], [1], sig.data, axis=0).flatten()
+					out.data[:, filt] = scipy.signal.lfilter(self[:, filt], [1], sig.data, axis=0).flatten()
 			else:
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		else: # FFT filter
@@ -147,7 +147,7 @@ class Filter(Signal):
 		if self.fir:
 			h = numpy.empty((512, len(channels)))
 			for idx in channels:
-				w, _h = signal.freqz(self.channel(idx), worN=512, fs=self.samplerate)
+				w, _h = scipy.signal.freqz(self.channel(idx), worN=512, fs=self.samplerate)
 				h[:, idx] = numpy.abs(_h)
 		else:
 			w = self.frequencies
@@ -236,8 +236,30 @@ class Filter(Signal):
 		filt = numpy.zeros((1000, recorded_signals.nchannels))
 		for idx in range(recorded_signals.nchannels):
 			amps = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
-			filt[:, idx] = signal.firwin2(1000, freq=freqs, gain=amps, fs=played_signal.samplerate)
+			filt[:, idx] = scipy.signal.firwin2(1000, freq=freqs, gain=amps, fs=played_signal.samplerate)
 		return Filter(data=filt, samplerate=played_signal.samplerate, fir=True)
+
+	def save(self, filename):
+		'''
+		Save the filter in numpy's .npy format to a file.
+		'''
+		fs = numpy.tile(self.samplerate, reps=self.nfilters)
+		fir = numpy.tile(self.fir, reps=self.nfilters)
+		fs = fs[numpy.newaxis, :]
+		fir = fir[numpy.newaxis, :]
+		to_save = numpy.concatenate((fs, fir, self.data)) # prepend the samplerate as new 'filter'
+		numpy.save(filename, to_save)
+
+	@staticmethod
+	def load(filename):
+		'''
+		Load a filter from a .npy file.
+		'''
+		data = numpy.load(filename)
+		samplerate = data[0][0] # samplerate is in the first filter
+		fir = bool(data[1][0]) # fir is in the first filter
+		data = data[2:, :] # drop the samplerate entry
+		return Filter(data, samplerate=samplerate, fir=fir)
 
 	@staticmethod
 	def _freq2erb(freq_hz):
@@ -252,6 +274,6 @@ class Filter(Signal):
 if __name__ == '__main__':
 	filt = Filter.rectangular_filter(frequency=15000, kind='hp', samplerate=44100)
 	sig_filt = filt.apply(filt)
-	f, Pxx = signal.welch(sig_filt.data, sig_filt.samplerate, axis=0)
+	f, Pxx = scipy.signal.welch(sig_filt.data, sig_filt.samplerate, axis=0)
 	plt.semilogy(f, Pxx)
 	plt.show()
