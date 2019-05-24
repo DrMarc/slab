@@ -351,6 +351,17 @@ class Sound(Signal):
 		return oneclick
 
 	@staticmethod
+	def chirp(duration=1.0, from_freq=100, to_freq=None, samplerate=None, kind='quadratic'):
+		samplerate = Sound.get_samplerate(samplerate)
+		duration = Sound.in_samples(duration, samplerate)
+		t = numpy.arange(0, duration, 1) / samplerate # generate a time vector
+		t.shape = (t.size, 1) # ensures C-order
+		if not to_freq:
+			to_freq = samplerate / 2
+		chirp = scipy.signal.chirp(t, from_freq, t[-1], to_freq, method=kind, vertex_zero=True)
+		return Sound(chirp, samplerate=samplerate)
+
+	@staticmethod
 	def silence(duration=1.0, samplerate=None, nchannels=1):
 		'Returns a silent, zero sound for the given duration.'
 		samplerate = Sound.get_samplerate(samplerate)
@@ -720,12 +731,13 @@ class Sound(Signal):
 		else:
 			return freqs, times, power
 
-	def log_spectrogram(self, bands_per_octave=24): # TODO: inconsistent plotting/return!
+	def log_spectrogram(self, bands_per_octave=24): # TODO: Not Working! inconsistent plotting/return!
 		'''
 		Returns the constant Q transform (log-spaced spectrogram) of a sound
 		and plots it.
 		bands_per_octave: number of bands per octave (*24*)
 		'''
+		raise NotImplementedError('Use cochleagram instead.')
 		high_edge = self.samplerate/2
 		low_edge = 50 # Hz
 		nfft = self.nsamples
@@ -736,7 +748,7 @@ class Sound(Signal):
 			print("Warning: n_cqt not positive definite.")
 		log_frqs = numpy.array([low_edge * numpy.exp(numpy.log(2)*i/bands_per_octave) for i in numpy.arange(n_cqt)])
 		logf_bws = log_frqs * (f_ratio - 1)
-		logf_bws[logf_bws<self.samplerate/nfft] = self.samplerate/nfft
+		logf_bws[logf_bws < self.samplerate/nfft] = self.samplerate/nfft
 		ovf_ctr = 0.5475 # Norm constant so CQT'*CQT close to 1.0
 		tmp2 = 1/(ovf_ctr * logf_bws)
 		tmp = (log_frqs.reshape(1, -1) - fft_frqs.reshape(-1, 1)) * tmp2
@@ -751,14 +763,21 @@ class Sound(Signal):
 		plt.show()
 		return cq_ft
 
-	def cochleagram(self):
+	def cochleagram(self, filterwidth=1/5):
 		'''
+		Plots a cochleagram of the sound.
 		'''
-		# generate filterbank
-		# compute subband envelopes
-		# apply non-linearity
-		# plot
-		pass
+		fbank, freqs, _ = Filter.cos_filterbank(bandwidth=filterwidth, low_lim=20, hi_lim=None, samplerate=self.samplerate)
+		subbands = fbank.apply(self.channel(0))
+		envs = subbands.envelope()
+		envs = envs.data ** (1/3) # apply non-linearity (cube-root compression)
+		cmap = matplotlib.cm.get_cmap('Greys')
+		extent = (0, self.duration, freqs.min(), freqs.max())
+		plt.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap, extent=extent)
+		plt.title('Cochleagram')
+		plt.xlabel('Time [sec]')
+		plt.ylabel('Frequency [Hz]')
+		plt.show()
 
 	def spectrum(self, low=None, high=None, log_power=True, plot=True):
 		'''
