@@ -164,7 +164,7 @@ class Filter(Signal):
 			return w, h
 
 	@staticmethod
-	def cos_filterbank(length=5000, bandwidth=1/3, low_lim=0, hi_lim=None, samplerate=8000): # TODO: oversampling fator needed for cochleagram!
+	def cos_filterbank(length=5000, bandwidth=1/3, low_lim=0, hi_lim=None, samplerate=None): # TODO: oversampling fator needed for cochleagram!
 		"""Create ERB cosine filterbank of n_filters.
 		length: Length of signal to be filtered with the generated
 			filterbank. The signal length determines the length of the filters.

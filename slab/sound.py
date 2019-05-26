@@ -186,7 +186,7 @@ class Sound(Signal):
 		if frequency.size == nchannels:
 			frequency.shape = (1, nchannels)
 		if phase.size == nchannels:
-			phase.shape = (nchannels, 1)
+			phase.shape = (1, nchannels)
 		t = numpy.arange(0, duration, 1)/samplerate
 		t.shape = (t.size, 1) # ensures C-order
 		x = numpy.sin(phase + 2*numpy.pi * frequency * numpy.tile(t, (1, nchannels)))
@@ -423,7 +423,28 @@ class Sound(Signal):
 		return vowel
 
 	@staticmethod
-	def erb_noise(samplerate=None, duration=1.0, f_lower=125, f_upper=4000):
+	def multitone_masker(duration=1.0, f_lower=125, f_upper=4000, bandwidth=1/3, samplerate=None):
+		'''
+		Returns a noise made of ERB-spaced random-phase sinetones in the band
+		between f_lower and f_upper. This noise does not have random amplitude
+		variations and is useful for testing CI patients. See Oxenham 2014, Trends Hear.
+		Example:
+		>>> sig = Sound.multitone_masker()
+		>>> sig.ramp()
+		>>> _ = sig.spectrum()
+		'''
+		samplerate = Sound.get_samplerate(samplerate)
+		duration = Sound.in_samples(duration, samplerate)
+		# get centre_freqs
+		_, freqs, _ = Filter.cos_filterbank(bandwidth=bandwidth, low_lim=f_lower, hi_lim=f_upper, samplerate=samplerate) # it's wasteful to generate the filterbank just to get erb-spaced frequency bands, but it avoids replicating code. Candidate for refactoring.
+		rand_phases = numpy.random.rand(len(freqs)) * 2 * numpy.pi
+		sig = Sound.tone(frequency=freqs, duration=duration, phase=rand_phases, samplerate=samplerate)
+		# collapse across channels
+		data = numpy.sum(sig.data, axis=1) / len(freqs)
+		return Sound(data, samplerate=samplerate)
+
+	@staticmethod
+	def erb_noise(duration=1.0, f_lower=125, f_upper=4000, samplerate=None):
 		'''
 		Returns an equally-masking noise (ERB noise) in the band between
 		f_lower and f_upper.
@@ -518,7 +539,7 @@ class Sound(Signal):
 
 	@staticmethod
 	def sequence(*sounds):
-		'Returns the sequence of sounds in the list sounds joined together'
+		'Joins the sounds in the list ''sounds'' into a new sound object.'
 		samplerate = sounds[0].samplerate
 		for sound in sounds:
 			if sound.samplerate != samplerate:
@@ -763,17 +784,21 @@ class Sound(Signal):
 		plt.show()
 		return cq_ft
 
-	def cochleagram(self, filterwidth=1/5):
+	def cochleagram(self, bandwidth=1/5):
 		'''
 		Plots a cochleagram of the sound.
-		'''
-		fbank, freqs, _ = Filter.cos_filterbank(bandwidth=filterwidth, low_lim=20, hi_lim=None, samplerate=self.samplerate)
+		''' # TODO: freq axis is incorrect (lin instead of erb)
+		fbank, freqs, _ = Filter.cos_filterbank(bandwidth=bandwidth, low_lim=20, hi_lim=None, samplerate=self.samplerate)
 		subbands = fbank.apply(self.channel(0))
 		envs = subbands.envelope()
+		envs.data[envs.data<1e-9] = 0 # remove small values that cause waring with numpy.power
 		envs = envs.data ** (1/3) # apply non-linearity (cube-root compression)
 		cmap = matplotlib.cm.get_cmap('Greys')
-		extent = (0, self.duration, freqs.min(), freqs.max())
-		plt.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap, extent=extent)
+		_, ax = plt.subplots()
+		ax.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
+		labels = list(freqs.astype(int))
+		ax.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(labels)) # centre frequencies as ticks
+		ax.set_xlim([0, self.duration]),
 		plt.title('Cochleagram')
 		plt.xlabel('Time [sec]')
 		plt.ylabel('Frequency [Hz]')
@@ -794,7 +819,7 @@ class Sound(Signal):
 		where ``Z`` is a 1D array of powers, ``freqs`` is the corresponding
 		frequencies, ``phase`` is the unwrapped phase of spectrum.
 		'''
-		sig_rfft = numpy.abs(numpy.fft.rfft(self.data, axis=0))
+		sig_rfft = numpy.abs(numpy.fft.rfft(self.data.flatten(), axis=0))
 		freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
 		pxx = sig_rfft/len(freqs) # scale by the number of points so that the magnitude does not depend on the length of the signal
 		pxx = pxx**2 # square to get the power
@@ -830,16 +855,18 @@ class Sound(Signal):
 		Returns the centroid of the spectrum.
 		'''
 		Z, freqs = self.spectrum(log_power=True, plot=False)
-		Z = (Z + min(Z)) / sum(Z) # normalize to sum==1 (probability distribution)
-		return sum(freqs*Z)
+		Z = (Z - min(Z)) / sum(Z - min(Z)) # normalize to sum==1 (probability distribution)
+		return sum(freqs * Z)
 
 	def spectral_flux(self):
 		'''
 		Returns the root-mean-square change in power spectrum between adjacent time windows (flux) per second. Change is measured as Euclidean distance.
 		'''
 		_, _, power = self.spectrogram(plot=False)
+		row_sums = power.sum(axis=0, keepdims=True)
+		power = power / row_sums # normalize successive frames so the intensity differences are excluded
 		d = numpy.diff(power, axis=1)
-		flux = numpy.linalg.norm(d, 2, 0)
+		flux = numpy.linalg.norm(d, 2, 0) # if d are diffs, then this is Euclidean distance between frames
 		return numpy.sqrt(numpy.mean(flux**2))*self.samplerate
 
 	def waveform(self, start=0, end=None):
