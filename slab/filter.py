@@ -76,7 +76,7 @@ class Filter(Signal):
 				pass_zero = True
 			elif kind in ['hp', 'bp']:
 				pass_zero = False
-			filt = scipy.signal.firwin(length, frequency, pass_zero=pass_zero, samplerate=samplerate)
+			filt = scipy.signal.firwin(length, frequency, pass_zero=pass_zero, fs=samplerate)
 		else: # FFR filter
 			st = 1 / (samplerate/2)
 			df = 1 / (st * length)
@@ -132,7 +132,7 @@ class Filter(Signal):
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		return out
 
-	def tf(self, channels='all', plot=True): # implement returning/plotting specific channel or all chans!
+	def tf(self, channels='all', plot=True):
 		'''
 		Computes the transfer function of a filter (magnitude over frequency).
 		Return transfer functions of filter at index 'channels' (int or list) or, if channels='all' (default)
@@ -148,7 +148,7 @@ class Filter(Signal):
 			h = numpy.empty((512, len(channels)))
 			for idx in channels:
 				w, _h = scipy.signal.freqz(self.channel(idx), worN=512, fs=self.samplerate)
-				h[:, idx] = numpy.abs(_h)
+				h[:, idx] = -numpy.abs(_h)
 		else:
 			w = self.frequencies
 			h = self.data[:, channels]
@@ -164,12 +164,12 @@ class Filter(Signal):
 			return w, h
 
 	@staticmethod
-	def cos_filterbank(length=5000, bandwidth=1/3, low_lim=0, hi_lim=None, samplerate=None): # TODO: oversampling fator needed for cochleagram!
+	def cos_filterbank(length=5000, bandwidth=1/3, low_lim=0, hi_lim=None, samplerate=None): # TODO: oversampling fator needed for cochleagram! HP, LP filters needed
 		"""Create ERB cosine filterbank of n_filters.
 		length: Length of signal to be filtered with the generated
 			filterbank. The signal length determines the length of the filters.
 		samplerate: Sampling rate associated with the signal waveform.
-		bandwith: of the filters (subbands) in octaves (default 1/3)
+		bandwidth: of the filters (subbands) in octaves (default 1/3)
 		low_lim: Lower limit of frequency range (def  saults to 0).
 		hi_lim: Upper limit of frequency range (defaults to samplerate/2).
 		Example:
@@ -183,15 +183,8 @@ class Filter(Signal):
 			hi_lim = samplerate / 2
 		freq_bins = numpy.fft.rfftfreq(length, d=1/samplerate)
 		nfreqs = len(freq_bins)
-		ref_freq = 1000 # Hz, reference for conversion between oct and erb bandwidth
-		ref_erb = Filter._freq2erb(ref_freq)
-		erb_spacing = Filter._freq2erb(ref_freq*2**bandwidth) - ref_erb
-		h = Filter._freq2erb(hi_lim)
-		l = Filter._freq2erb(low_lim)
-		nfilters = int(numpy.round((h - l) / erb_spacing))
-		center_freqs, erb_spacing = numpy.linspace(l, h, nfilters, retstep=True)
-		center_freqs = center_freqs[1:-1] 	# we need to exclude the endpoints
-		nfilters -= 2
+		center_freqs, bandwidth, erb_spacing = Filter._center_freqs(low_lim=low_lim, hi_lim=hi_lim, bandwidth=bandwidth)
+		nfilters = len(center_freqs)
 		filts = numpy.zeros((nfreqs, nfilters))
 		freqs_erb = Filter._freq2erb(freq_bins)
 		for i in range(nfilters):
@@ -200,9 +193,41 @@ class Filter(Signal):
 			avg = center_freqs[i]  # center of filter
 			rnge = 2 * erb_spacing  # width of filter
 			filts[(freqs_erb > l) & (freqs_erb < h), i] = numpy.cos((freqs_erb[(freqs_erb > l) & (freqs_erb < h)]- avg) / rnge * numpy.pi)
+		return Filter(data=filts, samplerate=samplerate, fir=False)
+
+	@staticmethod
+	def _center_freqs(low_lim, hi_lim, bandwidth=1/3):
+		ref_freq = 1000 # Hz, reference for conversion between oct and erb bandwidth
+		ref_erb = Filter._freq2erb(ref_freq)
+		erb_spacing = Filter._freq2erb(ref_freq*2**bandwidth) - ref_erb
+		h = Filter._freq2erb(hi_lim)
+		l = Filter._freq2erb(low_lim)
+		nfilters = int(numpy.round((h - l) / erb_spacing))
+		center_freqs, erb_spacing = numpy.linspace(l, h, nfilters, retstep=True)
+		center_freqs = center_freqs[1:-1] 	# we need to exclude the endpoints
 		# convert actual erb_spacing to octaves
 		bandwidth = numpy.log2(Filter._erb2freq(ref_erb + erb_spacing) / ref_freq)
-		return Filter(data=filts, samplerate=samplerate, fir=False), Filter._erb2freq(center_freqs), bandwidth
+		return center_freqs, bandwidth, erb_spacing
+
+	@staticmethod
+	def collapse_subbands(subbands, filter_bank=None):
+		if not filter_bank:
+			filter_bank = Filter.cos_filterbank(length=subbands.nsamples, samplerate=subbands.samplerate)
+		if subbands.samplerate != filter_bank.samplerate:
+			raise ValueError('Signal and filter bank need to have the same samplerate!')
+		subbands_rfft = numpy.fft.rfft(subbands.data, axis=0)
+		subbands = numpy.fft.irfft(subbands_rfft * filter_bank.data, axis=0)
+		return Signal(data=subbands.sum(axis=1), samplerate=filter_bank.samplerate)
+
+	def filter_bank_center_freqs(self): # TODO: test this!
+		if self.fir:
+			raise NotImplementedError('Not implemented for FIR filter banks.')
+		freqs = self.frequencies
+		center_freqs = numpy.zeros(self.nfilters)
+		for i in range(self.nfilters): # for each filter
+			idx = numpy.argmax(self.channel(i).data) # get index of max Gain
+			center_freqs[i] = freqs[idx] # look-up freq of index -> centre_freq for that filter
+		return center_freqs
 
 	@staticmethod
 	def equalizing_filterbank(played_signal, recorded_signals, reference='max'):
