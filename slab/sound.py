@@ -29,7 +29,7 @@ from slab.filter import Filter
 class Sound(Signal):
 	# TODO: debug dynamicripple, add ability to get output of different stages of an auditory periphery model from a sound
 	# add other own stim functions (babbelnoise)?
-	# add auditory spectrogram (filterbank) -> gammatone filterbank followed by halfwave rectification, cube root compression and 10 Hz low pass filtering
+	# add generator for sliding window processing
 	'''
 	Class for working with sounds, including loading/saving, manipulating and playing.
 	Examples:
@@ -95,7 +95,7 @@ class Sound(Signal):
 		>>> vowel = slab.Sound.vowel(vowel='a', duration=.5, samplerate=8000)
 		>>> vowel.ramp()
 		>>> vowel.spectrogram(dyn_range = 50)
-		>>> Z, freqs, phase = vowel.spectrum(low=100, high=4000, log_power=True)
+		>>> vowel.spectrum(low=100, high=4000, log_power=True)
 		>>> vowel.waveform(start=0, end=.1)
 	'''
 	# instance properties
@@ -436,7 +436,7 @@ class Sound(Signal):
 		samplerate = Sound.get_samplerate(samplerate)
 		duration = Sound.in_samples(duration, samplerate)
 		# get centre_freqs
-		_, freqs, _ = Filter.cos_filterbank(bandwidth=bandwidth, low_lim=f_lower, hi_lim=f_upper, samplerate=samplerate) # it's wasteful to generate the filterbank just to get erb-spaced frequency bands, but it avoids replicating code. Candidate for refactoring.
+		freqs, _, _ = Filter._center_freqs(low_lim=f_lower, hi_lim=f_upper, bandwidth=bandwidth)
 		rand_phases = numpy.random.rand(len(freqs)) * 2 * numpy.pi
 		sig = Sound.tone(frequency=freqs, duration=duration, phase=rand_phases, samplerate=samplerate)
 		# collapse across channels
@@ -597,10 +597,12 @@ class Sound(Signal):
 			envelope = lambda t: numpy.sin(numpy.pi * t / 2) ** 2
 		sz = Sound.in_samples(duration, self.samplerate)
 		multiplier = envelope(numpy.reshape(numpy.linspace(0.0, 1.0, sz), (sz, 1)))
-		if when in ('onset', 'both'):
+		if str(when) in ('onset', 'both'):
 			self.data[:sz, :] *= multiplier
-		if when in ('offset', 'both'):
+		elif str(when) in ('offset', 'both'):
 			self.data[self.nsamples-sz:, :] *= multiplier[::-1]
+		else:
+			raise ValueError("When should be 'onset', 'offset', or 'both'.")
 
 	def repeat(self, n):
 		'Repeats the sound n times.'
@@ -788,7 +790,8 @@ class Sound(Signal):
 		'''
 		Plots a cochleagram of the sound.
 		''' # TODO: freq axis is incorrect (lin instead of erb)
-		fbank, freqs, _ = Filter.cos_filterbank(bandwidth=bandwidth, low_lim=20, hi_lim=None, samplerate=self.samplerate)
+		fbank = Filter.cos_filterbank(bandwidth=bandwidth, low_lim=20, hi_lim=None, samplerate=self.samplerate)
+		freqs = fbank.filter_bank_center_freqs()
 		subbands = fbank.apply(self.channel(0))
 		envs = subbands.envelope()
 		envs.data[envs.data<1e-9] = 0 # remove small values that cause waring with numpy.power
@@ -815,11 +818,11 @@ class Sound(Signal):
 			If True it returns the log of the power.
 		``plot=True``
 			Whether to plot the output.
-		If plot=False, returns ``Z, freqs, phase``
-		where ``Z`` is a 1D array of powers, ``freqs`` is the corresponding
-		frequencies, ``phase`` is the unwrapped phase of spectrum.
+		If plot=False, returns ``Z, freqs``
+		where ``Z`` is a 1D array of powers and ``freqs`` is the corresponding
+		frequencies.
 		'''
-		sig_rfft = numpy.abs(numpy.fft.rfft(self.data.flatten(), axis=0))
+		sig_rfft = numpy.abs(numpy.fft.rfft(self.data.flatten(), axis=0)) # TODO: does not work with nchannels > 1!!! (flatten makes one long signal does not fit with freqs, would give average spectrum of channels)
 		freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
 		pxx = sig_rfft/len(freqs) # scale by the number of points so that the magnitude does not depend on the length of the signal
 		pxx = pxx**2 # square to get the power
