@@ -4,9 +4,9 @@ measures, like trial sequences and staircases.
 This module uses doctests. Use like so:
 python -m doctest psychoacoustics.py
 '''
-# Staircase
 import os
 import json
+from contextlib import contextmanager
 try:
 	import curses
 	have_curses = True
@@ -15,39 +15,30 @@ except ImportError:
 import collections
 import numpy
 try:
-	import matplotlib
 	import matplotlib.pyplot as plt
 	have_pyplot = True
 except ImportError:
 	have_pyplot = False
 
-#TODO: add hearing tests (x-frequency treshold, Bekesy [only TDT], speech-in-noise [ask Annelies])
-class Keypress:
+
+@contextmanager
+def Key():
 	'''
 	Wrapper for curses module to simplify getting a single keypress from the terminal.
 	Use like this:
-	key = Keypress() # hogs the terminal -> use right before getting keypresses
-	response = key.get()
-	key.stop() # releases the terminal -> use asap after getting keypresses
+	with key = Key():
+		response = key.getch()
 	'''
-	def __init__(self):
-		'Locks the terminal in cbreak mode. Use once right before getting keypresses.'
-		if not have_curses:
-			error('You need curses to use the keypress class (pip install curses (or windows-curses))')
-		self.stdscr = curses.initscr()
-		curses.noecho()
-		curses.cbreak()
+	if not have_curses:
+		raise ImportError('You need curses to use the keypress class (pip install curses (or windows-curses))')
+	stdscr = curses.initscr()
+	curses.noecho()
+	curses.cbreak()
+	yield stdscr
+	curses.nocbreak()
+	curses.echo()
+	curses.endwin()
 
-	def get(self):
-		'Returns a single character.'
-		return self.stdscr.getch()
-
-	@staticmethod
-	def stop():
-		'Releases the terminal. Call asap after getting the keypress.'
-		curses.nocbreak()
-		curses.echo()
-		curses.endwin()
 
 class LoadSaveJson:
 	'Mixin to provide JSON loading and saving functions'
@@ -78,12 +69,15 @@ class LoadSaveJson:
 			self.__dict__ = json.load(f)
 
 
-class Trialsequence(collections.abc.Iterator, LoadSaveJson):
+class Trialsequence(collections.abc.Iterator, LoadSaveJson): # TODO: str conditions
 	"""Non-adaptive trial sequences
 	Parameters:
 	conditions: an integer, list, or flat array specifying condition indices,
-		or a list of dictionaries with values for each condition index.
+		or a list strings specifying condition names, or a list of
+		dictionaries with values for each condition index.
 		If given an integer x, uses range(x).
+		If conditions is a string, then it is treated as the name of a previously
+		saved trial sequence object, which is then loaded.
 	n_reps: number of repeats for all conditions
 	name: a text label for the sequence.
 
@@ -96,7 +90,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):
 	.this_trial - a dictionary giving the parameters of the current trial
 	.finished - True/False for have we finished yet
 """
-	def __init__(self, conditions=2, n_reps=1, trials=[], name=''):
+	def __init__(self, conditions=2, n_reps=1, trials=[], kind='non_repeating', name=''):
 		self.name = name
 		self.n_reps = int(n_reps)
 		self.conditions = conditions
@@ -113,12 +107,14 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):
 		self.this_trial = []
 		self.finished = False
 		# generate stimulus sequence
-		self.trials = trials
 		if not trials:
-			self._create_simple_sequence()
+			if kind == 'non_repeating':
+				trials = Trialsequence._create_simple_sequence(self.conditions, self.n_reps)
+			elif kind == 'random_permutation':
+				trials = Trialsequence._create_random_permutation(self.conditions, self.n_reps)
+		self.trials = trials
 		self.n_trials = len(self.trials)
 		self.n_remaining = self.n_trials  # subtract 1 each trial
-
 
 	def __repr__(self):
 		return self.save_json()
@@ -147,20 +143,28 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):
 		self.this_trial = self.conditions[self.trials[self.this_n]] # fetch the trial info
 		return self.this_trial
 
-	def _create_simple_sequence(self):
-		'''Create a sequence of n_conds x n_reps trials, where each repetitions
+	@staticmethod
+	def _create_simple_sequence(conditions, n_reps):
+		'''Create a sequence of len(conditions) x n_reps trials, where each repetitions
 		contains all conditions in random order, and no condition is directly
 		repeated across repetitions.'''
-		permute = self.conditions
-		for rep in range(self.n_reps):
+		permute = conditions
+		trials = []
+		for rep in range(n_reps):
 			numpy.random.shuffle(permute)
 			if rep == 0: # first repetition
-				self.trials.extend(permute)
+				trials.extend(permute)
 			else:
-				while self.trials[-1] == permute[0]:
-					permute = self.conditions
+				while trials[-1] == permute[0]:
+					permute = conditions
 					numpy.random.shuffle(permute)
-				self.trials.extend(permute)
+				trials.extend(permute)
+		return trials
+
+	@staticmethod
+	def _create_random_permutation(conditions, n_reps):
+		'''Create a sequence of len(conditions) x n_reps trials in random order.'''
+		return list(numpy.random.permutation(numpy.tile(conditions,n_reps)))
 
 	def get_future_trial(self, n=1):
 		"""Returns the condition for n trials into the future or past,
@@ -220,7 +224,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):
 class Staircase(collections.abc.Iterator):
 	#TODO: add Kaernbach1991 weighted up-down method?
 	#TODO: add QUEST or Bayesian estimation?
-	#TODO: fit psychometric function
 	"""Class to handle smoothly the selection of the next trial
 	and report current values etc.
 	Calls to next() will fetch the next object given to this
@@ -429,12 +432,12 @@ class Staircase(collections.abc.Iterator):
 		if (self.min_val is not None) and (self._next_intensity < self.min_val):
 			self._next_intensity = self.min_val # check we haven't gone out of the legal range
 
-	def simulate_response(self,thresh):
+	def simulate_response(self, thresh):
 		# TODO: use psychometric function (Weibull?) to generate responses
 		'Return a simulated response dependent on thresh and self.'
 		return self._next_intensity >= thresh
 
-	def threshold(self,n=6,method='geometric'):
+	def threshold(self, n=6, method='geometric'):
 		'Returns the average (geometric by default) reversal to calculate the threshold.'
 		if self.finished:
 			if n > self.n_reversals:
