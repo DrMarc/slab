@@ -29,7 +29,6 @@ class Filter(Signal):
 	>>> hrtf.plot_tf(sourceidx,ear='left')
 
 	'''
-
 	# instance properties
 	nfilters = property(fget=lambda self: self.nchannels, doc='The number of filters in the bank.')
 	ntaps = property(fget=lambda self: self.nsamples, doc='The number of filter taps.')
@@ -132,34 +131,46 @@ class Filter(Signal):
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		return out
 
-	def tf(self, channels='all', plot=True):
+	def tf(self, channels='all', nbins=None, plot=True):
 		'''
 		Computes the transfer function of a filter (magnitude over frequency).
-		Return transfer functions of filter at index 'channels' (int or list) or, if channels='all' (default)
-		return all transfer functions.
-		If plot=True (default) then plot the response, else return magnitude and frequency vectors.
+		Return transfer functions of filter at index 'channels' (int or list) or,
+		if channels='all' (default) return all transfer functions.
+		If plot=True (default) then plot the response and return the figure handle,
+		else return magnitude and frequency vectors.
 		'''
 		# check chan is in range of nfilters
 		if isinstance(channels, int):
 			channels = [channels]
 		elif channels == 'all':
 			channels = list(range(self.nfilters)) # now we have a list of filter indices to process
+		if not nbins:
+			nbins = self.data.shape[0]
 		if self.fir:
-			h = numpy.empty((512, len(channels)))
-			for idx in channels:
-				w, _h = scipy.signal.freqz(self.channel(idx), worN=512, fs=self.samplerate)
-				h[:, idx] = -numpy.abs(_h)
+			h = numpy.empty((nbins, len(channels)))
+			for i, idx in enumerate(channels):
+				w, _h = scipy.signal.freqz(self.channel(idx), worN=nbins, fs=self.samplerate)
+				h[:, i] = 20 * numpy.log10(numpy.abs(_h.flatten()))
 		else:
 			w = self.frequencies
-			h = self.data[:, channels]
+			h = 20 * numpy.log10(self.data[:, channels])
+			# interpolate if necessary
+			if not nbins == len(w):
+				w_interp = numpy.linspace(0, w[-1], nbins)
+				h_interp = numpy.zeros((nbins, len(channels)))
+				for idx, _ in enumerate(channels):
+					h_interp[:,idx] = numpy.interp(w_interp, w, h[:,idx])
+				h = h_interp
+				w = w_interp
 		if plot:
+			fig = plt.figure()
 			plt.plot(w, h, linewidth=2)
-			plt.xlabel('Frequency (Hz)')
-			plt.ylabel('Gain')
+			plt.xlabel('Frequency [Hz]')
+			plt.ylabel('Amplitude [dB]')
 			plt.title('Frequency Response')
 			plt.grid(True)
 			plt.show()
-			# TODO: return fig
+			return fig
 		else:
 			return w, h
 

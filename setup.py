@@ -12,4 +12,5 @@ setup(name='slab',
 	author_email='marc.schoenwiesner@gmail.com',
 	license='MIT',
 	packages=['slab'],
+	include_package_data=True,
 	zip_safe=False)

@@ -2,7 +2,10 @@
 Class for reading and manipulating head-related transfer functions.
 '''
 
+import warnings
+import pathlib
 import numpy
+
 try:
 	import matplotlib.pyplot as plt
 	have_pyplot = True
@@ -19,8 +22,6 @@ try:
 	have_h5 = True
 except ImportError:
 	have_h5 = False
-import warnings
-import pathlib
 
 from slab.filter import Filter
 
@@ -57,13 +58,13 @@ class HRTF():
 				self.samplerate = HRTF._sofa_get_samplerate(f)
 				self.data = []
 				for idx in range(data.shape[0]):
-					self.data.append(Filter(data[idx,:,:].T,self.samplerate)) # ntaps x 2 (left, right) filter
+					self.data.append(Filter(data[idx,:,:].T, self.samplerate)) # ntaps x 2 (left, right) filter
 				self.listener = HRTF._sofa_get_listener(f)
 				self.sources = HRTF._sofa_get_sourcepositions(f)
 		else:
 			self.samplerate = samplerate
 			for idx in range(data.shape[0]):
-				self.data.append(Filter(data[idx,:,:].T,self.samplerate)) # 2 x ntaps filter (left right)
+				self.data.append(Filter(data[idx,:,:].T, self.samplerate)) # 2 x ntaps filter (left right)
 			self.sources = sources
 			self.listener = listener
 
@@ -71,7 +72,7 @@ class HRTF():
 		return f'{type(self)} (\n{repr(self.data)} \n{repr(self.samplerate)})'
 
 	def __str__(self):
-		return f'{type(self)} sources {self.nsources}, elevations {self.nelevations}, samples {self.data.nsamples}, samplerate {self.samplerate}'
+		return f'{type(self)} sources {self.nsources}, elevations {self.nelevations}, samples {self.data[0].nsamples}, samplerate {self.samplerate}'
 
 	# Static methods (used in __init__)
 	@staticmethod
@@ -100,9 +101,19 @@ class HRTF():
 		# spherical coordinates, (azi,ele,radius), azi 0..360 (0=front, 90=left, 180=back), ele -90..90
 		attr = dict(f.variables['SourcePosition'].attrs.items()) # get attributes as dict
 		unit = attr['Units'].decode('UTF-8').split(',')[0] # extract and decode Units
-		if unit != 'degree':
-			warnings.warn('Non-degree unit: ' + unit)
-		return numpy.array(f.variables['SourcePosition'], dtype='float')
+		if unit in ('degree', 'degrees', 'deg'):
+			return numpy.array(f.variables['SourcePosition'], dtype='float')
+		elif unit in ('meter', 'meters', 'm'):
+			# convert to azimuth and elevation
+			sources = numpy.array(f.variables['SourcePosition'], dtype='float')
+			x, y, z = sources[:,0], sources[:,1], sources[:,2]
+			r = numpy.sqrt(x**2 + y**2 + z**2)
+			azimuth = numpy.rad2deg(numpy.arctan2(y, x))
+			elevation = 90 - numpy.rad2deg(numpy.arccos(z / r))
+			return numpy.stack((azimuth, elevation, r), axis=1)
+		else:
+			warnings.warn('Unrecognized unit for source positions: ' + unit)
+			return numpy.array(f.variables['SourcePosition'], dtype='float') # fall back to no conversion
 
 	@staticmethod
 	def _sofa_get_listener(f):
@@ -129,8 +140,14 @@ class HRTF():
 		'Return the list of sources'
 		return sorted(list(set(self.sources[:,1])))
 
-	def plot_tf(self, sourceidx, ear, linesep=20, filename=[]):
-		"Plots transfer functions of FIR filters for a given ear ['left', 'right', 'both'] at a given source index"
+	def plot_tf(self, sourceidx, ear='left', linesep=20, nbins=None, kind='waterfall'):
+		'''
+		Plots transfer functions of FIR filters for a given ear
+		['left', 'right', 'both'] at a list of source indices.
+		Sourceidx should be generated like this: hrtf.cone_sources(cone=0).
+		Waterfall (as in Wightman and Kistler, 1989) and image plots
+		(as in Hofman 1998) are available.
+		'''
 		n = 0
 		if ear == 'left':
 			chan = 0
@@ -138,44 +155,85 @@ class HRTF():
 			chan = 1
 		elif ear == 'both':
 			chan = [0, 1]
+			if kind == 'image':
+				fig1 = self.plot_tf(sourceidx, ear='left', linesep=linesep, nbins=nbins, kind='image')
+				fig2 = self.plot_tf(sourceidx, ear='right', linesep=linesep, nbins=nbins, kind='image')
+				return fig1, fig2
 		else:
 			raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
-		for s in sourceidx:
-			filt = self.data[s]
-			freqs, h = filt.tf(channels=chan, plot=False)
-			plt.plot(freqs, 20 * numpy.log10(h) + n, label=str(self.sources[s, 1])+'˚')
-			n += linesep
-		#plt.xscale('log')
-		plt.ylabel('Amplitude [dB]')
+		if kind == 'waterfall':
+			fig = plt.figure()
+			for s in sourceidx:
+				filt = self.data[s]
+				freqs, h = filt.tf(channels=chan, nbins=nbins, plot=False)
+				plt.plot(freqs, h + n, label=str(self.sources[s, 1])+'˚')
+				n += linesep
+			plt.ylabel('Amplitude [dB]') # TODO: should be a calibration bar
+			plt.grid()
+		elif kind == 'image':
+			if not nbins:
+				img = numpy.zeros((self.data[sourceidx[0]].ntaps, len(sourceidx)))
+			else:
+				img = numpy.zeros((nbins, len(sourceidx)))
+			elevations = self.sources[sourceidx, 1]
+			for idx, source in enumerate(sourceidx):
+				filt = self.data[source]
+				freqs, h = filt.tf(channels=chan, nbins=nbins, plot=False)
+				img[:,idx] = h.flatten()
+			img[img < -25] = -25 # clip at -40 dB transfer
+			fig = plt.figure()
+			plt.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
+			#plt.xscale('log')
+			plt.colorbar()
+			plt.ylabel('Elevation [˚]') # TODO: missing colorbar for amplitude
+		else:
+			raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
 		plt.xlabel('Frequency [kHz]')
-		#plt.legend(loc='upper left')
-		plt.grid()
-		plt.axis('tight')
-		plt.xlim(1000, 20000)
-		#layout(fig)
-		if filename:
-			plt.savefig(filename)
+		plt.autoscale(tight=True)
+		plt.xlim([1000, 16000])
+		plt.xscale('log')
 		plt.show()
+		return fig
 
-	def remove_ctf(self): # UNFINISHED, UNTESTED!!!
-		'''Removes the constant (non-spatial) portion of the transfer functions from an HRTF object (in place).
-		Returns the constant transfer function.'''
-		ctf = []
-		n = len(self.fir[:, 0])
-		for idx in range(n):
-			_, h = scipy.signal.freqz(self.fir[idx, 0])
-			ctf += numpy.log10(abs(h))/n
-		for idx in range(n):
-			w, h = scipy.signal.freqz(self.fir[idx, 0])
-			self.fir[idx, 0] = numpy.log10(abs(h)) - ctf
-		return ctf
+	def diffuse_field_avg(self):
+		'''
+		Compute the diffuse field average transfer function,
+		i.e. the constant non-spatial portion of a set of HRTFs.
+		The filters for all sources are averaged, which yields
+		an unbiased average only if the sources are uniformely
+		distributed around the head.
+		Returns the diffuse field average as FFR filter object.
+		''' # TODO: could make the contribution of each HRTF
+		# depend on local density of sources.
+		dfa = []
+		for source in range(self.nsources):
+			filt = self.data[source]
+			for chan in range(filt.nchannels):
+				_, h = filt.tf(channels=chan, plot=False)
+				dfa.append(h)
+		dfa = 10 ** (numpy.mean(dfa, axis=0)/20) # average and convert from dB to gain
+		return Filter(dfa, fir=False, samplerate=self.samplerate)
 
-	def median_sources(self):
-		'Return indices of sources along the fronal median plane.'
-		return self.cone_sources(0)
+	def diffuse_field_equalization(self):
+		'''
+		Apply a diffuse field equalization to an HRTF in place.
+		The resulting filters have zero mean and are of type FFR.
+		'''
+		dfa = self.diffuse_field_avg()
+		# invert the diffuse field average
+		dfa.data = 1/dfa.data
+		# apply the inverted filter to the HRTFs
+		for source in range(self.nsources):
+			filt = self.data[source]
+			_, h = filt.tf(plot=False)
+			h = 10 ** (h / 20) * dfa
+			self.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
 
-	def cone_sources(self, cone):
-		'Return indices of sources along an off-axis sphere slice.'
+	def cone_sources(self, cone=0):
+		'''
+		Return indices of sources along an off-axis sphere slice.
+		The default cone = 0 returns sources along the fronal median plane.
+		'''
 		cone = numpy.sin(numpy.deg2rad(cone))
 		azimuth = numpy.deg2rad(self.sources[:,0])
 		elevation = numpy.deg2rad(self.sources[:,1]-90)
@@ -189,6 +247,11 @@ class HRTF():
 			idx, = numpy.where((self.sources[:,1] == ele) & (numpy.abs(y-cone) == cmin))
 			out.append(idx[0])
 		return sorted(out, key=lambda x: self.sources[x,1])
+
+	def elevation_sources(self, elevation=0):
+		'Return indices of sources along an off-axis sphere slice.'
+		idx = numpy.where((hrtf.sources[:,1] == elevation) & ((hrtf.sources[:,0] <= 90) | (hrtf.sources[:,0] >= 270)))
+		return idx[0]
 
 	def plot_sources(self, idx=False):
 		'DOC'
@@ -214,5 +277,6 @@ class HRTF():
 		plt.show()
 
 if __name__ == '__main__':
-	hrtf = HRTF(data='../../slab_to_include/mit_kemar_normal_pinna.sofa')
+	from slab import DATAPATH
+	hrtf = HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')
 	hrtf.data[20].tf(plot=True)

@@ -229,7 +229,7 @@ class Binaural(Sound):
 			try:
 				ils = numpy.load(DATAPATH + 'KEMAR_interaural_level_spectrum.npy')
 				return ils
-			except:
+			except FileNotFoundError:
 				hrtf = HRTF(DATAPATH+'mit_kemar_normal_pinna.sofa') # load the hrtf file
 				save_standard = True
 		# get the filters for the frontal horizontal arc

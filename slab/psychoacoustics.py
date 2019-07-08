@@ -469,7 +469,7 @@ class Staircase(collections.abc.Iterator):
 		y = numpy.array(self.intensities)
 		responses = numpy.array(self.data)
 		if self.pf_intensities and plot_pf:
-			_,(ax1,ax2) = plt.subplots(1, 2, sharey='row', gridspec_kw={'width_ratios':[2, 1], 'wspace':0.1}) # prepare a second panel for the pf plot
+			_,(ax1, ax2) = plt.subplots(1, 2, sharey='row', gridspec_kw={'width_ratios':[2, 1], 'wspace':0.1}) # prepare a second panel for the pf plot
 			#fig.subplots_adjust(wspace=0)
 		else:
 			_, ax1 = plt.subplots() # need just one panel

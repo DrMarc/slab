@@ -25,6 +25,13 @@ except ImportError:
 
 from slab.signals import Signal
 from slab.filter import Filter
+from slab import DATAPATH
+
+try: # try getting a previously set calibration intensity from file
+	_calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
+except FileNotFoundError:
+	_calibration_intensity = 0 # dB, difference between rms intensity and measured output intensity
+
 
 class Sound(Signal):
 	# TODO: debug dynamicripple, add ability to get output of different stages of an auditory periphery model from a sound
@@ -111,11 +118,11 @@ class Sound(Signal):
 				rms_dB = 0
 			else:
 				rms_dB = 20.0*numpy.log10(rms_value/2e-5)
-			return rms_dB
+			return rms_dB + _calibration_intensity
 		else:
 			chans = (self.channel(i) for i in range(self.nchannels))
 			levels = (c.level for c in chans)
-			return numpy.array(tuple(l for l in levels))
+			return numpy.array(tuple(l+_calibration_intensity for l in levels))
 
 	def _set_level(self, level):
 		'''
@@ -129,6 +136,7 @@ class Sound(Signal):
 				level = level.repeat(self.nchannels)
 			level = numpy.reshape(level, (1, self.nchannels))
 			rms_dB = numpy.reshape(rms_dB, (1, self.nchannels))
+		level -= _calibration_intensity # account for calibration intensity
 		gain = 10**((level-rms_dB)/20.)
 		self.data *= gain
 
@@ -159,9 +167,6 @@ class Sound(Signal):
 		'''
 		if not have_soundfile:
 			raise ImportError('You need SoundFile to read files (pip install git+https://github.com/bastibe/SoundFile.git')
-		ext = filename.split('.')[-1].lower()
-		if ext != 'wav':
-			raise NotImplementedError('Can only load aif or wav soundfiles')
 		data, samplerate = soundfile.read(filename)
 		return Sound(data, samplerate=samplerate)
 
@@ -555,28 +560,11 @@ class Sound(Signal):
 		If the normalise keyword is set to True, the amplitude of the sound will be
 		normalised to 1.
 		'''
-		ext = filename.split('.')[-1].lower()
-		if ext == 'wav':
-			import wave as sndmodule
-		else:
-			raise NotImplementedError('Can only save as wav soundfiles')
-		w = sndmodule.open(filename, 'wb')
-		w.setnchannels(self.nchannels)
-		w.setsampwidth(2)
-		w.setframerate(int(self.samplerate))
-		x = numpy.array(self.data, copy=True)
-		am = numpy.amax(x)
-		z = numpy.zeros(x.shape[0]*self.nchannels, dtype='int16')
-		x.shape=(x.shape[0], self.nchannels)
-		for i in range(self.nchannels):
-			if normalise:
-				x[:, i] /= am
-			x[:, i] = (x[:, i]) * 2 ** 15
-			z[i::self.nchannels] = x[::1, i]
-		data = numpy.array(z, dtype='int16')
-		data = array.array('h', data)
-		w.writeframes(data.tobytes())
-		w.close()
+		if not have_soundfile:
+			raise ImportError('You need SoundFile to write files (pip install git+https://github.com/bastibe/SoundFile.git')
+		if normalise:
+			self.data /= numpy.amax(self.data)
+		soundfile.write(filename, self.data, self.samplerate)
 
 	def ramp(self, when='both', duration=0.01, envelope=None):
 		'''
@@ -603,6 +591,32 @@ class Sound(Signal):
 			self.data[self.nsamples-sz:, :] *= multiplier[::-1]
 		else:
 			raise ValueError("When should be 'onset', 'offset', or 'both'.")
+
+	def envelope(self, envelope=1, times=None):
+		'''
+		Multiplies the signal with an envelope specified as a 1-D array (numpy
+		or list) which is interpolated (cubic) to the same length as the signal.
+		If values are <=1, then the array is treated as factors. If at least
+		one value is >1 then the array is treated as dB values.
+		If time points (0 to 1, relative to the length of the signal) for the
+		amplitude values in envelope are supplied, then the interpolation is
+		piecewise linear between pairs of time and envelope valued (must have)
+		same length).
+		Example:
+		>>> sig = Sound.tone()
+		>>> sig.envelope([0, 1, 0.2, 0.2, 0])
+		>>> sig.waveform()
+		'''
+		if times and (len(times) != len(envelope)):
+			raise ValueError('Envelope and times need to be of equal length!')
+		if numpy.any(envelope > 1):
+			envelope = 10**((envelope-_calibration_intensity)/20.) # convert dB to factors
+		# times vector
+		if not times:
+			times = numpy.linspace(0, 1, len(envelope))
+		t = numpy.linspace(0, 1, self.nsamples) / self.nsamples
+		envelope = numpy.interp(t, times, envelope) # interpolate
+		self.data *= envelope # multiply
 
 	def repeat(self, n):
 		'Repeats the sound n times.'
@@ -754,38 +768,6 @@ class Sound(Signal):
 		else:
 			return freqs, times, power
 
-	def log_spectrogram(self, bands_per_octave=24): # TODO: Not Working! inconsistent plotting/return!
-		'''
-		Returns the constant Q transform (log-spaced spectrogram) of a sound
-		and plots it.
-		bands_per_octave: number of bands per octave (*24*)
-		'''
-		raise NotImplementedError('Use cochleagram instead.')
-		high_edge = self.samplerate/2
-		low_edge = 50 # Hz
-		nfft = self.nsamples
-		f_ratio = 2**(1/bands_per_octave) # Constant-Q bandwidth
-		n_cqt = int(numpy.floor(numpy.log(high_edge/low_edge)/numpy.log(f_ratio)))
-		pxx, fft_frqs, bins = self.spectrogram(plot=False)[:3]
-		if n_cqt < 1:
-			print("Warning: n_cqt not positive definite.")
-		log_frqs = numpy.array([low_edge * numpy.exp(numpy.log(2)*i/bands_per_octave) for i in numpy.arange(n_cqt)])
-		logf_bws = log_frqs * (f_ratio - 1)
-		logf_bws[logf_bws < self.samplerate/nfft] = self.samplerate/nfft
-		ovf_ctr = 0.5475 # Norm constant so CQT'*CQT close to 1.0
-		tmp2 = 1/(ovf_ctr * logf_bws)
-		tmp = (log_frqs.reshape(1, -1) - fft_frqs.reshape(-1, 1)) * tmp2
-		Q = numpy.exp(-0.5 * tmp * tmp)
-		Q *= 1 / (2 * numpy.sqrt((Q*Q).sum(0)))
-		Q = Q.T
-		cq_ft = numpy.sqrt(numpy.array(numpy.mat(Q) * numpy.mat(pxx)))
-		plt.imshow(cq_ft, extent=(0, 61, log_frqs[0], log_frqs[-1]),origin='upper', aspect='auto')
-		ticks = numpy.round(32000 * 2 ** (numpy.array(range(16), dtype=float)*-1))
-		ticks = ticks[numpy.logical_and(ticks<log_frqs[-1], ticks>log_frqs[0])]
-		plt.gca().set_yticks(ticks)
-		plt.show()
-		return cq_ft
-
 	def cochleagram(self, bandwidth=1/5):
 		'''
 		Plots a cochleagram of the sound.
@@ -822,8 +804,10 @@ class Sound(Signal):
 		where ``Z`` is a 1D array of powers and ``freqs`` is the corresponding
 		frequencies.
 		'''
-		sig_rfft = numpy.abs(numpy.fft.rfft(self.data.flatten(), axis=0)) # TODO: does not work with nchannels > 1!!! (flatten makes one long signal does not fit with freqs, would give average spectrum of channels)
 		freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
+		sig_rfft = numpy.zeros((len(freqs),self.nchannels))
+		for chan in range(self.nchannels):
+			sig_rfft[:,chan] = numpy.abs(numpy.fft.rfft(self.data[:,chan], axis=0))
 		pxx = sig_rfft/len(freqs) # scale by the number of points so that the magnitude does not depend on the length of the signal
 		pxx = pxx**2 # square to get the power
 		if low is not None or high is not None:
@@ -833,7 +817,7 @@ class Sound(Signal):
 				high = numpy.amax(freqs)
 			I = numpy.logical_and(low <= freqs, freqs <= high)
 			I2 = numpy.where(I)[0]
-			Z = pxx[I2]
+			Z = pxx[I2,:]
 			freqs = freqs[I2]
 		else:
 			Z = pxx
@@ -855,11 +839,19 @@ class Sound(Signal):
 
 	def spectral_centroid(self):
 		'''
-		Returns the centroid of the spectrum.
+		Returns the centroid of the spectrum of each channel of the sound
+		as a numpy array.
+		Example:
+		>>> sig = slab.Sound.tone(frequency=500, nchannels=2)
+		>>> sig.spectral_centroid()
+		array([500., 500.])
 		'''
 		Z, freqs = self.spectrum(log_power=True, plot=False)
-		Z = (Z - min(Z)) / sum(Z - min(Z)) # normalize to sum==1 (probability distribution)
-		return sum(freqs * Z)
+		Z[Z<-60] = -60 # under -60dB is excluded
+		# Z = (Z - Z.min(0)) / Z.ptp(0) # normalize to range [0,1]
+		Z = (Z - Z.min(0))
+		Z = Z / Z.sum(0) # normalize to sum==1 (probability distribution)
+		return numpy.sum(freqs[:,numpy.newaxis] * Z, axis=0)
 
 	def spectral_flux(self):
 		'''
@@ -871,6 +863,71 @@ class Sound(Signal):
 		d = numpy.diff(power, axis=1)
 		flux = numpy.linalg.norm(d, 2, 0) # if d are diffs, then this is Euclidean distance between frames
 		return numpy.sqrt(numpy.mean(flux**2))*self.samplerate
+
+	def time_windows(self, duration=1024):
+		'''
+		Returns overlapping time windows as a generator. Use like this:
+		val = 1
+		send = None
+		while val:
+			val = accumulator.send(send)
+			print(f'Getting {val}')
+			send = val * 2
+			print(f'Sending {send}')
+
+		>>> time_windows = sig.time_windows()
+		>>> for segment in sig.time_windows():
+			# process window here
+		'''
+		window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
+		step_nsamp = numpy.floor(window_nsamp/numpy.sqrt(numpy.pi)/8).astype(int) # step_dur optimal for Gaussian windows
+		# make the window. A Gaussian filter needs a minimum of 6σ - 1 samples.
+		window_sigma = numpy.ceil((window_nsamp+1)/6)
+		window = numpy.tile(scipy.signal.windows.gaussian(window_nsamp, window_sigma), (self.nchannels, 1)).T
+		noverlap = window_nsamp - step_nsamp
+		# loop through windows, yield each one
+		modified_segment = None
+		modified = numpy.zeros_like(self.data)
+		idx = 0
+		while idx < self.nsamples:
+			segment = Sound(self.data[idx:min(self.nsamples,idx+window_nsamp),:], samplerate=self.samplerate)
+			segment.resize(window_nsamp) # in case the last window is too short
+			segment *= window
+			modified_segment = yield segment # return a new sound object
+			if modified_segment:
+				assert modified_segment.data.shape == segment.data.shape
+				modified[idx:idx+window_nsamp,:] += modified_segment
+			idx += noverlap
+		if numpy.any(modified):
+			self.data = modified
+
+	@staticmethod
+	def calibrate(intensity=None):
+		'''
+		Calibrate the presentation intensity of a setup.
+		Enter the calibration intensity, if you know it.
+		If None, plays a 1kHz tone. Please measure actual
+		intensity with a sound level meter and appropriate
+		coupler.
+		'''
+		global _calibration_intensity
+		if not intensity:
+			tone = Sound.tone(duration=5.0, frequency=1000) # make 1kHz tone
+			print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
+			tone.play() # play it
+			intensity = input('Enter measured intensity in dB: ') # ask for measured intesnity
+			intensity = intensity - tone.level # subtract measured from rms intensity
+		# set and save
+		_calibration_intensity = intensity
+		Sound.save_calibration_intensity()
+
+	@staticmethod
+	def save_calibration_intensity():
+		'''
+		Saves the calibration intensity value to a file in the data folder.
+		This file is loaded upon import of the toolbox.
+		'''
+		numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
 
 	def waveform(self, start=0, end=None):
 		'''
