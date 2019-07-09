@@ -585,38 +585,10 @@ class Sound(Signal):
 			envelope = lambda t: numpy.sin(numpy.pi * t / 2) ** 2
 		sz = Sound.in_samples(duration, self.samplerate)
 		multiplier = envelope(numpy.reshape(numpy.linspace(0.0, 1.0, sz), (sz, 1)))
-		if str(when) in ('onset', 'both'):
+		if when in ('onset', 'both'):
 			self.data[:sz, :] *= multiplier
-		elif str(when) in ('offset', 'both'):
+		if when in ('offset', 'both'):
 			self.data[self.nsamples-sz:, :] *= multiplier[::-1]
-		else:
-			raise ValueError("When should be 'onset', 'offset', or 'both'.")
-
-	def envelope(self, envelope=1, times=None):
-		'''
-		Multiplies the signal with an envelope specified as a 1-D array (numpy
-		or list) which is interpolated (cubic) to the same length as the signal.
-		If values are <=1, then the array is treated as factors. If at least
-		one value is >1 then the array is treated as dB values.
-		If time points (0 to 1, relative to the length of the signal) for the
-		amplitude values in envelope are supplied, then the interpolation is
-		piecewise linear between pairs of time and envelope valued (must have)
-		same length).
-		Example:
-		>>> sig = Sound.tone()
-		>>> sig.envelope([0, 1, 0.2, 0.2, 0])
-		>>> sig.waveform()
-		'''
-		if times and (len(times) != len(envelope)):
-			raise ValueError('Envelope and times need to be of equal length!')
-		if numpy.any(envelope > 1):
-			envelope = 10**((envelope-_calibration_intensity)/20.) # convert dB to factors
-		# times vector
-		if not times:
-			times = numpy.linspace(0, 1, len(envelope))
-		t = numpy.linspace(0, 1, self.nsamples) / self.nsamples
-		envelope = numpy.interp(t, times, envelope) # interpolate
-		self.data *= envelope # multiply
 
 	def repeat(self, n):
 		'Repeats the sound n times.'

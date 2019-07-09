@@ -266,22 +266,59 @@ class Signal:
 			out.samplerate = samplerate
 			return out
 
-	def envelope(self):
+	def envelope(self, envelope=None, times=None, kind='gain'):
 		'''
-		Returns the Hilbert envelope of a signal as new Signal.
+		If envelope is None, returns the Hilbert envelope of a signal as new Signal.
+		If envelope is a list or numpy array, returns a new object of the same type,
+		with the signal data multiplied by the envelope. The envelope is linearely
+		interpolated to the same length as the signal. The kind parameter ('gain' or
+		'dB') determines the unit of the envelope values. If time points (in seconds,
+		clamped to the the signal duration) for the amplitude values in envelope are
+		supplied, then the interpolation is piecewise linear between pairs of time
+		and envelope valued (must have same length).
+		Example:
+		>>> sig = Sound.tone()
+		>>> sig.envelope(envelope=[0, 1, 0.2, 0.2, 0])
+		>>> sig.waveform()
 		'''
-		if not have_scipy:
-			raise ImportError('Calculating envelopes requires scipy.signal.')
-		envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))
-		filt = scipy.signal.firwin(1000, 50, pass_zero=True, fs=self.samplerate) # 50Hz lowpass filter to remove fine-structure
-		envs = scipy.signal.filtfilt(filt, [1], envs, axis=0)
-		return Signal(envs, samplerate=self.samplerate)
+		envelope = numpy.array(envelope)
+		if not envelope.any():
+			if not have_scipy:
+				raise ImportError('Calculating envelopes requires scipy.signal.')
+			envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))
+			filt = scipy.signal.firwin(1000, 50, pass_zero=True, fs=self.samplerate) # 50Hz lowpass filter to remove fine-structure
+			envs = scipy.signal.filtfilt(filt, [1], envs, axis=0)
+			new = Signal(envs, samplerate=self.samplerate)
+		else:
+			new = copy.deepcopy(self)
+			if times.any() and (len(times) != len(envelope)):
+				raise ValueError('Envelope and times need to be of equal length!')
+			if kind == 'dB':
+				envelope = 10**(envelope/20.) # convert dB to gain factors
+			if not times.all(): # times vector
+				times = numpy.linspace(0, 1, len(envelope)) * self.duration
+			times = numpy.array(times)
+			times[times > self.duration] = self.duration # clamp between 0 and sound duration
+			times[times < 0] = 0
+			envelope = numpy.interp(self.times, times, envelope) # get an envelope value for each sample time
+			new.data *= envelope[:,numpy.newaxis] # multiply
+		return new
 
 	def delay(self, duration=1, chan=0, filter_length=2048):
+		'''
+		Delays one channel (chan) by duration (in seconds if float, or samples if int).
+		If duration is a vector with self.nsamples entries, then each sample is delayed
+		by the corresponsding number of seconds. This option is used by the itd_ramp
+		method of the Binaural class.
+		filter_length determines the accuracy of the reconstruction when using fractional
+		sample delays and is 2048, or the signal length for shorter signals.
+		'''
 		if chan >= self.nchannels:
 			raise ValueError('Channel must be smaller than number of channels in signal!')
 		if filter_length%2:
 			raise ValueError('Filter_length must be even!')
+		if self.nsamples < filter_length: # reduce the filter_length to the signal length of short signals
+			filter_length = self.nsamples-1 if self.nsamples%2 else self.nsamples # make even
 		centre_tap = int(filter_length / 2)
 		t = numpy.array(range(filter_length))
 		if isinstance(duration, (int, float, numpy.int64, numpy.float64)): # just a constant delay
