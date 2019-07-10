@@ -10,4 +10,3 @@ from slab.sound import *
 from slab.binaural import *
 from slab.psychoacoustics import *
 from slab.hrtf import *
-from slab.resultsfile import *
