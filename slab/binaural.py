@@ -99,7 +99,7 @@ class Binaural(Sound):
 		'''
 		new = copy.deepcopy(self) # so that we can return a new signal
 		level = numpy.mean(self.level)
-		new_levels = (level - dB/2, level + dB/2)
+		new_levels = (level + dB/2, level - dB/2)
 		new.level = new_levels
 		return new
 
@@ -160,6 +160,7 @@ class Binaural(Sound):
 		freqency (*2000*) for broadband sounds.
 		Example:
 		>>> slab.Binaural.azimuth_to_itd(-90)
+
 		'''
 		head_radius = head_radius / 100
 		azimuth_radians = numpy.radians(azimuth)
