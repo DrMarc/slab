@@ -29,7 +29,7 @@ def Key():
 	'''
 	Wrapper for curses module to simplify getting a single keypress from the terminal.
 	Use like this:
-	with key = Key():
+	with slab.Key() as key:
 		response = key.getch()
 	'''
 	if not have_curses:
@@ -72,7 +72,7 @@ class LoadSaveJson:
 			self.__dict__ = json.load(f)
 
 
-class Trialsequence(collections.abc.Iterator, LoadSaveJson): # TODO: str conditions
+class Trialsequence(collections.abc.Iterator, LoadSaveJson):
 	"""Non-adaptive trial sequences
 	Parameters:
 	conditions: an integer, list, or flat array specifying condition indices,
@@ -345,8 +345,11 @@ class Staircase(collections.abc.Iterator):
 			self._psychometric_function() # tally responses to create a psychomeric function
 			raise StopIteration
 
+	def __repr__(self):
+		return self.__dict__.__repr__()
+
 	def __str__(self):
-		return f'{type(self)} {self.n_up}up{self.n_down}down, trial {self.this_trial_n}, {len(self.reversal_intensities)} reversals of {self.n_reversals}'
+		return f'Staircase {self.n_up}up-{self.n_down}down, trial {self.this_trial_n}, {len(self.reversal_intensities)} reversals of {self.n_reversals}'
 
 	def add_response(self, result, intensity=None):
 		"""Add a True or 1 to indicate a correct/detected trial
@@ -450,6 +453,9 @@ class Staircase(collections.abc.Iterator):
 			else:
 				return numpy.mean(self.reversal_intensities[-n:])
 
+	def print_trial_info(self):
+		print(f'trial # {self.this_trial_n}: intensity {self.intensities[-1] if self.intensities[-1] else self._next_intensity}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
+
 	def save_csv(self, fileName):
 		'Write a text file with the data.'
 		if self.this_trial_n < 1:
@@ -464,35 +470,35 @@ class Staircase(collections.abc.Iterator):
 			responses = responses.replace(' ', ', ')
 			f.write(responses)
 
-	def plot(self, plot_pf=True):
-		'Plot the staircase (and the psychometric function if plot_pf=True and the staicase is finished).'
+	def plot(self):
+		'Plot the staircase. If called after each trial, one plot is created and updated.'
 		if not have_pyplot:
 			raise ImportError('Plotting requires matplotlib!')
 		x = numpy.arange(self.this_trial_n + 1)
 		y = numpy.array(self.intensities)
 		responses = numpy.array(self.data)
-		if self.pf_intensities and plot_pf:
-			_,(ax1, ax2) = plt.subplots(1, 2, sharey='row', gridspec_kw={'width_ratios':[2, 1], 'wspace':0.1}) # prepare a second panel for the pf plot
-			#fig.subplots_adjust(wspace=0)
-		else:
-			_, ax1 = plt.subplots() # need just one panel
-		ax1.plot(x, y)
-		ax1.set_xlim(numpy.min(x), numpy.max(x))
-		ax1.set_ylim(numpy.min(y), numpy.max(y))
-		ax1.scatter(x[responses], y[responses], color='green') # plot green dots at correct/yes responses
-		ax1.scatter(x[~responses], y[~responses], color='red') # plot red dots at correct/yes responses
-		ax1.set_ylabel('Dependent variable')
-		ax1.set_xlabel('Trial')
-		ax1.set_title('Staircase')
+		plt.figure('stairs') # figure 'stairs' is created or made current
+		plt.clf()
+		plt.plot(x, y)
+		ax = plt.gca()
+		ax.set_xlim(0, self.n_trials)
+		ax.set_ylim(self.min_val, self.max_val)
+		ax.scatter(x[responses], y[responses], color='green') # plot green dots at correct/yes responses
+		ax.scatter(x[~responses], y[~responses], color='red') # plot red dots at correct/yes responses
+		ax.set_ylabel('Dependent variable')
+		ax.set_xlabel('Trial')
+		ax.set_title('Staircase')
 		if self.finished:
-			ax1.hlines(self.threshold(), min(x), max(x), 'r')
-		if 'ax2' in locals(): # if ax2 was created above, plot into it
-			ax2.plot(self.pf_percent_correct, self.pf_intensities)
-			point_sizes = self.pf_responses_per_intensity * 5 # 5 pixels per trial at each point
-			ax2.scatter(self.pf_percent_correct, self.pf_intensities, s=point_sizes)
-			ax2.set_xlabel('Hit rate')
-			ax2.set_title('Psychometric\nfunction')
-		plt.show()
+			plt.hlines(self.threshold(), min(x), max(x), 'r')
+		plt.draw()
+		plt.pause(0.1)
+		#if self.pf_intensities and plot_pf:
+		#	_, (ax1, ax2) = plt.subplots(1, 2, sharey='row', gridspec_kw={'width_ratios':[2, 1], 'wspace':0.1}, num='stairs') # prepare a second panel for the pf plot
+		#ax2.plot(self.pf_percent_correct, self.pf_intensities)
+		#point_sizes = self.pf_responses_per_intensity * 5 # 5 pixels per trial at each point
+		#ax2.scatter(self.pf_percent_correct, self.pf_intensities, s=point_sizes)
+		#ax2.set_xlabel('Hit rate')
+		#ax2.set_title('Psychometric\nfunction')
 
 	def _psychometric_function(self):
 		"""Create a psychometric function by binning data from a staircase
@@ -551,15 +557,16 @@ class Resultsfile():
 
 if __name__ == '__main__':
 	# Demonstration
+	import time
 	tr = Trialsequence(conditions=5, n_reps=2, name='test')
 	stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=
 				[8, 4, 4, 2, 2, 1],  # reduce step size every two reversals
-				min_val=0, max_val=60, n_up=1, n_down=1, n_trials=15)
+				min_val=20, max_val=60, n_up=1, n_down=1, n_trials=15)
 	for trial in stairs:
 		response = stairs.simulate_response(30)
-		print(f'trial # {stairs.this_trial_n}: intensity {trial}, response {response}')
 		stairs.add_response(response)
+		stairs.print_trial_info()
+		stairs.plot()
 	print(f'reversals: {stairs.reversal_intensities}')
 	print(f'mean of final 6 reversals: {stairs.threshold()}')
 	#stairs.save_json('stairs.json')
-	stairs.plot()
