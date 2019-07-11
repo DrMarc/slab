@@ -251,7 +251,7 @@ class Staircase(collections.abc.Iterator):
 	mean of final 6 reversals: 28.982753492378876
 	"""
 	def __init__(self, start_val, n_reversals=None, step_sizes=4, n_trials=0, n_up=1,
-		n_down=2, step_type='db', min_val=None, max_val=None, name=''):
+		n_down=2, step_type='lin', min_val=None, max_val=None, name=''):
 		"""
 		:Parameters:
 			name:
@@ -279,7 +279,7 @@ class Staircase(collections.abc.Iterator):
 			n_down:
 				The number of 'correct' (or 1) responses before the
 				staircase level decreases.
-			step_type: *'db'*, 'lin', 'log'
+			step_type: *'lin'*, 'db', 'log'
 				The type of steps that should be taken each time. 'lin'
 				will simply add or subtract that amount each step, 'db'
 				and 'log' will step by a certain number of decibels or
@@ -345,10 +345,10 @@ class Staircase(collections.abc.Iterator):
 			self._psychometric_function() # tally responses to create a psychomeric function
 			raise StopIteration
 
-	def __repr__(self):
+	def __str__(self):
 		return self.__dict__.__repr__()
 
-	def __str__(self):
+	def __repr__(self):
 		return f'Staircase {self.n_up}up-{self.n_down}down, trial {self.this_trial_n}, {len(self.reversal_intensities)} reversals of {self.n_reversals}'
 
 	def add_response(self, result, intensity=None):
@@ -359,9 +359,12 @@ class Staircase(collections.abc.Iterator):
 		the recommended intensity in your last trial and the staircase will
 		replace its recorded value with the one supplied.
 		"""
-		result = bool(result)
+		if self._next_intensity <= self.min_val: # always record False if at min_val
+			result = False
+		else:
+			result = bool(result)
 		self.data.append(result)
-		if intensity != None:
+		if intensity is not None:
 			self.intensities.pop()
 			self.intensities.append(intensity)
 		if result: # correct response
@@ -443,18 +446,19 @@ class Staircase(collections.abc.Iterator):
 		'Return a simulated response dependent on thresh and self.'
 		return self._next_intensity >= thresh
 
-	def threshold(self, n=6, method='geometric'):
-		'Returns the average (geometric by default) reversal to calculate the threshold.'
+	def threshold(self, n=6):
+		'''Returns the average (arithmetic for step_type == 'lin',
+		geometric otherwise) of the last n reversals.'''
 		if self.finished:
 			if n > self.n_reversals:
 				n = self.n_reversals
-			if method == 'geometric':
-				return numpy.exp(numpy.mean(numpy.log(self.reversal_intensities[-n:])))
-			else:
+			if self.step_type == 'lin':
 				return numpy.mean(self.reversal_intensities[-n:])
+			else:
+				return numpy.exp(numpy.mean(numpy.log(self.reversal_intensities[-n:])))
 
 	def print_trial_info(self):
-		print(f'trial # {self.this_trial_n}: intensity {self.intensities[-1] if self.intensities[-1] else self._next_intensity}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
+		print(f'trial # {self.this_trial_n}: intensity {round(self.intensities[-1],2) if self.intensities[-1] else round(self._next_intensity,2)}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
 
 	def save_csv(self, fileName):
 		'Write a text file with the data.'
@@ -526,6 +530,38 @@ class Staircase(collections.abc.Iterator):
 		self.pf_intensities = binned_intens
 		self.pf_percent_correct = binned_resp
 		self.pf_responses_per_intensity = n_points
+
+	def present_afc_trial(self, target, distractors, key_codes=list(range(49,58)), isi=0.25):
+		'''
+		Present the target (slab sound object) in random order together
+		with the distractor sound object (or list of several sounds) with
+		isi pause (in seconds) in between, then aquire a response keypress
+		via Key(), compare the response to the target interval and record
+		the response via add_response. If key_codes for buttons are given
+		(get with: ord('1') for instance -> ascii code of key 1 is 49),
+		then these keys will be used as answer keys. Default are codes for
+		buttons '1' to '9'.
+		This is a convenience function for implementing alternative forced
+		choice trials. In each trial, generate the target stimulus and
+		distractors, then call present_afc_trial to play them and record
+		the response. Optionally call print_trial_info afterwards.
+		'''
+		# randomize the stimuli
+		if isinstance(distractors, list):
+			stims = [target].extend(distractors) # assuming sound object and list of sounds
+		else:
+			stims = [target, distractors] # assuming two sound objects
+		order = numpy.random.permutation(len(stims))
+		for idx in order:
+			stim = stims[idx]
+			stim.play()
+			plt.pause(isi)
+		with Key() as key:
+			response = key.getch()
+		interval = numpy.where(order==0)[0][0]
+		interval_key = key_codes[interval]
+		response = response == interval_key
+		self.add_response(response)
 
 
 class Resultsfile():
