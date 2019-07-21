@@ -5,9 +5,9 @@ def readme():
 		return f.read()
 
 setup(name='slab',
-	version='0.5',
+	version='0.6',
 	description='Tools for generating and manipulating digital signals, particularly sounds.',
-	url='http://github.com/',
+	url='http://github.com/DrMarc/soundtools.git',
 	author='Marc Schoenwiesner',
 	author_email='marc.schoenwiesner@gmail.com',
 	license='MIT',

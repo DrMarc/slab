@@ -138,9 +138,9 @@ class HRTF():
 	# instance methods
 	def elevations(self):
 		'Return the list of sources'
-		return sorted(list(set(self.sources[:,1])))
+		return sorted(list(set(numpy.round(self.sources[:,1]))))
 
-	def plot_tf(self, sourceidx, ear='left', linesep=20, nbins=None, kind='waterfall'):
+	def plot_tf(self, sourceidx, ear='left', linesep=20, nbins=None, plot_limits=(1000,18000), kind='waterfall'):
 		'''
 		Plots transfer functions of FIR filters for a given ear
 		['left', 'right', 'both'] at a list of source indices.
@@ -190,7 +190,7 @@ class HRTF():
 			raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
 		plt.xlabel('Frequency [kHz]')
 		plt.autoscale(tight=True)
-		plt.xlim([1000, 16000])
+		plt.xlim(plot_limits)
 		plt.xscale('log')
 		plt.show()
 		return fig
@@ -231,8 +231,9 @@ class HRTF():
 
 	def cone_sources(self, cone=0):
 		'''
-		Return indices of sources along an off-axis sphere slice.
+		Return indices of sources along a vertical off-axis sphere slice.
 		The default cone = 0 returns sources along the fronal median plane.
+		Note: This currently only works as intended for HRTFs recorded in horizontal rings.
 		'''
 		cone = numpy.sin(numpy.deg2rad(cone))
 		azimuth = numpy.deg2rad(self.sources[:,0])
@@ -242,14 +243,18 @@ class HRTF():
 		eles = self.elevations()
 		out = []
 		for ele in eles: # for each elevation, find the source closest to the target y
-			subidx, = numpy.where((self.sources[:,1] == ele) & (x >= 0))
+			subidx, = numpy.where((numpy.round(self.sources[:,1]) == ele) & (x >= 0))
 			cmin = numpy.min(numpy.abs(y[subidx]-cone))
-			idx, = numpy.where((self.sources[:,1] == ele) & (numpy.abs(y-cone) == cmin))
-			out.append(idx[0])
+			if cmin < 0.05: # only include elevation where the closest source is less than 5 cm away
+				idx, = numpy.where((numpy.round(self.sources[:,1]) == ele) & (numpy.abs(y-cone) == cmin))
+				out.append(idx[0])
 		return sorted(out, key=lambda x: self.sources[x,1])
 
 	def elevation_sources(self, elevation=0):
-		'Return indices of sources along an off-axis sphere slice.'
+		'''
+		Return indices of sources along a horizontal sphere slice at the given elevation.
+		The default elevation = 0 returns sources along the fronal horizon.
+		'''
 		idx = numpy.where((hrtf.sources[:,1] == elevation) & ((hrtf.sources[:,0] <= 90) | (hrtf.sources[:,0] >= 270)))
 		return idx[0]
 
