@@ -1,6 +1,4 @@
 include README.rst
 graft slab/experiments
-graft data
-exclude data/ari
-exclude data/aachen
-exclude data/cipic
+include data/mit_kemar_normal_pinna.sofa
+include data/KEMAR_interaural_level_spectrum.npy
