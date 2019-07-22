@@ -1,1 +1,6 @@
 include README.rst
+graft slab/experiments
+graft data
+exclude data/ari
+exclude data/aachen
+exclude data/cipic
