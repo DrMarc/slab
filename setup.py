@@ -12,6 +12,5 @@ setup(name='slab',
 	author_email='marc.schoenwiesner@gmail.com',
 	license='MIT',
 	packages=['slab'],
-	data_files=[('data', ['data/mit_kemar_normal_pinna.sofa', 'data/KEMAR_interaural_level_spectrum.npy'])],
-	include_package_data=True,
+	package_data={'slab': ['data/mit_kemar_normal_pinna.sofa', 'data/KEMAR_interaural_level_spectrum.npy']},
 	zip_safe=False)
