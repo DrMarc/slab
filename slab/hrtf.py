@@ -140,15 +140,18 @@ class HRTF():
 		'Return the list of sources'
 		return sorted(list(set(numpy.round(self.sources[:,1]))))
 
-	def plot_tf(self, sourceidx, ear='left', linesep=20, nbins=None, plot_limits=(1000,18000), kind='waterfall'):
+	def plot_tf(self, sourceidx, ear='left', plot_limits=(1000,18000), nbins=None, kind='waterfall', linesep=20, xscale='linear'):
 		'''
 		Plots transfer functions of FIR filters for a given ear
 		['left', 'right', 'both'] at a list of source indices.
 		Sourceidx should be generated like this: hrtf.cone_sources(cone=0).
+		plot_limits determines the plotted frequency range in Hz.
+		n_bins is passed to Filter.tf and determines freqency resolution (*128*).
+		linesep sets the vertical distance between tfs (*20*).
+		xscale (*'linear'*, 'log') sets x-axis scaling.
 		Waterfall (as in Wightman and Kistler, 1989) and image plots
-		(as in Hofman 1998) are available.
+		(as in Hofman 1998) are available by setting 'kind'.
 		'''
-		n = 0
 		if ear == 'left':
 			chan = 0
 		elif ear == 'right':
@@ -156,20 +159,25 @@ class HRTF():
 		elif ear == 'both':
 			chan = [0, 1]
 			if kind == 'image':
-				fig1 = self.plot_tf(sourceidx, ear='left', linesep=linesep, nbins=nbins, kind='image')
-				fig2 = self.plot_tf(sourceidx, ear='right', linesep=linesep, nbins=nbins, kind='image')
+				fig1 = self.plot_tf(sourceidx, ear='left', plot_limits=plot_limits, linesep=linesep, nbins=nbins, kind='image', xscale=xscale)
+				fig2 = self.plot_tf(sourceidx, ear='right', plot_limits=plot_limits, linesep=linesep, nbins=nbins, kind='image', xscale=xscale)
 				return fig1, fig2
 		else:
 			raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
 		if kind == 'waterfall':
 			fig = plt.figure()
-			for s in sourceidx:
+			vertical_line_positions = numpy.arange(0, len(sourceidx)) * linesep
+			for idx, s in enumerate(sourceidx):
 				filt = self.data[s]
 				freqs, h = filt.tf(channels=chan, nbins=nbins, plot=False)
-				plt.plot(freqs, h + n, label=str(self.sources[s, 1])+'˚')
-				n += linesep
-			plt.ylabel('Amplitude [dB]') # TODO: should be a calibration bar
-			plt.grid()
+				plt.plot(freqs, h + vertical_line_positions[idx], color='0.0', alpha=0.7)
+			ticks = vertical_line_positions[::3]
+			labels = numpy.round(self.sources[sourceidx, 1]*2, decimals=-1)/2
+			labels = labels[::3]
+			plt.yticks(ticks=ticks, labels=labels)
+			plt.grid(b=True, axis='y', linewidth=0.5)
+			# TODO: calibration bar
+			#plt.grid()
 		elif kind == 'image':
 			if not nbins:
 				img = numpy.zeros((self.data[sourceidx[0]].ntaps, len(sourceidx)))
@@ -183,15 +191,15 @@ class HRTF():
 			img[img < -25] = -25 # clip at -40 dB transfer
 			fig = plt.figure()
 			plt.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
-			#plt.xscale('log')
 			plt.colorbar()
-			plt.ylabel('Elevation [˚]') # TODO: missing colorbar for amplitude
+			plt.ylabel('Elevation [˚]')
 		else:
 			raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
 		plt.xlabel('Frequency [kHz]')
+		plt.ylabel('Elevation [˚]')
 		plt.autoscale(tight=True)
 		plt.xlim(plot_limits)
-		plt.xscale('log')
+		plt.xscale(xscale)
 		plt.show()
 		return fig
 
