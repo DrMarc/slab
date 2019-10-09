@@ -21,12 +21,6 @@ from slab.signals import Signal # getting the base class
 class Filter(Signal):
 	'''
 	Class for generating and manipulating filterbanks and transfer functions.
-	>>> hrtf = HRTF(data='mit_kemar_normal_pinna.sofa') # initialize from sofa file
-	>>> print(hrtf)
-	<class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
-	>>> sourceidx = hrtf.cone_sources(20)
-	>>> hrtf.plot_sources(sourceidx)
-	>>> hrtf.plot_tf(sourceidx,ear='left')
 
 	'''
 	# instance properties
@@ -67,8 +61,6 @@ class Filter(Signal):
 		>>> _ = sig.spectrum()
 
 		'''
-		# TODO: costum filter shapes -> f and kind are tuples with frequencies in Hz and corresponding attenuations in dB. If f is a numpy array it is taken as the target magnitude of the spectrum (imposing one sound's spectrum on the current sound).
-
 		samplerate = Filter.get_samplerate(samplerate)
 		if fir: # design a FIR filter
 			if kind in ['lp', 'bs']:
@@ -119,7 +111,7 @@ class Filter(Signal):
 					_filt = numpy.interp(sig_freq_bins, filt_freq_bins, self[:, chan])
 					out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt)
 			elif (self.nfilters == 1) and (sig.nchannels > 1): # filter each channel
-				_filt = numpy.interp(sig_freq_bins, filt_freq_bins, self.data)
+				_filt = numpy.interp(sig_freq_bins, filt_freq_bins, self.data.flatten())
 				for chan in range(sig.nchannels):
 					out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt)
 			elif (self.nfilters > 1) and (sig.nchannels == 1): # apply all filters in bank to signal
@@ -202,7 +194,7 @@ class Filter(Signal):
 			l = center_freqs[i] - erb_spacing
 			h = center_freqs[i] + erb_spacing
 			avg = center_freqs[i]  # center of filter
-			rnge = 2 * erb_spacing  # width of filter
+			rnge = erb_spacing * 2  # width of filter
 			filts[(freqs_erb > l) & (freqs_erb < h), i] = numpy.cos((freqs_erb[(freqs_erb > l) & (freqs_erb < h)]- avg) / rnge * numpy.pi)
 		return Filter(data=filts, samplerate=samplerate, fir=False)
 

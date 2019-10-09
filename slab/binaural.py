@@ -204,14 +204,21 @@ class Binaural(Sound):
 		out = self.itd(duration=itd)
 		return out.ild(dB=ild)
 
-	def externalize(self):
+	def externalize(self, hrtf=None):
 		'''
 		Convolve the sound object in place with a smoothed HRTF (KEMAR
 		if no slab.HRTF object is supplied) to evoke the impression of
-		an external sound source without adding a directional information.
+		an external sound source without adding directional information.
 		See Kulkarni & Colburn (1998) for why that works.
 		'''
-		pass # get HRTF for [0,0] direction, get spectrum, lowpass-filter the spectrum, apply
+		from slab import DATAPATH
+		if not hrtf:
+			hrtf = HRTF(DATAPATH+'mit_kemar_normal_pinna.sofa') # load the hrtf file
+		idx_frontal = numpy.where((hrtf.sources[:,1] == 0) & (hrtf.sources[:,0] == 0))[0][0] # get HRTF for [0,0] direction
+		w, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, plot=False) # get low-res spectrum
+		filt = Filter(10**(h/20), fir=False, samplerate=self.samplerate) # samplerate shoulf be hrtf.data[0].samplerate, hack to avoid having to resample, ok for externalization if rate are similar
+		out = filt.apply(copy.deepcopy(self))
+		return out
 
 	def measure_itd(self):
 		'''

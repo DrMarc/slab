@@ -4,6 +4,7 @@ Class for reading and manipulating head-related transfer functions.
 
 import warnings
 import pathlib
+import matplotlib
 import numpy
 
 try:
@@ -48,7 +49,7 @@ class HRTF():
 			if samplerate is not None:
 				raise ValueError('Cannot specify samplerate when initialising HRTF from a file.')
 			if pathlib.Path(data).suffix != '.sofa':
-				raise NotImplementedError('Only .sofa files can be read at the moment.')
+				raise NotImplementedError('Only .sofa files can be read.')
 			else: # load from SOFA file
 				try:
 					f = HRTF._sofa_load(data, verbose)
@@ -61,10 +62,25 @@ class HRTF():
 					self.data.append(Filter(data[idx,:,:].T, self.samplerate)) # ntaps x 2 (left, right) filter
 				self.listener = HRTF._sofa_get_listener(f)
 				self.sources = HRTF._sofa_get_sourcepositions(f)
+		elif isinstance(data, Filter):
+			'This is a hacky shortcut for casting a filterbank as HRTF. Avoid unless you know what you are doing.'
+			if sources is None:
+				raise ValueError('Must provide source positions when using a Filter object.')
+			self.samplerate = data.samplerate
+			fir = data.fir # save the fir property of the filterbank
+			data = data.data.T[...,None] # reshape the filterbank data to fit into HRTF (ind x taps x ear)
+			self.data = []
+			for idx in range(data.shape[0]):
+				self.data.append(Filter(data[idx,:,:].T, self.samplerate, fir=fir))
+			self.sources = sources
+			if listener is None:
+				self.listener = [0,0,0]
+
 		else:
 			self.samplerate = samplerate
+			self.data = []
 			for idx in range(data.shape[0]):
-				self.data.append(Filter(data[idx,:,:].T, self.samplerate)) # 2 x ntaps filter (left right)
+				self.data.append(Filter(data[idx,:,:].T, self.samplerate)) # (ind x taps x ear), 2 x ntaps filter (left right)
 			self.sources = sources
 			self.listener = listener
 
@@ -140,7 +156,7 @@ class HRTF():
 		'Return the list of sources'
 		return sorted(list(set(numpy.round(self.sources[:,1]))))
 
-	def plot_tf(self, sourceidx, ear='left', plot_limits=(1000,18000), nbins=None, kind='waterfall', linesep=20, xscale='linear'):
+	def plot_tf(self, sourceidx, ear='left', plot_limits=(1000,18000), nbins=None, kind='waterfall', linesep=20, xscale='linear', ax=None):
 		'''
 		Plots transfer functions of FIR filters for a given ear
 		['left', 'right', 'both'] at a list of source indices.
@@ -149,6 +165,7 @@ class HRTF():
 		n_bins is passed to Filter.tf and determines freqency resolution (*128*).
 		linesep sets the vertical distance between tfs (*20*).
 		xscale (*'linear'*, 'log') sets x-axis scaling.
+		If a plot axis is supplied, then the figure is drawn in it.
 		Waterfall (as in Wightman and Kistler, 1989) and image plots
 		(as in Hofman 1998) are available by setting 'kind'.
 		'''
@@ -164,20 +181,25 @@ class HRTF():
 				return fig1, fig2
 		else:
 			raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
+		fig = None # if ax is provided, return None
+		if not ax:
+			fig, ax = plt.subplots()
 		if kind == 'waterfall':
-			fig = plt.figure()
 			vertical_line_positions = numpy.arange(0, len(sourceidx)) * linesep
 			for idx, s in enumerate(sourceidx):
 				filt = self.data[s]
 				freqs, h = filt.tf(channels=chan, nbins=nbins, plot=False)
-				plt.plot(freqs, h + vertical_line_positions[idx], color='0.0', alpha=0.7)
-			ticks = vertical_line_positions[::3]
+				ax.plot(freqs, h + vertical_line_positions[idx], linewidth=0.75, color='0.0', alpha=0.7)
+			ticks = vertical_line_positions[::3] # plot every third elevation
 			labels = numpy.round(self.sources[sourceidx, 1]*2, decimals=-1)/2
-			labels = labels[::3]
-			plt.yticks(ticks=ticks, labels=labels)
-			plt.grid(b=True, axis='y', linewidth=0.5)
-			# TODO: calibration bar
-			#plt.grid()
+			labels = labels[::3].astype(int) # plot every third elevation label, ommit comma to save space
+			ax.set_yticks(ticks=vertical_line_positions, minor=True)
+			ax.tick_params(axis='y', which='minor', size=0)
+			ax.set_yticks(ticks=ticks)
+			ax.set_yticklabels(labels=labels)
+			ax.grid(b=True, axis='y', which='both', linewidth=0.25)
+			ax.plot([plot_limits[0]+500, plot_limits[0]+500], [vertical_line_positions[-1]+10, vertical_line_positions[-1]+10+linesep], linewidth=1, color='0.0', alpha=0.9)
+			ax.text(x=plot_limits[0]+600, y=vertical_line_positions[-1]+10+linesep/2, s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
 		elif kind == 'image':
 			if not nbins:
 				img = numpy.zeros((self.data[sourceidx[0]].ntaps, len(sourceidx)))
@@ -195,11 +217,13 @@ class HRTF():
 			plt.ylabel('Elevation [˚]')
 		else:
 			raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
-		plt.xlabel('Frequency [kHz]')
-		plt.ylabel('Elevation [˚]')
-		plt.autoscale(tight=True)
-		plt.xlim(plot_limits)
-		plt.xscale(xscale)
+		ax.set_xlabel('Frequency [kHz]')
+		ax.set_ylabel('Elevation [˚]')
+		ax.autoscale(tight=True)
+		ax.set_xlim(plot_limits)
+		ax.set_xscale(xscale)
+		ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x/1000))))
+		ax.tick_params('both', length=2, pad=2)
 		plt.show()
 		return fig
 
@@ -265,6 +289,20 @@ class HRTF():
 		'''
 		idx = numpy.where((hrtf.sources[:,1] == elevation) & ((hrtf.sources[:,0] <= 90) | (hrtf.sources[:,0] >= 270)))
 		return idx[0]
+
+	def tfs_from_sources(self, source_list, n_bins=96):
+		'''
+		Extract transfer functions from a list of source indices (generated for instance,
+		with hrtf.cone_sources) as (n_bins, n_sources) numpy array.
+		'''
+		n_sources = len(source_list)
+		tfs = numpy.zeros((n_bins, n_sources))
+		for idx, source in enumerate(source_list):
+			freqs, jwd = self.data[source].tf(channels=0, nbins=96, plot=False)
+			tfs[:,idx] = jwd.flatten()
+		#ele = numpy.round(self.sources[source_list, 1]*2, decimals=-1)/2
+		#return freqs, ele, tfs
+		return tfs
 
 	def plot_sources(self, idx=False):
 		'DOC'

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import datetime
 import json
+import zipfile
 from contextlib import contextmanager
 try:
 	import curses
@@ -21,6 +22,7 @@ try:
 	have_pyplot = True
 except ImportError:
 	have_pyplot = False
+import slab
 
 results_folder = 'Results'
 
@@ -644,6 +646,13 @@ class Precomputed(list):
 			list.__init__(self, [])
 			for _ in range(int(n)):
 				list.append(self, sounds())
+		elif isinstance(sounds, str): # string is interpreted as name of a zip file containing the sounds
+			with zipfile.ZipFile(sounds) as zip:
+				files = zip.namelist()
+				if files:
+					list.__init__(self, [])
+					for file in files:
+						list.append(self, slab.Sound(file))
 		elif hasattr(sounds, '__iter__'): # it's an iterable object, just iterate through it
 			for sound in sounds:
 				list.append(self, sound)
@@ -660,6 +669,15 @@ class Precomputed(list):
 		self.previous = idx
 		self[idx].play()
 
+	def write(fname):
+		fnames = list()
+		for idx, sound in enumerate(self):
+			f = f's_{idx}.wav'
+			fnames.append(f)
+			sound.write(f)
+		with zipfile.ZipFile(fname, mode='w') as zip:
+			for f in fnames:
+				zip.write(f)
 
 def load_config(config_file):
 	'''

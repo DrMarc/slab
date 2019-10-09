@@ -8,8 +8,10 @@ Use like this:
 
 import time
 import functools
+import os
 import numpy
 import scipy
+import json
 import slab
 
 # confiuration
@@ -17,14 +19,16 @@ import slab
 # then variables are accessible as cfg.speaker_positions etc.
 _speaker_positions = numpy.arange(-90, 0.01, 4)
 _results_file = None
-_probe_speed = 150
+_adapter_speed = 150
 _adapter_dir = 'left'
-_pre_adapter_duration = 30 # seconds
-_n_reps_in_block = 10 # 20 for 20 reps same and different, 40 trials a 2s, plus pre_adapter, about 2.5 min blocks
-_n_blocks_per_speed = 1 # 3 for ~35min for block presentation, plus pauses etc, ~45min experiment
+_n_adapters_per_trial = 4
+_n_reps_in_block = 10
+_n_blocks_per_speed = 2
 _after_stim_pause = 0.25
+_speeds = [50, 100, 150, 200, 250] # deg/sec
 
 slab.Resultsfile.results_folder = 'Results'
+_stim_folder = 'Stimuli'
 
 def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
 	'''
@@ -68,6 +72,8 @@ def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
 		sig += speaker_signal
 	sig /= len(_speaker_positions)
 	sig.ramp(duration=end_time/3) # ramp the sum
+	sig.filter(f=[500,14000], kind='bp')
+	sig = sig.externalize()
 	sig.level = 75 # set to 75dB
 	return sig
 
@@ -95,7 +101,7 @@ def familiarization():
 	_results_file.write(hitrate, tag='hitrate')
 	return hitrate
 
-def jnd():
+def jnd(speed):
 	'''
 	Presents a staricase of moving_gaussian stimuli with varying SNR and returns the threshold.
 	This threshold is used in the main experiment as the listener-specific SNR parameter.
@@ -108,56 +114,49 @@ def jnd():
 	_results_file.write('jnd:', tag='time')
 	for trial in stairs:
 		# make and present stimulus with SNR=trial
-		stim_l = moving_gaussian(speed=_probe_speed, SNR=trial, direction='left')
-		stim_r = moving_gaussian(speed=_probe_speed, SNR=trial, direction='right')
+		stim_l = moving_gaussian(speed=speed, SNR=trial, direction='left')
+		stim_r = moving_gaussian(speed=speed, SNR=trial, direction='right')
 		stairs.present_afc_trial(stim_l, stim_r)
 		stairs.print_trial_info()
 		stairs.plot()
 		time.sleep(_after_stim_pause)
-	_results_file.write(stairs.__repr__())
-	return stairs.threshold()
+	_results_file.write(stairs.threshold(), tag=speed)
+	return round(stairs.threshold(), ndigits=1)
 
-def block(speed=150, jnd_snr=10):
-	'''
-	Runs one block of the main experiment with a given speed of motion.
-	'''
-	def make_adaptor_probe_pair(adapter_speed, probe_dir):
-		kwargs = {'speed': adapter_speed, 'SNR': 100, 'direction': _adapter_dir}
+def make_stimuli(subject, jnd_snr):
+	def make_adaptor_probe_pair(probe_snr, probe_speed, probe_dir):
+		kwargs = {'speed': _adapter_speed, 'SNR': 100, 'direction': _adapter_dir}
 		make_adapter = functools.partial(moving_gaussian, **kwargs)
-		times = round((6/(90/speed))) # repetitions to make 6s adapter
-		adapter_list = slab.Precomputed(make_adapter, times)
+		adapter_list = slab.Precomputed(make_adapter, _n_adapters_per_trial)
 		adapter = slab.Sound.sequence(*adapter_list) # now we have 5 adapters in a row
-		probe = moving_gaussian(speed=_probe_speed, SNR=jnd_snr, direction=probe_dir)
+		probe = moving_gaussian(speed=probe_speed, SNR=probe_snr, direction=probe_dir)
 		stim = slab.Sound.sequence(adapter, probe)
 		return stim
-	# precompute the pre-adapter
-	print('precompute the pre-adapter')
-	pre_adapter = slab.Precomputed(lambda: moving_gaussian(speed=speed, SNR=100, direction=_adapter_dir), n=3)
-	# precompute adapter probe pairs (left/right, 10 each)
-	probe_dir_same = _adapter_dir
-	probe_dir_diff = [dir for dir in ['left', 'right'] if not dir == _adapter_dir]
-	print('precompute adapter_probe pairs')
-	adapter_probe_same = slab.Precomputed(lambda: make_adaptor_probe_pair(adapter_speed=speed, probe_dir=probe_dir_same), n=3)
-	adapter_probe_diff = slab.Precomputed(lambda: make_adaptor_probe_pair(adapter_speed=speed, probe_dir=probe_dir_diff), n=3)
-	# present the 60 sec pre-adapter
-	t_start = time.time()
-	delta_t = 0
-	print('presenting pre-adapter')
-	while delta_t < _pre_adapter_duration:
-		pre_adapter.play()
-		delta_t = time.time() - t_start
-	time.sleep(1)
+	for speed, jnd in jnd_snr.items()
+		probe_dir_same = _adapter_dir
+		probe_dir_diff = [dir for dir in ['left', 'right'] if not dir == _adapter_dir]
+		adapter_probe_same = slab.Precomputed(lambda: make_adaptor_probe_pair(probe_snr=jnd, probe_speed=speed, probe_dir=probe_dir_same), n=10)
+		adapter_probe_diff = slab.Precomputed(lambda: make_adaptor_probe_pair(probe_snr=jnd, probe_speed=speed, probe_dir=probe_dir_diff), n=10)
+		adapter_probe_same.write(f'{_stim_folder}{os.sep}{subject}_speed_{speed}_same.zip')
+		adapter_probe_diff.write(f'{_stim_folder}{os.sep}{subject}_speed_{speed}_diff.zip')
+		print(f'Written stimuli for {subject}, speed {speed}.')
+
+def block(adapter_probe_same,adapter_probe_diff):
 	# iterate through the trials
-	print('running trial sequence')
-	seq = slab.Trialsequence(conditions=['same','diff'], n_reps=_n_reps_in_block, kind='random_permutation')
+	print('Running trial sequence...')
+	seq = slab.Trialsequence(conditions=10, n_reps=_n_reps_in_block, kind='random_permutation')
+	conditions = list()
+	for speed in _speeds:
+		conditions.append((speed, 'same'))
+		conditions.append((speed, 'diff'))
 	responses = []
-	for condition in seq:
-		# present correct adapter-probe pair
-		if condition == 'same':
-			adapter_probe_same.play()
+	for condition_idx in seq:
+		speed, dir = conditions[condition_idx]
+		if dir == 'same':
+			adapter_probe_same[speed].play()
 			correct = 49 # set the correct response 'yes, same', key ('1')
 		else:
-			adapter_probe_diff.play()
+			adapter_probe_diff[speed].play()
 			correct = 50 # set the correct response 'no, different' key ('2')
 		# get response
 		with slab.Key() as key:
@@ -165,24 +164,19 @@ def block(speed=150, jnd_snr=10):
 		response = response == correct # reponse is now True or False
 		responses.append(response)
 		# write to file
-		_results_file.write(f'{speed}, {condition}, {response}')
+		_results_file.write(f'{speed}, {dir}, {response}')
 		time.sleep(_after_stim_pause)
-	# calculate outcome hitrates INCORRECT!!! need to sort by condition!
 	hitrate = sum(responses)/seq.n_trials
 	_results_file.write(hitrate, tag='hitrate')
 	print(f'hitrate: {hitrate}')
 	return hitrate
 
-def experiment(subject=None):
-	'''
-	Main experiment
-	'''
+def day1(subject=None):
 	global _results_file
 	# set up the results file
 	if not subject:
 		subject = input('Enter subject code: ')
 	_results_file = slab.Resultsfile(subject=subject)
-	speeds = [30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300] # deg/sec
 
 	print('Familiarization: sounds moving left or right are presented.')
 	print('The direction should be easy to hear.')
@@ -197,24 +191,37 @@ def experiment(subject=None):
 	print('Motion direction threshold: Two sounds moving left or right are presented.')
 	print('Is the sound moving to the left presented first or secong? Press 1 for first, 2 for second.')
 	print('The direction will get more and more difficult to hear.')
-	input('Press enter to start JND estimation (10min)...')
-	repeat = 'r'
-	while repeat == 'r':
-		jnd_snr = jnd()
-		print(f'jnd: {jnd_snr}')
-		repeat = input('Press enter to continue, "r" to repeat threshold measurement.')
+	jnd_snr = dict()
+	for speed in _speeds:
+		input('Press enter to start JND estimation (10min)...')
+		repeat = 'r'
+		while repeat == 'r':
+			jnd_snr[speed] = jnd(speed)
+			print(f'jnd for {speed} deg/sec: {jnd_snr[speed]}')
+			repeat = input('Press enter to continue, "r" to repeat this threshold measurement.')
+	make_stimuli(subject, jnd_snr)
 
-	print('Main experiment. Each block starts with a 1min sounds, continously moving to one side.')
-	print('After a short pause, a series of 5 sounds is played, moving in one direction,')
-	print('then one sound moving either in the same or the other direction.')
-	print('Is the sound moving in the same direction? Press 1 for yes, 2 for no.')
+def day2(subject=None):
+	global _results_file
+	if not subject:
+		subject = input('Enter subject code: ')
+	_results_file = slab.Resultsfile(subject=subject)
+	print('Loading stimuli...')
+	adapter_probe_same = dict()
+	adapter_probe_diff = dict()
+	for speed in _speeds:
+		adapter_probe_same[speed] = slab.Precomputed(f'{_stim_folder}{os.sep}{subject}_speed_{speed}_same.zip')
+		adapter_probe_diff[speed] = slab.Precomputed(f'{_stim_folder}{os.sep}{subject}_speed_{speed}_diff.zip')
+	print('Done.')
+	print('Main experiment: Each trial consists of a series of 5 sounds (4 adapters)')
+	print('moving in one direction, then one sound moving either in the same or the')
+	print('other direction.')
+	print('Is the last sound moving in the same direction? Press 1 for yes, 2 for no.')
 	input('Press enter to start experiment (30min)...')
-	# set up the block sequence
-	blocks = slab.Trialsequence(conditions=speeds, n_reps=_n_blocks_per_speed)
 	# iterate through the blocks
-	for speed in blocks:
-		hitrate = block(speed, jnd_snr)
-		_ = input('Press enter to start the next block (2.5min)...')
+	for idx in range(_n_blocks_per_speed * len(_speeds)):
+		hitrate = block(adapter_probe_same,adapter_probe_diff)
+		_ = input(f'Press enter to start the block {idx} of {_n_blocks_per_speed * len(_speeds)} (4.5min)...')
 	print('Done.')
 
 
