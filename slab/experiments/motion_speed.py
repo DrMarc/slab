@@ -17,6 +17,7 @@ import slab
 # confiuration
 # could go into config file and be loaded here with cfg = slab.load_config('config.txt'),
 # then variables are accessible as cfg.speaker_positions etc.
+slab.Signal.set_default_samplerate(44100)
 _speaker_positions = numpy.arange(-90, 0.01, 4)
 _results_file = None
 _adapter_speed = 150
@@ -85,7 +86,7 @@ def familiarization():
 	responses = []
 	_results_file.write('familiarization:', tag='time')
 	for dir in trials:
-		stim = moving_gaussian(speed=_probe_speed, SNR=100, direction=dir)
+		stim = moving_gaussian(speed=_adapter_speed, SNR=100, direction=dir)
 		stim.play() # present
 		with slab.Key() as key: # and get response
 			resp = key.getch()
@@ -132,7 +133,7 @@ def make_stimuli(subject, jnd_snr):
 		probe = moving_gaussian(speed=probe_speed, SNR=probe_snr, direction=probe_dir)
 		stim = slab.Sound.sequence(adapter, probe)
 		return stim
-	for speed, jnd in jnd_snr.items()
+	for speed, jnd in jnd_snr.items():
 		probe_dir_same = _adapter_dir
 		probe_dir_diff = [dir for dir in ['left', 'right'] if not dir == _adapter_dir]
 		adapter_probe_same = slab.Precomputed(lambda: make_adaptor_probe_pair(probe_snr=jnd, probe_speed=speed, probe_dir=probe_dir_same), n=10)
