@@ -601,6 +601,8 @@ class Resultsfile():
 		Call this method at the end of each trial to save the response and trial state.
 		A tag (any string or 'time') can be prepended. If tag='time', the current time is prepended.
 		'''
+		if not isinstance(data, str):
+			data = str(data)
 		if tag == 'time':
 			tag = datetime.datetime.now().strftime("time: %Y-%m-%d-%H-%M-%S")
 		with open(self.path, 'a') as file:
