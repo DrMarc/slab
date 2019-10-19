@@ -668,7 +668,7 @@ class Precomputed(list):
 		self.previous = idx
 		self[idx].play()
 
-	def write(fname):
+	def write(self, fname):
 		fnames = list()
 		for idx, sound in enumerate(self):
 			f = f's_{idx}.wav'

@@ -102,6 +102,8 @@ class Filter(Signal):
 			else:
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		else: # FFT filter
+			if bool(sig.nsamples % 2): # odd?
+				sig.nsamples += 1
 			sig_rfft = numpy.fft.rfft(sig.data, axis=0)
 			sig_freq_bins = numpy.fft.rfftfreq(sig.nsamples, d=1/sig.samplerate)
 			filt_freq_bins = self.frequencies

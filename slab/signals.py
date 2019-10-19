@@ -106,8 +106,8 @@ class Signal:
 	'''
 
 	# instance properties
-	nsamples = property(fget=lambda self: self.data.shape[0],
-						doc='The number of samples in the Signal.')
+	nsamples = property(fget=lambda self: self.data.shape[0], fset=lambda self,l: self.resize(l),
+						doc='The number of samples in the Signal. Setting calls resize.')
 	duration = property(fget=lambda self: self.data.shape[0] / self.samplerate,
 						doc='The length of the Signal in seconds.')
 	times = property(fget=lambda self: numpy.arange(self.data.shape[0], dtype=float) / self.samplerate,

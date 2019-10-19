@@ -134,8 +134,12 @@ def make_stimuli(subject, jnd_snr):
 		stim = slab.Sound.sequence(adapter, probe)
 		return stim
 	for speed, jnd in jnd_snr.items():
+		print(f'Writing stimuli for speed {speed}...')
 		probe_dir_same = _adapter_dir
-		probe_dir_diff = [dir for dir in ['left', 'right'] if not dir == _adapter_dir]
+		if probe_dir_same == 'right':
+			probe_dir_diff = 'left'
+		else:
+			probe_dir_diff = 'right'
 		adapter_probe_same = slab.Precomputed(lambda: make_adaptor_probe_pair(probe_snr=jnd, probe_speed=speed, probe_dir=probe_dir_same), n=10)
 		adapter_probe_diff = slab.Precomputed(lambda: make_adaptor_probe_pair(probe_snr=jnd, probe_speed=speed, probe_dir=probe_dir_diff), n=10)
 		adapter_probe_same.write(f'{_stim_folder}{os.sep}{subject}_speed_{speed}_same.zip')
