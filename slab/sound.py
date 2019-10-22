@@ -563,6 +563,8 @@ class Sound(Signal):
 		If the normalise keyword is set to True, the amplitude of the sound will be
 		normalised to 1.
 		'''
+		if bool(self.samplerate%1):
+			self = self.resample(int(self.samplerate))
 		if not have_soundfile:
 			raise ImportError('You need SoundFile to write files (pip install git+https://github.com/bastibe/SoundFile.git')
 		if isinstance(filename, pathlib.Path):

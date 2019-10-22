@@ -243,8 +243,8 @@ class Filter(Signal):
 			recorded_signals = recorded_signals.resample(played_signal.samplerate)
 
 		impulse_responses = np.zeros([recorded_signals.nsamples,recorded_signals.nchannels])
-    	for i in range(recorded_signals.nchannels):
-        	response = 1/len(recorded_signals[:,i]) * signal.fftconvolve(recorded_signals[:,i], played_signal.data.flatten()[::-1], mode='full')
+		for i in range(recorded_signals.nchannels):
+			response = 1/len(recorded_signals[:,i]) * signal.fftconvolve(recorded_signals[:,i], played_signal.data.flatten()[::-1], mode='full')
 			response = response[recorded_signals.nsamples//2::]
 
 	@staticmethod
