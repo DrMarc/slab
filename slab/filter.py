@@ -232,8 +232,23 @@ class Filter(Signal):
 			center_freqs[i] = freqs[idx] # look-up freq of index -> centre_freq for that filter
 		return center_freqs
 
+	def get_impulse_response(played_signal, recorded_signals):
+		"""
+		compute the impulse response of the system as the deconvolution of the
+		played and recorded signals. the IRs are returned in a sound object
+		"""
+		if played_signal.samplerate > recorded_signals.samplerate: # resample higher to lower rate if necessary
+			played_signal = played_signal.resample(recorded_signals.samplerate)
+		else:
+			recorded_signals = recorded_signals.resample(played_signal.samplerate)
+
+		impulse_responses = np.zeros([recorded_signals.nsamples,recorded_signals.nchannels])
+    	for i in range(recorded_signals.nchannels):
+        	response = 1/len(recorded_signals[:,i]) * signal.fftconvolve(recorded_signals[:,i], played_signal.data.flatten()[::-1], mode='full')
+			response = response[recorded_signals.nsamples//2::]
+
 	@staticmethod
-	def equalizing_filterbank(played_signal, recorded_signals, reference='max'):
+	def equalizing_filterbank(played_signal, recorded_signals, low_lim=50, hi_lim=20000, bandwidth=1/5, reference='max'):
 		'''
 		Generate an equalizing filter from the difference between a signal and its recording
 		through a linear time-invariant system (speaker, headphones, microphone).
@@ -243,16 +258,22 @@ class Filter(Signal):
 		played_signal: Sound or Signal object of the played waveform
 		recorded_signals:
 		'''
+		# number of samples must be even:
+		if bool(played_signal.nsamples%2):
+			played_signal.resize(played_signal.nsamples+1)
+		if bool(recorded_signals.nsamples%2):
+			recorded_signals.resize(recorded_signals.nsamples+1)
 		if played_signal.samplerate > recorded_signals.samplerate: # resample higher to lower rate if necessary
 			played_signal = played_signal.resample(recorded_signals.samplerate)
 		else:
 			recorded_signals = recorded_signals.resample(played_signal.samplerate)
 		# make filterbank
-		fbank, centre_freqs, _ = Filter.cos_filterbank(length=1000, bandwidth=1/5, samplerate=played_signal.samplerate)
+		fbank = Filter.cos_filterbank(length=1000, bandwidth=bandwidth,low_lim=low_lim, hi_lim=high_lim, samplerate=played_signal.samplerate)
+		center_freqs,_,_ = Filter._center_freqs(low_lim, high_lim, bandwidth )
 		# get attenuation values in each subband relative to original signal
 		levels_in = fbank.apply(played_signal).level
 		levels_in = numpy.tile(levels_in, (recorded_signals.nchannels, 1)).T # same shaoe as levels_out
-		levels_out = numpy.ones((len(centre_freqs), recorded_signals.nchannels))
+		levels_out = numpy.ones((len(center_freqs), recorded_signals.nchannels))
 		for idx in range(recorded_signals.nchannels):
 			levels_out[:, idx] = fbank.apply(recorded_signals.channel(idx)).level
 		if reference == 'max':
