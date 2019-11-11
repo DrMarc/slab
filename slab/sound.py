@@ -1,5 +1,6 @@
 import array
 import time
+import pathlib
 import numpy
 try:
 	import soundfile
@@ -149,7 +150,9 @@ class Sound(Signal):
 		''')
 
 	def __init__(self, data, samplerate=None):
-		if isinstance(data, str): # additional options for Sound initialization (from a file)
+		if isinstance(data, pathlib.Path): # aSound initialization from a file name (pathlib object)
+			data = str(data)
+		if isinstance(data, str): # Sound initialization from a file name (string)
 			if samplerate is not None:
 				raise ValueError('Cannot specify samplerate when initialising Sound from a file.')
 			_ = Sound.read(data)
@@ -650,8 +653,9 @@ class Sound(Signal):
 		>>> sig.filter(f=3000, kind='lp')
 		>>> _ = sig.spectrum()
 		'''
-		#n = 2**(self.nsamples-1).bit_length() # next power of 2
-		filt = Filter.rectangular_filter(frequency=f, kind=kind, samplerate=self.samplerate, length=1000) # TODO: length=self.nsamples?
+		#n = 2**((self.nsamples-1).bit_length()-1) + 1 # next smaller power of 2, +1 because odd needed
+		n = min(1000, self.nsamples)
+		filt = Filter.rectangular_filter(frequency=f, kind=kind, samplerate=self.samplerate, length=n)
 		self.data = filt.apply(self).data
 
 	def aweight(self):

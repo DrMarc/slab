@@ -127,6 +127,9 @@ class Signal:
 			channels = tuple(Signal(c, **kwds) for c in data)
 			self.data = numpy.hstack(channels)
 			self.samplerate = channels[0].samplerate
+		elif hasattr(data, 'data') and hasattr(data, 'samplerate'): # any object with data and samplerate attributes can be recast as Signal
+			self.data = data.data
+			self.samplerate = data.samplerate
 		else:
 			raise TypeError('Cannot initialise Signal with data of class ' + str(data.__class__))
 		if len(self.data.shape) == 1:
