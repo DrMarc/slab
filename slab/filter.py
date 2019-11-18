@@ -102,8 +102,6 @@ class Filter(Signal):
 			else:
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		else: # FFT filter
-			if bool(sig.nsamples % 2): # odd?
-				sig.nsamples += 1
 			sig_rfft = numpy.fft.rfft(sig.data, axis=0)
 			sig_freq_bins = numpy.fft.rfftfreq(sig.nsamples, d=1/sig.samplerate)
 			filt_freq_bins = self.frequencies
@@ -111,16 +109,16 @@ class Filter(Signal):
 			if self.nfilters == sig.nchannels: # filter each channel with corresponding filter
 				for chan in range(sig.nchannels):
 					_filt = numpy.interp(sig_freq_bins, filt_freq_bins, self[:, chan])
-					out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt)
+					out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt, sig.nsamples)
 			elif (self.nfilters == 1) and (sig.nchannels > 1): # filter each channel
 				_filt = numpy.interp(sig_freq_bins, filt_freq_bins, self.data.flatten())
 				for chan in range(sig.nchannels):
-					out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt)
+					out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt, sig.nsamples)
 			elif (self.nfilters > 1) and (sig.nchannels == 1): # apply all filters in bank to signal
 				out.data = numpy.empty((sig.nsamples, self.nfilters))
 				for filt in range(self.nfilters):
 					_filt = numpy.interp(sig_freq_bins, filt_freq_bins, self[:, filt])
-					out.data[:, filt] = numpy.fft.irfft(sig_rfft.flatten() * _filt)
+					out.data[:, filt] = numpy.fft.irfft(sig_rfft.flatten() * _filt, sig.nsamples)
 			else:
 				raise ValueError('Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
 		return out

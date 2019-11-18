@@ -11,7 +11,6 @@ import functools
 import os
 import numpy
 import scipy
-import json
 import slab
 
 # confiuration
@@ -58,10 +57,6 @@ def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
 	#minimum = 0
 	minimum = speaker_amps.min()
 	speaker_amps = numpy.interp(speaker_amps, [minimum,maximum], [-SNR,0])
-	# import matplotlib.pyplot as plt
-	# plt.plot(speaker_amps)
-	# plt.show()
-	# make a sound for each speaker, interpolating the envelopes
 	speaker_signals = []
 	for i, speaker_position in enumerate(_speaker_positions):
 		sig = slab.Binaural.pinknoise(duration=end_time)
@@ -95,7 +90,7 @@ def familiarization():
 		else:
 			resp = resp == 50
 		responses.append(resp)
-		_results_file.write(dir + str(resp))
+		#_results_file.write(dir + ', ' + str(resp))
 		time.sleep(_after_stim_pause)
 	# compute hitrate
 	hitrate = sum(responses)/trials.n_trials
@@ -172,7 +167,7 @@ def block(adapter_probe_same,adapter_probe_diff):
 		_results_file.write(f'{speed}, {dir}, {response}')
 		time.sleep(_after_stim_pause)
 	hitrate = sum(responses)/seq.n_trials
-	_results_file.write(hitrate, tag='hitrate')
+	#_results_file.write(hitrate, tag='hitrate')
 	print(f'hitrate: {hitrate}')
 	return hitrate
 
