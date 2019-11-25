@@ -495,7 +495,7 @@ class Staircase(collections.abc.Iterator):
 		x = numpy.arange(self.this_trial_n + 1)
 		y = numpy.array(self.intensities)
 		responses = numpy.array(self.data)
-		plt.figure('stairs') # figure 'stairs' is created or made current
+		fig = plt.figure('stairs') # figure 'stairs' is created or made current
 		plt.clf()
 		plt.plot(x, y)
 		ax = plt.gca()
@@ -517,6 +517,9 @@ class Staircase(collections.abc.Iterator):
 		#ax2.scatter(self.pf_percent_correct, self.pf_intensities, s=point_sizes)
 		#ax2.set_xlabel('Hit rate')
 		#ax2.set_title('Psychometric\nfunction')
+
+	def close_plot(self):
+		plt.close('stairs')
 
 	def _psychometric_function(self):
 		"""Create a psychometric function by binning data from a staircase

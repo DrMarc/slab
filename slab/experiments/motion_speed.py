@@ -117,6 +117,7 @@ def jnd(speed):
 		stairs.plot()
 		time.sleep(_after_stim_pause)
 	_results_file.write(stairs.threshold(), tag=speed)
+	stairs.close_plot()
 	return round(stairs.threshold(), ndigits=1)
 
 def make_stimuli(subject, jnd_snr):
@@ -221,7 +222,7 @@ def day2(subject=None):
 	# iterate through the blocks
 	for idx in range(_n_blocks_per_speed * len(_speeds)):
 		hitrate = block(adapter_probe_same,adapter_probe_diff)
-		_ = input(f'Press enter to start the block {idx} of {_n_blocks_per_speed * len(_speeds)} (4.5min)...')
+		_ = input(f'Press enter to start the block {idx+1} of {_n_blocks_per_speed * len(_speeds)} (4.5min)...')
 	print('Done.')
 
 
