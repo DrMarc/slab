@@ -96,7 +96,7 @@ class Sound(Signal):
 	**Timing and sequencing**
 	- sequence(*sounds, samplerate=None)
 	- sig.repeat(n)
-	- sig.ramp(when='both', duration=0.01, envelope=None, inplace=True)
+	- sig.ramp(when='both', duration=0.01, envelope=None)
 
 	**Plotting**
 	Examples:
@@ -692,10 +692,11 @@ class Sound(Signal):
 		else:
 			#raise NotImplementedError('Need module soundcard for cross-platform playing (pip install git+https://github.com/bastibe/SoundCard).')
 			self.write('tmp.wav')
-			play_file('tmp.wav')
+			Sound.play_file('tmp.wav')
 		if sleep:
 			time.sleep(self.duration)
 
+	@staticmethod
 	def play_file(fname):
 		from platform import system
 		system = system()
@@ -712,6 +713,31 @@ class Sound(Signal):
 			except:
 				raise NotImplementedError('Need sox for playing from files on Linux. Install: sudo apt-get install sox libsox-fmt-all')
 
+	def waveform(self, start=0, end=None):
+		'''
+		Plots the waveform of the sound.
+		Arguments:
+		``start``, ``end`` (samples or time)
+		If these are left unspecified, it shows the full waveform
+		'''
+		start = self.in_samples(start, self.samplerate)
+		if end is None:
+			end = self.nsamples
+		end = self.in_samples(end, self.samplerate)
+		for i in range(self.nchannels):
+			if i == 0:
+				plt.plot(self.times[start:end], self.channel(i)[start:end], label='left')
+			elif i == 1:
+				plt.plot(self.times[start:end], self.channel(i)[start:end], label='right')
+			else:
+				plt.plot(self.times[start:end], self.channel(i)[start:end])
+		plt.title('Waveform')
+		plt.xlabel('Time [sec]')
+		plt.ylabel('Amplitude')
+		plt.legend()
+		plt.show()
+
+	## features ##
 	def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, plot=True):
 		'''
 		Plots a spectrogram of the sound
@@ -722,12 +748,12 @@ class Sound(Signal):
 			Dynamic range in dB to plot (*120*)
 		```other```
 			If a sound object is given, subtract the waveform and plot the difference spectrogram.
-		If plot is True, returns the values returned by scipy.signal's ``spectrogram``, namely
+		If plot is False, returns the values returned by scipy.signal's ``spectrogram``, namely
 		``freqs, times, power`` where ``power`` is a 2D array of powers,
 		``freqs`` is the corresponding frequencies, and ``times`` are the time bins.
 		'''
 		if self.nchannels > 1:
-			raise ValueError('Can only plot spectrograms for mono sounds.')
+			raise ValueError('Can only compute spectrograms for mono sounds.')
 		if other is not None:
 			x = self.data.flatten() - other.data.flatten()
 		else:
@@ -762,9 +788,12 @@ class Sound(Signal):
 		else:
 			return freqs, times, power
 
-	def cochleagram(self, bandwidth=1/5):
+	def cochleagram(self, bandwidth=1/5, plot=True):
 		'''
-		Plots a cochleagram of the sound.
+		Computes a cochleagram of the sound by filtering with a bank of erb-spaced
+		filters cos filter with given bandwidth (*1/5* th octave) and applying a
+		cube-root compression to the resulting envelopes.
+		If plot is False, returns the envelopes.
 		''' # TODO: freq axis is incorrect (lin instead of erb)
 		fbank = Filter.cos_filterbank(bandwidth=bandwidth, low_lim=20, hi_lim=None, samplerate=self.samplerate)
 		freqs = fbank.filter_bank_center_freqs()
@@ -772,16 +801,19 @@ class Sound(Signal):
 		envs = subbands.envelope()
 		envs.data[envs.data<1e-9] = 0 # remove small values that cause waring with numpy.power
 		envs = envs.data ** (1/3) # apply non-linearity (cube-root compression)
-		cmap = matplotlib.cm.get_cmap('Greys')
-		_, ax = plt.subplots()
-		ax.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
-		labels = list(freqs.astype(int))
-		ax.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(labels)) # centre frequencies as ticks
-		ax.set_xlim([0, self.duration]),
-		plt.title('Cochleagram')
-		plt.xlabel('Time [sec]')
-		plt.ylabel('Frequency [Hz]')
-		plt.show()
+		if plot:
+			cmap = matplotlib.cm.get_cmap('Greys')
+			_, ax = plt.subplots()
+			ax.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
+			labels = list(freqs.astype(int))
+			ax.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(labels)) # centre frequencies as ticks
+			ax.set_xlim([0, self.duration])
+			plt.title('Cochleagram')
+			plt.xlabel('Time [sec]')
+			plt.ylabel('Frequency [Hz]')
+			plt.show()
+		else:
+			return envs
 
 	def spectrum(self, low=None, high=None, log_power=True, plot=True):
 		'''
@@ -831,47 +863,122 @@ class Sound(Signal):
 		else:
 			return Z, freqs
 
-	def spectral_centroid(self):
+	def spectral_feature(self, feature='centroid', mean='rms', frame_duration=None, rolloff=0.85):
 		'''
-		Returns the centroid of the spectrum of each channel of the sound
-		as a numpy array.
-		Example:
+		Computes one of several features of the spectrogram of a sound and returns either a
+		new Signal with the feature value at each sample, or the average (*rms* or mean) feature value over all samples.
+		Available features:
+		*centroid* is the centre of mass of the short-term spectrum, and fwhm is the width of a Gaussian of the same variance as the spectrum around the centroid.
+		Examples:
 		>>> sig = slab.Sound.tone(frequency=500, nchannels=2)
-		>>> sig.spectral_centroid()
-		array([500., 500.])
-		'''
-		Z, freqs = self.spectrum(log_power=True, plot=False)
-		Z[Z<-60] = -60 # under -60dB is excluded
-		# Z = (Z - Z.min(0)) / Z.ptp(0) # normalize to range [0,1]
-		Z = (Z - Z.min(0))
-		Z = Z / Z.sum(0) # normalize to sum==1 (probability distribution)
-		return numpy.sum(freqs[:,numpy.newaxis] * Z, axis=0)
+		>>> sig.spectral_feature(feature='centroid')
+		500.
 
-	def spectral_flux(self):
+		'flux' is a measure of how quickly the power spectrum of a signal is changing, calculated by comparing the power spectrum for one frame against the power spectrum from the previous frame. Returns the root-mean-square over the entire stimulus of the change in power spectrum between adjacent time windows, measured as Euclidean distance.
+		>>> sig = slab.Sound.tone()
+		>>> numpy.testing.assert_allclose(sig.spectral_feature(feature='flux'), desired=0, atol=1e-04)
+
+		'flatness' measures how tone-like a sound is, as opposed to being noise-like.
+		It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean. (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" IEEE Signal Processing Letters, 2004, Vol. 11.)
+
+		'rolloff' is...
+
 		'''
-		Returns the root-mean-square change in power spectrum between adjacent time windows (flux) per second. Change is measured as Euclidean distance.
+		if not frame_duration:
+			if mean is not None:
+				frame_duration = int(self.nsamples/2) # long frames if not averaging
+			else:
+				frame_duration = 0.05 # 50ms frames by default
+		out_all = []
+		for i, chan in enumerate(self.channels()):
+			freqs, times, power = chan.spectrogram(window_dur=frame_duration, plot=False)
+			norm = power / power.sum(axis=0, keepdims=True) # normalize successive frames
+			if feature == 'centroid':
+				out = numpy.sum(freqs[:,numpy.newaxis] * norm, axis=0)
+			elif feature == 'fwhm':
+				cog = numpy.sum(freqs[:,numpy.newaxis] * norm, axis=0)
+				sq_dist_from_cog = (freqs[:,numpy.newaxis] - cog[numpy.newaxis,:]) ** 2
+				sigma = numpy.sqrt(numpy.sum(sq_dist_from_cog * norm, axis=0))
+				out = 2 * numpy.sqrt(2 * numpy.log(2)) * sigma
+			elif feature == 'flux':
+				norm = numpy.c_[norm[:, 0], norm] # duplicate first frame to give 0 diff
+				delta_p = numpy.diff(norm, axis=1) # diff now has same shape as norm
+				out = numpy.sqrt((delta_p**2).sum(axis=0)) / power.shape[0]
+			elif feature == 'rolloff':
+				cum = numpy.cumsum(norm, axis=0)
+				rolloff_idx = numpy.argmax(cum >= rolloff, axis=0)
+				out = freqs[rolloff_idx] # convert from index to Hz
+			elif feature == 'flatness':
+				norm[norm == 0] = 1
+				gmean = numpy.exp(numpy.log(power + 1e-20).mean(axis=0))
+				amean = power.sum(axis=0) / power.shape[0]
+				out = gmean / amean
+			else:
+				raise ValueError('Unknown feature name.')
+			if mean is None:
+				out = numpy.interp(self.times, times, out) # interpolate to sound samples
+			elif mean == 'rms':
+				out = numpy.sqrt(numpy.mean(out**2)) # average feature time series
+			elif mean == 'average':
+				out = out.mean()
+			out_all.append(out) # concatenate channel data
+		if mean is None:
+			out_all = Signal(data=out_all, samplerate=self.samplerate) # cast as Signal
+		return out_all
+
+	def pitch_tracking(self, window_dur=0.005):
+		# apply filterbank
+		# half wave rectification
+		# X[X < 0] = 0
+		# smooth the results with a moving average filter
+		# autocorrelation in each band and frame
+		# for k in range(0, iNumBands):
+		# 	# get current block
+		# 	if X[k, np.arange(i_start, i_stop + 1)].sum() < 1e-20:
+		# 		continue
+		# 	else:
+		# 		x_tmp[np.arange(0, i_stop - i_start + 1)] = X[k, np.arange(i_start, i_stop + 1)]
+		# 	afCorr = np.correlate(x_tmp, x_tmp, "full") / np.dot(x_tmp, x_tmp)
+		# 	# aggregate bands with simple sum before peak picking
+		# 	afSumCorr += afCorr[np.arange(iBlockLength, afCorr.size)]
+		# if afSumCorr.sum() < 1e-20:
+		# 	continue
+		# # find the highest local maximum
+		# iPeaks = find_peaks(afSumCorr, height=0)
+		# if iPeaks[0].size:
+		# 	eta_min = np.max([eta_min, iPeaks[0][0] - 1])
+		# f[n] = np.argmax(afSumCorr[np.arange(eta_min + 1, afSumCorr.size)]) + 1
+		# # convert to Hz
+		# f[n] = f_s / (f[n] + eta_min + 1)
+		pass
+
+	def crest_factor(self):
 		'''
-		_, _, power = self.spectrogram(plot=False)
-		row_sums = power.sum(axis=0, keepdims=True)
-		power = power / row_sums # normalize successive frames so the intensity differences are excluded
-		d = numpy.diff(power, axis=1)
-		flux = numpy.linalg.norm(d, 2, 0) # if d are diffs, then this is Euclidean distance between frames
-		return numpy.sqrt(numpy.mean(flux**2))*self.samplerate
+		The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
+		and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB.
+		Numerically identical to the peak-to-average power ratio.
+		'''
+		pass
 
 	def time_windows(self, duration=1024):
 		'''
-		Returns overlapping time windows as a generator. Use like this:
-		val = 1
-		send = None
-		while val:
-			val = accumulator.send(send)
-			print(f'Getting {val}')
-			send = val * 2
-			print(f'Sending {send}')
+		Returns overlapping time windows as a generator.
+		Use the generator if you need to modify each segment in place like this
+		(this saves you the trouble of crossfading the segments correcly afterwards):
+		>>> sig = slab.Sound.tone()
+		>>> windows = sig.time_windows()
+		>>> win = 1 # dummy value to get started
+		>>> send = None
+		>>> while win: # get windows one by one
+		>>>		win = windows.send(send) # returns each window as Sound object
+		>>>		win.ramp() # modify the windowed signal
+		>>>		send = win
 
-		>>> time_windows = sig.time_windows()
-		>>> for segment in sig.time_windows():
-			# process window here
+		If you don't need to write back into the sound
+		>>> windows = sig.time_windows()
+		>>> for w in windows:
+		>>>		w.waveform() # process window here
+
 		'''
 		window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
 		step_nsamp = numpy.floor(window_nsamp/numpy.sqrt(numpy.pi)/8).astype(int) # step_dur optimal for Gaussian windows
@@ -884,14 +991,15 @@ class Sound(Signal):
 		modified = numpy.zeros_like(self.data)
 		idx = 0
 		while idx < self.nsamples:
-			segment = Sound(self.data[idx:min(self.nsamples,idx+window_nsamp),:], samplerate=self.samplerate)
+			segment = Sound(self.data[idx:min(self.nsamples,idx+window_nsamp),:],  samplerate=self.samplerate)
 			segment.resize(window_nsamp) # in case the last window is too short
 			segment *= window
 			modified_segment = yield segment # return a new sound object
 			if modified_segment:
 				assert modified_segment.data.shape == segment.data.shape
-				modified[idx:idx+window_nsamp,:] += modified_segment
-			idx += noverlap
+				end_idx = min(modified.shape[0], idx+window_nsamp)
+				modified[idx:end_idx,:] += modified_segment.data[:end_idx-idx,:]
+			idx += step_nsamp
 		if numpy.any(modified):
 			self.data = modified
 
@@ -923,29 +1031,6 @@ class Sound(Signal):
 		'''
 		numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
 
-	def waveform(self, start=0, end=None):
-		'''
-		Plots the waveform of the sound.
-		Arguments:
-		``start``, ``end`` (samples or time)
-		If these are left unspecified, it shows the full waveform
-		'''
-		start = self.in_samples(start, self.samplerate)
-		if end is None:
-			end = self.nsamples
-		end = self.in_samples(end, self.samplerate)
-		for i in range(self.nchannels):
-			if i == 0:
-				plt.plot(self.times[start:end], self.channel(i)[start:end], label='left')
-			elif i == 1:
-				plt.plot(self.times[start:end], self.channel(i)[start:end], label='right')
-			else:
-				plt.plot(self.times[start:end], self.channel(i)[start:end])
-		plt.title('Waveform')
-		plt.xlabel('Time [sec]')
-		plt.ylabel('Amplitude')
-		plt.legend()
-		plt.show()
 
 if __name__ == '__main__':
 	sig1 = Sound.harmoniccomplex()
