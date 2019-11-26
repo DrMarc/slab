@@ -242,6 +242,11 @@ class Signal:
 		new.data.shape = (len(new.data), 1)
 		return new
 
+	def channels(self):
+		'Returns generator that yields channel data as objects of the calling class.'
+		for i in range(self.nchannels):
+			yield self.channel(i)
+
 	def resize(self, L):
 		'Extends or contracts the length of the data in the object in place to have L samples.'
 		L = Signal.in_samples(L, self.samplerate)
