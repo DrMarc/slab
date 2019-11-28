@@ -198,7 +198,7 @@ class Binaural(Sound):
 		generated from the centroid frequency of the sound.
 		Returns a new Binaural object.
 		'''
-		centroid = self.spectral_feature(feature='centroid').mean()
+		centroid = numpy.array(self.spectral_feature(feature='centroid')).mean()
 		itd = Binaural.azimuth_to_itd(azimuth, frequency=centroid)
 		ild = Binaural.azimuth_to_ild(azimuth, frequency=centroid)
 		out = self.itd(duration=itd)
