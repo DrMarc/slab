@@ -244,8 +244,7 @@ class Signal:
 
 	def channels(self):
 		'Returns generator that yields channel data as objects of the calling class.'
-		for i in range(self.nchannels):
-			yield self.channel(i)
+		return (self.channel(i) for i in range(self.nchannels))
 
 	def resize(self, L):
 		'Extends or contracts the length of the data in the object in place to have L samples.'

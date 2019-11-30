@@ -121,9 +121,9 @@ class Sound(Signal):
 				rms_dB = 20.0*numpy.log10(rms_value/2e-5)
 			return rms_dB + _calibration_intensity
 		else:
-			chans = (self.channel(i) for i in range(self.nchannels))
-			levels = (c.level for c in chans)
-			return numpy.array(tuple(l+_calibration_intensity for l in levels))
+			chans = self.channels()
+			levels = [c.level for c in chans]
+			return numpy.array(levels)
 
 	def _set_level(self, level):
 		'''
@@ -150,7 +150,7 @@ class Sound(Signal):
 		''')
 
 	def __init__(self, data, samplerate=None):
-		if isinstance(data, pathlib.Path): # aSound initialization from a file name (pathlib object)
+		if isinstance(data, pathlib.Path): # Sound initialization from a file name (pathlib object)
 			data = str(data)
 		if isinstance(data, str): # Sound initialization from a file name (string)
 			if samplerate is not None:
@@ -565,6 +565,8 @@ class Sound(Signal):
 		'''
 		if not have_soundfile:
 			raise ImportError('You need SoundFile to write files (pip install git+https://github.com/bastibe/SoundFile.git')
+		if isinstance(filename, pathlib.Path):
+			filename = str(filename)
 		if normalise:
 			self.data /= numpy.amax(self.data)
 		soundfile.write(filename, self.data, self.samplerate)
@@ -659,7 +661,6 @@ class Sound(Signal):
 		self.data = filt.apply(self).data
 
 	def aweight(self):
-		#TODO: untested! Filter all chans. Move to Filter class!
 		'Returns A-weighted first channel as new sound.'
 		f1 = 20.598997
 		f2 = 107.65265
@@ -670,8 +671,11 @@ class Sound(Signal):
 		denominators = numpy.convolve([1, 4 * numpy.pi * f4, (2 * numpy.pi * f4)**2], [1, 4 * numpy.pi * f1, (2 * numpy.pi * f1)**2])
 		denominators = numpy.convolve(numpy.convolve(denominators, [1, 2 * numpy.pi * f3]), [1, 2 * numpy.pi * f2])
 		b, a = scipy.signal.filter_design.bilinear(numerators, denominators, self.samplerate)
-		data = scipy.signal.lfilter(b, a, self.data[:,0])
-		return Sound(data, self.samplerate)
+		data_chans = []
+		for chan in self.channels():
+			data = scipy.signal.lfilter(b, a, chan.data.flatten())
+			data_chans.append(data) # concatenate channel data
+		return Sound(data_chans, self.samplerate)
 
 	@staticmethod
 	def record(duration=1.0, samplerate=44100):
@@ -815,7 +819,7 @@ class Sound(Signal):
 		else:
 			return envs
 
-	def spectrum(self, low=None, high=None, log_power=True, plot=True):
+	def spectrum(self, low=16, high=None, log_power=True, plot=True):
 		'''
 		Returns the spectrum of the sound and optionally plots it.
 		Arguments:
@@ -853,7 +857,7 @@ class Sound(Signal):
 		if plot:
 			plt.subplot(111)
 			plt.semilogx(freqs, Z)
-			ticks_freqs = numpy.round(32000 * 2 ** (numpy.array(range(16), dtype=float)*-1))
+			ticks_freqs = numpy.round(32000 * 2 ** (numpy.arange(12, dtype=float)*-1))
 			plt.xticks(ticks_freqs, map(str, ticks_freqs.astype(int)))
 			plt.grid()
 			plt.xlim((freqs[1], freqs[-1]))
@@ -890,7 +894,7 @@ class Sound(Signal):
 			else:
 				frame_duration = 0.05 # 50ms frames by default
 		out_all = []
-		for i, chan in enumerate(self.channels()):
+		for chan in self.channels():
 			freqs, times, power = chan.spectrogram(window_dur=frame_duration, plot=False)
 			norm = power / power.sum(axis=0, keepdims=True) # normalize successive frames
 			if feature == 'centroid':
@@ -955,10 +959,11 @@ class Sound(Signal):
 	def crest_factor(self):
 		'''
 		The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
-		and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB.
-		Numerically identical to the peak-to-average power ratio.
+		and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB. Numerically identical to the peak-to-average power ratio.
 		'''
-		pass
+		jwd = self.data - numpy.mean(self.data)
+		crest = jwd.max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
+		return 20 * numpy.log10(crest)
 
 	def time_windows(self, duration=1024):
 		'''
@@ -1031,6 +1036,33 @@ class Sound(Signal):
 		'''
 		numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
 
+def apply_to_path(path, method, kwargs={}, out_path=None):
+	'''
+	Apply a function to all wav files in a directory. This function need to take a Sound
+	as first argument. Other a arguments are passed as dictionary of keyword arguments and values. If out_path is supplied, then the sounds are saved with their original file name in the new path/directory.
+	Example:
+	>> slab.apply_to_path('.', slab.Sound.spectral_feature, {'feature':'fwhm'})
+	>> slab.apply_to_path('.', slab.Sound.ramp, out_path='modified')
+	>> slab.apply_to_path('.', slab.Sound.ramp, kwargs={'duration':0.3}, out_path='./test')
+	'''
+	if not callable(method):
+		raise ValueError('Method must be callable.')
+	if isinstance(path, str):
+		path = pathlib.Path(path)
+	if isinstance(out_path, str):
+		out_path = pathlib.Path(out_path)
+	files = path.glob('*.wav')
+	results = dict()
+	for file in files:
+		sig = Sound(file)
+		res = method(sig, **kwargs)
+		if out_path:
+			if hasattr(res, 'write'): # if objects with write methods were returned, write them to sq_dist_from_cog
+				res.write(out_path.joinpath(file.name))
+			else: # otherwise assum the modification was in-place and write sig
+				sig.write(out_path.joinpath(file.name))
+		results[str(file.stem)] = res
+	return results # a dictionary of results for each file name
 
 if __name__ == '__main__':
 	sig1 = Sound.harmoniccomplex()
