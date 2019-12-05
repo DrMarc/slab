@@ -959,11 +959,26 @@ class Sound(Signal):
 	def crest_factor(self):
 		'''
 		The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
-		and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB. Numerically identical to the peak-to-average power ratio.
+		and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB.
+		Numerically identical to the peak-to-average power ratio.
 		'''
 		jwd = self.data - numpy.mean(self.data)
 		crest = jwd.max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
 		return 20 * numpy.log10(crest)
+
+	def mean_onset_slope(self):
+		'''
+		Returns the centroid of a histogram of onset slopes as a measure of how many
+		quick intensity increases the sound has. These onset-like features make the
+		sound easier to localize via envelope ITD.
+		'''
+		env = self.envelope(kind='dB') # get envelope
+		diffs = numpy.diff(env.data, axis=0) * self.samplerate # compute db change per sec
+		diffs[diffs < 0] = 0 # keep positive changes (onsets)
+		hist, bins = numpy.histogram(diffs, range=(1, diffs.max()), bins=1000) # compute histogram of differences
+		bin_centers = (bins[:-1] + bins[1:]) / 2
+		norm = hist / hist.sum() # normalize histogram so that it summs to 1
+		return numpy.sum(bin_centers * norm) # compute centroid of histogram
 
 	def time_windows(self, duration=1024):
 		'''

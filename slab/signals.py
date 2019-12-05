@@ -288,26 +288,29 @@ class Signal:
 		>>> sig.envelope(envelope=[0, 1, 0.2, 0.2, 0])
 		>>> sig.waveform()
 		'''
-		envelope = numpy.array(envelope)
-		if not envelope.any():
+		if envelope is None: # no envelope supplied, compute Hilbert envelope
 			if not have_scipy:
 				raise ImportError('Calculating envelopes requires scipy.signal.')
 			envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))
 			filt = scipy.signal.firwin(1000, 50, pass_zero=True, fs=self.samplerate) # 50Hz lowpass filter to remove fine-structure
 			envs = scipy.signal.filtfilt(filt, [1], envs, axis=0)
+			envs[envs<=0] = numpy.finfo(float).eps # remove negative values and zeroes
+			if kind == 'dB':
+				envs = 20 * numpy.log10(envs) # convert amplitude to dB
 			new = Signal(envs, samplerate=self.samplerate)
-		else:
+		else: # envelope supplied, generate new signal
 			new = copy.deepcopy(self)
-			if times.any() and (len(times) != len(envelope)):
-				raise ValueError('Envelope and times need to be of equal length!')
+			if times is None:
+				times = numpy.linspace(0, 1, len(envelope)) * self.duration
+			else: # times vector was supplied
+				if len(times) != len(envelope):
+					raise ValueError('Envelope and times need to be of equal length!')
+				times = numpy.array(times)
+				times[times > self.duration] = self.duration # clamp between 0 and sound duration
+				times[times < 0] = 0
+			envelope = numpy.interp(self.times, times, numpy.array(envelope)) # get an envelope value for each sample time
 			if kind == 'dB':
 				envelope = 10**(envelope/20.) # convert dB to gain factors
-			if not times.all(): # times vector
-				times = numpy.linspace(0, 1, len(envelope)) * self.duration
-			times = numpy.array(times)
-			times[times > self.duration] = self.duration # clamp between 0 and sound duration
-			times[times < 0] = 0
-			envelope = numpy.interp(self.times, times, envelope) # get an envelope value for each sample time
 			new.data *= envelope[:,numpy.newaxis] # multiply
 		return new
 
