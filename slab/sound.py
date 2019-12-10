@@ -931,8 +931,9 @@ class Sound(Signal):
 		return out_all
 
 	def pitch_tracking(self, window_dur=0.005):
-		# apply filterbank
-		# half wave rectification
+		fbank = Filter.cos_filterbank(length=self.nsamples, bandwidth=1/10, low_lim=30, hi_lim=None, samplerate=self.samplerate)
+		self_bands = fbank.apply(self) # apply filterbank
+		envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0)) # get envelope
 		# X[X < 0] = 0
 		# smooth the results with a moving average filter
 		# autocorrelation in each band and frame
@@ -966,7 +967,7 @@ class Sound(Signal):
 		crest = jwd.max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
 		return 20 * numpy.log10(crest)
 
-	def mean_onset_slope(self):
+	def onset_slope(self):
 		'''
 		Returns the centroid of a histogram of onset slopes as a measure of how many
 		quick intensity increases the sound has. These onset-like features make the
