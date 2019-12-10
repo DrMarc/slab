@@ -249,8 +249,11 @@ class Staircase(collections.abc.Iterator):
 	been exceeded. If *step_sizes* was an array and has been exceeded
 	before n_trials is exceeded then the staircase will continue
 	to reverse.
-	*n_up* and *n_down* are always considered as 1 until the first reversal
+	n_up and n_down are always considered as 1 until the first reversal
 	is reached. The values entered as arguments are then used.
+	Lewitt (1971) gives the up-down values for different threshold points
+	on the psychometric function: 1-1 (0.5), 1-2 (0.707), 1-3 (0.794),
+	1-4 (0.841), 1-5 (0.891).
 	Example:
 	>>> stairs = Staircase(start_val=50, n_reversals=10, step_type='lin',\
 			step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1, n_trials=10)
@@ -356,7 +359,7 @@ class Staircase(collections.abc.Iterator):
 			self.intensities.append(self._next_intensity)
 			return self._next_intensity
 		else:
-			self._psychometric_function() # tally responses to create a psychomeric function
+			self._psychometric_function() # tally responses to create a psychometric function
 			raise StopIteration
 
 	def __repr__(self):

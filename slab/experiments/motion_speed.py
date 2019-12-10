@@ -105,7 +105,7 @@ def jnd(speed):
 	'''
 	# define the staircase
 	stairs = slab.Staircase(start_val=20, n_reversals=8,\
-			step_sizes=[8,4,2], min_val=2, max_val=30, n_up=1, n_down=4 n_trials=40)
+			step_sizes=[8,4,2], min_val=2, max_val=30, n_up=1, n_down=4, n_trials=40)
 	# loop through it
 	_results_file.write('jnd:', tag='time')
 	for trial in stairs:
