@@ -292,7 +292,7 @@ class Filter(Signal):
 		# make filterbank
 		fbank = Filter.cos_filterbank(length=1000, bandwidth=bandwidth,low_lim=low_lim, hi_lim=hi_lim, samplerate=played_signal.samplerate)
 		center_freqs,_,_ = Filter._center_freqs(low_lim, hi_lim, bandwidth )
-		center_freqs = FIlter._erb2freq(center_freqs)
+		center_freqs = Filter._erb2freq(center_freqs)
 		# get attenuation values in each subband relative to original signal
 		levels_in = fbank.apply(played_signal).level
 		levels_in = numpy.tile(levels_in, (recorded_signals.nchannels, 1)).T # same shaoe as levels_out

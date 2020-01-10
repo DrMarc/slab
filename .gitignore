@@ -9,3 +9,6 @@
 
 # MacOS Desktop Services Store
 /.DS_Store
+
+# pycharm metadata
+/.idea/
