@@ -677,27 +677,48 @@ class Sound(Signal):
 			data_chans.append(data) # concatenate channel data
 		return Sound(data_chans, self.samplerate)
 
+	def reverb(self, room=4, mic='center', source_distance=1, hrtf=None):
+		'''
+		Returns a Binaural sound with added early reflections computed using
+		the image source method and a simple shoe-box room and added late
+		reverberation. This is a convenience wrapper around the pyroomacoustics
+		toolbox.
+		'''
+		# make room
+		# set source and mic
+		# compute image source model
+		# return Binaural sound
+		pass
+
 	@staticmethod
 	def record(duration=1.0, samplerate=44100):
-		'Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.'
-		if not have_soundcard:
-			raise NotImplementedError('Need module soundcard for recording (https://github.com/bastibe/SoundCard).')
-		samplerate = Sound.get_samplerate(samplerate)
-		duration = Sound.in_samples(duration, samplerate)
-		print(duration)
-		mic = soundcard.default_microphone()
-		data = mic.record(samplerate=samplerate, numframes=duration, channels=1)
-		return Sound(data, samplerate=samplerate)
+		'''Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.
+		Uses SoundCard module if installed [recommended], otherwise uses SoX (duration must be in sec in this case).
+		'''
+		if have_soundcard:
+			samplerate = Sound.get_samplerate(samplerate)
+			duration = Sound.in_samples(duration, samplerate)
+			mic = soundcard.default_microphone()
+			data = mic.record(samplerate=samplerate, numframes=duration, channels=1)
+			out = Sound(data, samplerate=samplerate)
+		else: # use sox
+			import subprocess
+			try:
+				subprocess.call(['sox -d', tmp.wav, '-r', samplerate, '-trim 0', duration])
+			except:
+				raise NotImplementedError('Need sox for recording on Linux whithout SoundCard module. Install: sudo apt-get install sox libsox-fmt-all OR pip install git+https://github.com/bastibe/SoundCard).' )
+			time.sleep(duration)
+			out = Sound('tmp.wav')
+		return out
 
 	def play(self, sleep=False):
 		'Plays the sound.'
 		if have_soundcard:
 			soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
 		else:
-			#raise NotImplementedError('Need module soundcard for cross-platform playing (pip install git+https://github.com/bastibe/SoundCard).')
 			self.write('tmp.wav')
 			Sound.play_file('tmp.wav')
-		if sleep:
+		if sleep: # all current play methods are blocking, there is no reason to sleep!
 			time.sleep(self.duration)
 
 	@staticmethod
@@ -713,7 +734,7 @@ class Sound(Signal):
 		else:  # Linux/Unix, install sox (sudo apt-get install sox libsox-fmt-all)
 			import subprocess
 			try:
-				subprocess.call(['play', fname])
+				subprocess.call(['sox', fname, '-d'])
 			except:
 				raise NotImplementedError('Need sox for playing from files on Linux. Install: sudo apt-get install sox libsox-fmt-all')
 
