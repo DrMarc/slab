@@ -267,7 +267,7 @@ class Staircase(collections.abc.Iterator):
 	>>> print(f'mean of final 6 reversals: {stairs.threshold()}')
 	mean of final 6 reversals: 28.982753492378876
 	"""
-	def __init__(self, start_val, n_reversals=None, step_sizes=4, n_trials=0, n_up=1,
+	def __init__(self, start_val, n_reversals=None, step_sizes=4, n_pretrials=4, n_up=1,
 		n_down=2, step_type='lin', min_val=None, max_val=None, name=''):
 		"""
 		:Parameters:
@@ -286,10 +286,9 @@ class Staircase(collections.abc.Iterator):
 				For a single value the step size is fixed. For an array or
 				list the step size will progress to the next entry
 				at each reversal.
-			n_trials:
-				The minimum number of trials to be conducted. If the
-				staircase has not reached the required number of reversals
-				then it will continue.
+			n_pretrials:
+				The number of pretrials presented as familiarization before
+				the actual experiment. start_val is used presentation level.
 			n_up:
 				The number of 'incorrect' (or 0) responses before the
 				staircase level increases.
@@ -329,7 +328,7 @@ class Staircase(collections.abc.Iterator):
 			self.n_reversals = len(self.step_sizes)
 		else:
 			self.n_reversals = n_reversals
-		self.n_trials = n_trials
+		self.n_pretrials = n_pretrials
 		self.finished = False
 		self.this_trial_n = -1
 		self.data = []
@@ -355,9 +354,13 @@ class Staircase(collections.abc.Iterator):
 				# do stuff
 		"""
 		if not self.finished:
-			self.this_trial_n += 1 # update pointer for next trial
-			self.intensities.append(self._next_intensity)
-			return self._next_intensity
+			if self.n_pretrials:
+				self.n_pretrials -= 1
+				return self.start_val # stay at start_val during pretrials
+			else:
+				self.this_trial_n += 1 # update pointer for next trial
+				self.intensities.append(self._next_intensity)
+				return self._next_intensity
 		else:
 			self._psychometric_function() # tally responses to create a psychometric function
 			raise StopIteration
@@ -416,7 +419,7 @@ class Staircase(collections.abc.Iterator):
 		if reversal: # add reversal info
 			self.reversal_points.append(self.this_trial_n)
 			self.reversal_intensities.append(self.intensities[-1])
-		if (len(self.reversal_intensities) >= self.n_reversals and len(self.intensities) >= self.n_trials):
+		if len(self.reversal_intensities) >= self.n_reversals:
 			self.finished = True # we're done
 		if reversal and self._variable_step: # new step size if necessary
 			if len(self.reversal_intensities) >= len(self.step_sizes): # if beyond the list of step sizes, use the last one
@@ -502,7 +505,7 @@ class Staircase(collections.abc.Iterator):
 		plt.clf()
 		plt.plot(x, y)
 		ax = plt.gca()
-		ax.set_xlim(0, self.n_trials)
+		ax.set_xlim(0, min(20, (self.this_trial_n + 15)//10*10)) # plot
 		ax.set_ylim(self.min_val, self.max_val)
 		ax.scatter(x[responses], y[responses], color='green') # plot green dots at correct/yes responses
 		ax.scatter(x[~responses], y[~responses], color='red') # plot red dots at correct/yes responses
@@ -551,7 +554,7 @@ class Staircase(collections.abc.Iterator):
 		self.pf_percent_correct = binned_resp
 		self.pf_responses_per_intensity = n_points
 
-	def present_afc_trial(self, target, distractors, key_codes=list(range(49,58)), isi=0.25):
+	def present_afc_trial(self, target, distractors, key_codes=(range(48,58)), isi=0.25, print_info=True):
 		'''
 		Present the target (slab sound object) in random order together
 		with the distractor sound object (or list of several sounds) with
@@ -566,7 +569,6 @@ class Staircase(collections.abc.Iterator):
 		distractors, then call present_afc_trial to play them and record
 		the response. Optionally call print_trial_info afterwards.
 		'''
-		# randomize the stimuli
 		if isinstance(distractors, list):
 			stims = [target].extend(distractors) # assuming sound object and list of sounds
 		else:
@@ -582,7 +584,17 @@ class Staircase(collections.abc.Iterator):
 		interval_key = key_codes[interval]
 		response = response == interval_key
 		self.add_response(response)
+		if print_info:
+			self.print_trial_info()
 
+	def present_tone_trial(self, stimulus, correct_key_idx, key_codes=(range(48,58)), print_info=True):
+		stimulus.play()
+		with slab.Key() as key:
+			response = key.getch()
+		response = response == key_codes[correct_key_idx]
+		self.add_response(response)
+		if print_info:
+			self.print_trial_info()
 
 class Resultsfile():
 	'''
@@ -617,7 +629,7 @@ class Resultsfile():
 			file.write(data)
 			file.write('\n')
 
-	def clear(self): # too dangerous to have this?
+	def clear(self):
 		'Clears the file by erasing all content.'
 		with open(self.path, 'w') as file:
 			file.write('')
@@ -673,6 +685,11 @@ class Precomputed(list):
 			idx = numpy.random.randint(len(self))
 		self.previous = idx
 		self[idx].play()
+
+	def random_choice(self, n=1):
+		'Return a random sample of sounds with replacement from the list.'
+		idxs = numpy.random.randint(0, len(self), size=n)
+		return [self[i] for i in idxs]
 
 	def write(self, fname):
 		fnames = list()
