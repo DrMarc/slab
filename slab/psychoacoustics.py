@@ -328,9 +328,9 @@ class Staircase(collections.abc.Iterator):
 			self.n_reversals = len(self.step_sizes)
 		else:
 			self.n_reversals = n_reversals
-		self.n_pretrials = n_pretrials
 		self.finished = False
-		self.this_trial_n = -1
+		self.n_pretrials = n_pretrials
+		self.this_trial_n = -n_pretrials
 		self.data = []
 		self.intensities = []
 		self.reversal_points = []
@@ -354,13 +354,9 @@ class Staircase(collections.abc.Iterator):
 				# do stuff
 		"""
 		if not self.finished:
-			if self.n_pretrials:
-				self.n_pretrials -= 1
-				return self.start_val # stay at start_val during pretrials
-			else:
-				self.this_trial_n += 1 # update pointer for next trial
-				self.intensities.append(self._next_intensity)
-				return self._next_intensity
+			self.this_trial_n += 1 # update pointer for next trial
+			self.intensities.append(self._next_intensity)
+			return self._next_intensity
 		else:
 			self._psychometric_function() # tally responses to create a psychometric function
 			raise StopIteration
@@ -387,17 +383,18 @@ class Staircase(collections.abc.Iterator):
 		if intensity is not None:
 			self.intensities.pop()
 			self.intensities.append(intensity)
-		if result: # correct response
-			if len(self.data) > 1 and self.data[-2] == result:
-				self.correct_counter += 1 # increment if on a run
-			else:
-				self.correct_counter = 1 # or reset
-		else: # incorrect response
-			if len(self.data) > 1 and self.data[-2] == result:
-				self.correct_counter -= 1 # decrement if on a run
-			else:
-				self.correct_counter = -1 # or reset
-		self.calculatenext_intensity()
+		if self.this_trial_n > 0: # we're out of the pretrials
+			if result: # correct response
+				if len(self.data) > 1 and self.data[-2] == result:
+					self.correct_counter += 1 # increment if on a run
+				else:
+					self.correct_counter = 1 # or reset
+			else: # incorrect response
+				if len(self.data) > 1 and self.data[-2] == result:
+					self.correct_counter -= 1 # decrement if on a run
+				else:
+					self.correct_counter = -1 # or reset
+			self.calculatenext_intensity()
 
 	def calculatenext_intensity(self):
 		'Based on current intensity, counter of correct responses, and current direction.'
@@ -468,7 +465,7 @@ class Staircase(collections.abc.Iterator):
 
 	def threshold(self, n=6):
 		'''Returns the average (arithmetic for step_type == 'lin',
-		geometric otherwise) of the last n reversals.'''
+		geometric otherwise) of the last n reversals (default 6).'''
 		if self.finished:
 			if n > self.n_reversals:
 				n = self.n_reversals
@@ -478,7 +475,7 @@ class Staircase(collections.abc.Iterator):
 				return numpy.exp(numpy.mean(numpy.log(self.reversal_intensities[-n:])))
 
 	def print_trial_info(self):
-		print(f'trial # {self.this_trial_n}: intensity {round(self.intensities[-1],2) if self.intensities[-1] else round(self._next_intensity,2)}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
+		print(f'trial # {self.this_trial_n}: intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
 
 	def save_csv(self, fileName):
 		'Write a text file with the data.'
@@ -498,14 +495,14 @@ class Staircase(collections.abc.Iterator):
 		'Plot the staircase. If called after each trial, one plot is created and updated.'
 		if not have_pyplot:
 			raise ImportError('Plotting requires matplotlib!')
-		x = numpy.arange(self.this_trial_n + 1)
+		x = numpy.arange(-self.n_pretrials, len(self.intensities)-self.n_pretrials)
 		y = numpy.array(self.intensities)
 		responses = numpy.array(self.data)
 		fig = plt.figure('stairs') # figure 'stairs' is created or made current
 		plt.clf()
 		plt.plot(x, y)
 		ax = plt.gca()
-		ax.set_xlim(0, min(20, (self.this_trial_n + 15)//10*10)) # plot
+		ax.set_xlim(-self.n_pretrials, min(20, (self.this_trial_n + 15)//10*10)) # plot
 		ax.set_ylim(self.min_val, self.max_val)
 		ax.scatter(x[responses], y[responses], color='green') # plot green dots at correct/yes responses
 		ax.scatter(x[~responses], y[~responses], color='red') # plot red dots at correct/yes responses
@@ -733,7 +730,7 @@ if __name__ == '__main__':
 	tr = Trialsequence(conditions=5, n_reps=2, name='test')
 	stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=
 				[8, 4, 4, 2, 2, 1],  # reduce step size every two reversals
-				min_val=20, max_val=60, n_up=1, n_down=1, n_trials=15)
+				min_val=20, max_val=60, n_up=1, n_down=1, n_pretrials=4)
 	for trial in stairs:
 		response = stairs.simulate_response(30)
 		stairs.add_response(response)
@@ -741,4 +738,3 @@ if __name__ == '__main__':
 		stairs.plot()
 	print(f'reversals: {stairs.reversal_intensities}')
 	print(f'mean of final 6 reversals: {stairs.threshold()}')
-	#stairs.save_json('stairs.json')
