@@ -8,7 +8,6 @@ Use like this:
 
 import time
 import functools
-import os
 import numpy
 import scipy
 import slab
@@ -21,13 +20,14 @@ _speaker_positions = numpy.arange(-90, 0.01, 4)
 _results_file = None
 _adapter_speed = 150
 _adapter_dir = 'left'
-_n_adapters_per_trial = 4
+_n_adapters_per_trial = 6
 _n_blocks_per_speed = 2
 _after_stim_pause = 0.1
 _speeds = [50, 100, 150, 200, 250] # deg/sec
+#_speeds = [150, 250]
+_jnd_diff_thresh = 1.5
 
 slab.Resultsfile.results_folder = 'Results'
-_stim_folder = 'Stimuli'
 
 def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
 	'''
@@ -104,13 +104,35 @@ def familiarization():
 	_results_file.write(hitrate, tag='hitrate')
 	return hitrate
 
+def practice_stairs():
+	'''
+	Presents an easy large-step staircase to practice.
+	'''
+	print('This is a practise run. Explain the procedure to the participant.')
+	print('Show the running staircase to the participant.')
+	print('')
+	print('One sound is presented in each trial.')
+	print('Is this sound moving left or right?')
+	print('Press 1 for left, 2 for right.')
+	print('The direction will get more and more difficult to hear.')
+	input('Press enter to start practice...')
+	stairs = slab.Staircase(start_val=24, n_reversals=6,\
+		step_sizes=[10,6,4], min_val=1, max_val=30, n_up=1, n_down=1, n_pretrials=1)
+	for trial in stairs:
+		direction = numpy.random.choice(('left', 'right'))
+		stim = moving_gaussian(speed=_adapter_speed, SNR=trial, direction=direction)
+		stairs.present_tone_trial(stimulus=stim, correct_key_idx=1 if direction == 'left' else 2, print_info=True)
+		stairs.plot()
+	input('Done. Press enter to continue...')
+	stairs.close_plot()
+
 def jnd(speed=None, adapter_list=None):
 	'''
 	Presents a staricase of moving_gaussian stimuli with varying SNR and returns the threshold.
 	This threshold is used in the main experiment as the listener-specific SNR parameter.
 	'''
 	if adapter_list:
-		print(f'{len(adapter_list)} sounds moving {_adapter_dir}, followed by')
+		print(f'{_n_adapters_per_trial} sounds moving {_adapter_dir}, followed by')
 		print('one sound moving left or right is presented.')
 		print('Is this last sound moving left or right?')
 	else:
@@ -123,7 +145,7 @@ def jnd(speed=None, adapter_list=None):
 	while repeat == 'r':
 		# define the staircase
 		stairs = slab.Staircase(start_val=24, n_reversals=14,\
-				step_sizes=[8,6,4,2,1], min_val=1, max_val=30, n_up=1, n_down=1, n_pretrials=3)
+				step_sizes=[8,6,4,3,2,1], min_val=0, max_val=30, n_up=1, n_down=1, n_pretrials=2)
 		# loop through it
 		_results_file.write('jnd:', tag='time')
 		for trial in stairs:
@@ -137,7 +159,7 @@ def jnd(speed=None, adapter_list=None):
 		thresh = stairs.threshold(n=10)
 		tag = f"{speed} {'with_adapter' if adapter_list else 'no_adapter'}"
 		print(f'jnd for {tag}: {round(thresh, ndigits=1)}')
-		repeat = input('Press enter to continue, "r" to repeat this threshold measurement.')
+		repeat = input('Press enter to continue, "r" to repeat this threshold measurement.\n\n')
 		_results_file.write(thresh, tag=tag)
 	return thresh
 
@@ -154,22 +176,39 @@ def main_experiment(subject=None):
 	if not subject:
 		subject = input('Enter subject code: ')
 	_results_file = slab.Resultsfile(subject=subject)
-	_ = familiarization() # run the familiarization, the hitrate is saved in the results file
+	#_ = familiarization() # run the familiarization, the hitrate is saved in the results file
+	practice_stairs() # run the stairs practice
 	print('The main part of the experiment starts now (motion direction thresholds).')
 	adapter_list = make_adapters()
-	speed_seq = slab.Trialsequence(conditions=_speeds, n_reps=_n_blocks_per_speed,\
-		kind='random_permutation')
-	jnds = numpy.empty((len(_speeds), 3)) # results table with three colums: speed, jnd_no_adapter, jnd_adapter
-	for speed in speed_seq:
-		idx = _speeds.index(speed) # index of the current speed value, used for results table
-		jnds[idx,0] = speed
-		if numpy.random.choice((True, False)): # presented without adapters first
-			jnds[idx,1] = jnd(speed) # each call to jnd prints instructions and saves to the results file
-			jnds[idx,2] = jnd(speed, adapter_list)
-		else: # with adapters first
-			jnds[idx,2] = jnd(speed, adapter_list)
-			jnds[idx,1] = jnd(speed)
-	_results_file.write(str(jnds), tag='final results') # save a string representation of the numpy results table
+	jnds = numpy.zeros((len(_speeds), 3, _n_blocks_per_speed)) # results table with three colums: speed, jnd_no_adapter, jnd_adapter
+	repeats = list() # for collecting conditions marked for re-measuring due to large differences in jnds
+	for i in range(_n_blocks_per_speed): # if larger t
+		speed_seq = slab.Trialsequence(conditions=_speeds, n_reps=1, kind='random_permutation')
+		for speed in speed_seq:
+			idx = _speeds.index(speed) # index of the current speed value, used for results table
+			jnds[idx,0,:] = speed
+			if numpy.random.choice((True, False)): # presented without adapters first
+				jnds[idx,1,i] = input(f'{speed} 1 {i} ') # jnd(speed) # each call to jnd prints instructions and saves to the results file
+				jnds[idx,2,i] = input(f'{speed} 2 {i} ') # jnd(speed, adapter_list)
+			else: # with adapters first
+				jnds[idx,2,i] = input(f'{speed} 2 {i} ') # jnd(speed, adapter_list)
+				jnds[idx,1,i] = input(f'{speed} 1 {i} ') # jnd(speed)
+			if i == 1:
+				if abs(jnds[idx,1,1] - jnds[idx,1,0]) > _jnd_diff_thresh: # if measurements too different, mark for repeat
+					repeats.append((speed,False))
+					print(f'{speed} no adapter: Difference to first JND too large. Marked for repetition!')
+				if abs(jnds[idx,2,1] - jnds[idx,2,0]) > _jnd_diff_thresh: # if measurements too different, mark for repeat
+					repeats.append((speed,True))
+					print(f'{speed} with adapters: Difference to first JND too large. Marked for repetition!')
+		_results_file.write(str(jnds[:,:,i]), tag=f'results round {i}') # save a string representation of the numpy results table
+	# rerun the conditions marked for repeated measurements
+	if repeats:
+		print('Repeating marked JND measurements.')
+		for speed, adapters in repeats: # these will just be tagged in the results file, not in the tables
+			if adapters:
+				jnd(speed, adapter_list)
+			else:
+				jnd(speed)
 
 
 if __name__ == '__main__':
