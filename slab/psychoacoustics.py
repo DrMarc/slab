@@ -475,7 +475,7 @@ class Staircase(collections.abc.Iterator):
 				return numpy.exp(numpy.mean(numpy.log(self.reversal_intensities[-n:])))
 
 	def print_trial_info(self):
-		print(f'trial # {self.this_trial_n}: intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
+		print(f'trial # {self.this_trial_n}: reversals: {len(self.reversal_points)}/{self.n_reversals}, intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
 
 	def save_csv(self, fileName):
 		'Write a text file with the data.'
