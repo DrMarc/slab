@@ -24,7 +24,6 @@ _n_adapters_per_trial = 6
 _n_blocks_per_speed = 2
 _after_stim_pause = 0.1
 _speeds = [50, 100, 150, 200, 250] # deg/sec
-#_speeds = [150, 250]
 _jnd_diff_thresh = 1.5
 
 slab.Resultsfile.results_folder = 'Results'
@@ -188,11 +187,11 @@ def main_experiment(subject=None):
 			idx = _speeds.index(speed) # index of the current speed value, used for results table
 			jnds[idx,0,:] = speed
 			if numpy.random.choice((True, False)): # presented without adapters first
-				jnds[idx,1,i] = input(f'{speed} 1 {i} ') # jnd(speed) # each call to jnd prints instructions and saves to the results file
-				jnds[idx,2,i] = input(f'{speed} 2 {i} ') # jnd(speed, adapter_list)
+				jnds[idx,1,i] = jnd(speed) # each call to jnd prints instructions and saves to the results file
+				jnds[idx,2,i] = jnd(speed, adapter_list)
 			else: # with adapters first
-				jnds[idx,2,i] = input(f'{speed} 2 {i} ') # jnd(speed, adapter_list)
-				jnds[idx,1,i] = input(f'{speed} 1 {i} ') # jnd(speed)
+				jnds[idx,2,i] = jnd(speed, adapter_list)
+				jnds[idx,1,i] = jnd(speed)
 			if i == 1:
 				if abs(jnds[idx,1,1] - jnds[idx,1,0]) > _jnd_diff_thresh: # if measurements too different, mark for repeat
 					repeats.append((speed,False))
