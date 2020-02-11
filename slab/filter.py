@@ -145,7 +145,7 @@ class Filter(Signal):
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
         return out
 
-    def tf(self, channels='all', nbins=None, plot=True):
+    def tf(self, channels='all', nbins=None, plot=True, axes=None):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
         Return transfer functions of filter at index 'channels' (int or list) or,
@@ -177,14 +177,17 @@ class Filter(Signal):
                 h = h_interp
                 w = w_interp
         if plot:
-            fig = plt.figure()
-            plt.plot(w, h, linewidth=2)
-            plt.xlabel('Frequency [Hz]')
-            plt.ylabel('Amplitude [dB]')
-            plt.title('Frequency Response')
-            plt.grid(True)
-            plt.show()
-            return fig
+            show = False
+            if axes is None:
+                show = True
+                axes = plt.subplot(111)
+            axes.plot(w, h, linewidth=2)
+            axes.set_xlabel('Frequency [Hz]')
+            axes.set_ylabel('Amplitude [dB]')
+            axes.set_title('Frequency Response')
+            axes.grid(True)
+            if show:
+                plt.show()
         else:
             return w, h
 
@@ -283,7 +286,7 @@ class Filter(Signal):
         return Filter(data=impulse_responses, samplerate=played_signal.samplerate)
 
     @staticmethod
-    def equalizing_filterbank(played_signal, recorded_signals, low_lim=50, hi_lim=20000, bandwidth=1/5, reference='max', plot=True):
+    def equalizing_filterbank(played_signal, recorded_signals, low_lim=50, hi_lim=20000, bandwidth=1/5, reference='max'):
         '''
         Generate an equalizing filter from the difference between a signal and its recording
         through a linear time-invariant system (speaker, headphones, microphone).
@@ -325,9 +328,6 @@ class Filter(Signal):
             amps = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
             filt[:, idx] = scipy.signal.firwin2(
                 1000, freq=freqs, gain=amps, fs=played_signal.samplerate)
-
-        if plot:  # plot filter result
-            plt.plot(freqs[1:-1], numpy.mean(amp_diffs, axis=1))
 
         return Filter(data=filt, samplerate=played_signal.samplerate, fir=True)
 
