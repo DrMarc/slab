@@ -35,11 +35,8 @@ class Filter(Signal):
 		if isinstance(data, str): # load data from a file
 			if samplerate is not None:
 				raise ValueError('Cannot specify samplerate when initialising Sound from a file.')
-			if data[-3::]=='wav':
-				_ = sound.Sound.read(data)
-			elif data[-3::]=="npy":
-				_ = self.load(data)
-
+		else:
+			_ = self.load(data)
 			data = _.data
 			samplerate = _.samplerate
 
