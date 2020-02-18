@@ -461,8 +461,8 @@ class Sound(Signal):
         vowel = numpy.zeros(len(times))
         for f in formants:
             A = numpy.min((0, -6*numpy.log2(f)))
-            vowel = vowel + 10**(A/20) * env
-            * numpy.sin(2 * numpy.pi * f * numpy.mod(times, t_rep))
+            vowel = vowel + 10**(A/20) * env * numpy.sin(
+                2 * numpy.pi * f * numpy.mod(times, t_rep))
         if nchannels > 1:
             vowel = numpy.tile(vowel, (nchannels, 1))
         vowel = Sound(data=vowel, samplerate=samplerate)
@@ -922,7 +922,7 @@ class Sound(Signal):
             return envs
 
     def spectrum(self, low=16, high=None, log_power=True, plot=True,
-                 axes=None, channel="all"):
+                 axes=None, channel="all", **kwargs):
         '''
         Returns the spectrum of the sound and optionally plots it.
         Arguments:
@@ -939,9 +939,11 @@ class Sound(Signal):
         ``axes=None``
                 Instance of matplotlib axes to draw the plot on. If none a
                 new one is generated.
-        ``chan="all"``
+        ``channel="all"``
                 Channels for which the spectrum is calculated can be an integer
                 for a single one or "all".
+        ``**kwargs``
+                Keyword arguments for plotting (see pyplot documentation)
         '''
         freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
         if channel == "all":
@@ -975,7 +977,7 @@ class Sound(Signal):
             if axes is None:
                 show = True
                 axes = plt.subplot(111)
-            axes.semilogx(freqs, Z)
+            axes.semilogx(freqs, Z, **kwargs)
             ticks_freqs = numpy.round(32000 * 2 **
                                       (numpy.arange(12, dtype=float)*-1))
             # axes.set_xticks(ticks_freqs, map(str, ticks_freqs.astype(int)))

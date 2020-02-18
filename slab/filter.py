@@ -180,7 +180,7 @@ class Filter(Signal):
                                  'be equal to 1.')
         return out
 
-    def tf(self, channels='all', nbins=None, plot=True, axes=None):
+    def tf(self, channels='all', nbins=None, plot=True, axes=None, **kwargs):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
         Return transfer functions of filter at index 'channels' (int or list)
@@ -218,7 +218,7 @@ class Filter(Signal):
             if axes is None:
                 show = True
                 axes = plt.subplot(111)
-            axes.plot(w, h, linewidth=2)
+            axes.plot(w, h, **kwargs)
             axes.set_xlabel('Frequency [Hz]')
             axes.set_ylabel('Amplitude [dB]')
             axes.set_title('Frequency Response')
@@ -378,21 +378,26 @@ class Filter(Signal):
         for idx in range(recorded_signals.nchannels):
             levels_out[:, idx] = \
                 fbank.apply(recorded_signals.channel(idx)).level
-        if reference == 'max':
-            reference = numpy.max(levels_out.flatten())
-        elif reference == 'mean':
-            reference = numpy.mean(levels_out.flatten())
-        amp_diffs = levels_in - levels_out - reference
-        amp_diffs /= max(amp_diffs)  # convert to ratio from 1.0 to 0.0
+        # if reference == 'max':
+        #    reference = numpy.max(levels_out.flatten())
+        # elif reference == 'mean':
+        #    reference = numpy.mean(levels_out.flatten())
+        amp_diffs_abs = levels_in - levels_out
+        # shift array so that all values are positive
+        amp_diffs_abs += numpy.abs(min(amp_diffs_abs.flatten()))
+        # normalize amplitude difference, 1.0 is maximum, 0.0 no attenuation
+        amp_diffs = amp_diffs_abs/max(amp_diffs_abs.flatten())
         freqs = numpy.concatenate(([0], center_freqs,
                                    [played_signal.samplerate/2]))
         filt = numpy.zeros((1000, recorded_signals.nchannels))
         for idx in range(recorded_signals.nchannels):
-            amps = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
+            # gain must be 0 at 0 Hz and nyquist frequency
+            gain = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
             filt[:, idx] = scipy.signal.firwin2(
-                1000, freq=freqs, gain=amps, fs=played_signal.samplerate)
+                1000, freq=freqs, gain=gain, fs=played_signal.samplerate)
 
-        return Filter(data=filt, samplerate=played_signal.samplerate, fir=True)
+        return Filter(data=filt, samplerate=played_signal.samplerate,
+                      fir=True), amp_diffs_abs, freqs
 
     def save(self, filename):
         '''
