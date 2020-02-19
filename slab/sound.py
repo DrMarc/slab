@@ -922,7 +922,7 @@ class Sound(Signal):
             return envs
 
     def spectrum(self, low=16, high=None, log_power=True, plot=True,
-                 axes=None, channel="all", **kwargs):
+                 axes=None, **kwargs):
         '''
         Returns the spectrum of the sound and optionally plots it.
         Arguments:
@@ -939,21 +939,14 @@ class Sound(Signal):
         ``axes=None``
                 Instance of matplotlib axes to draw the plot on. If none a
                 new one is generated.
-        ``channel="all"``
-                Channels for which the spectrum is calculated can be an integer
-                for a single one or "all".
         ``**kwargs``
                 Keyword arguments for plotting (see pyplot documentation)
         '''
         freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
-        if channel == "all":
-            sig_rfft = numpy.zeros((len(freqs), self.nchannels))
-            for chan in range(self.nchannels):
-                sig_rfft[:, chan] = \
-                    numpy.abs(numpy.fft.rfft(self.data[:, chan], axis=0))
-        elif isinstance(channel, int):
-            sig_rfft = numpy.abs(numpy.fft.rfft(self.data[:, channel], axis=0))
-            sig_rfft = numpy.expand_dims(sig_rfft, axis=1)
+        sig_rfft = numpy.zeros((len(freqs), self.nchannels))
+        for chan in range(self.nchannels):
+            sig_rfft[:, chan] = \
+                numpy.abs(numpy.fft.rfft(self.data[:, chan], axis=0))
         # scale by the number of points so that the magnitude does not depend
         # on the length of the signal
         pxx = sig_rfft/len(freqs)
