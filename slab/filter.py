@@ -136,10 +136,10 @@ class Filter(Signal):
                         self.data.flatten(), [1], out.data[:, i], axis=0)
             # apply all filters in bank to signal
             elif (self.nfilters > 1) and (sig.nchannels == 1):
-                out.data = numpy.empty((sig.nsamples, self.nfilters))
+                out.data = numpy.repeat(out.data, self.nfilters, axis=1)
                 for filt in range(self.nfilters):
                     out.data[:, filt] = scipy.signal.lfilter(
-                        self[:, filt], [1], sig.data.flatten(), axis=0)
+                        self[:, filt], [1], out.data[:, filt], axis=0)
             else:
                 raise ValueError('Number of filters must equal number of'
                                  'signal channels, or either one of them must'
