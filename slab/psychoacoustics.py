@@ -163,7 +163,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):
         if self.this_trial_n >= self.n_conds and (self.n_reps > 1):
             self.this_trial_n = 0  # start a new repetition
             self.this_rep_n += 1
-        if self.this_n >= len(self.trials)-1:  # all trials complete
+        if self.this_n >= len(self.trials):  # all trials complete
             self.this_trial = []
             self.finished = True
         if self.finished:
