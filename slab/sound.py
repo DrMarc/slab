@@ -395,6 +395,9 @@ class Sound(Signal):
     def chirp(duration=1.0, from_freq=100, to_freq=None, samplerate=None,
               kind='linear'):
         samplerate = Sound.get_samplerate(samplerate)
+        if to_freq is not None and to_freq > samplerate:
+            print("WARNING! The maximum frequency in the signal you want to"
+                  "generate is greater than the specified samplerate!")
         duration = Sound.in_samples(duration, samplerate)
         t = numpy.arange(0, duration, 1) / samplerate  # generate a time vector
         t.shape = (t.size, 1)  # ensures C-order
