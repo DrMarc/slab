@@ -895,12 +895,12 @@ class Sound(Signal):
 		Available features:
 		*centroid* is the centre of mass of the short-term spectrum, and fwhm is the width of a Gaussian of the same variance as the spectrum around the centroid.
 		Examples:
-		>>> sig = slab.Sound.tone(frequency=500, nchannels=2)
-		>>> sig.spectral_feature(feature='centroid')
-		500.
+		>>> sig = Sound.tone(frequency=500, nchannels=2)
+		>>> round(sig.spectral_feature(feature='centroid')[0])
+		500.0
 
 		'flux' is a measure of how quickly the power spectrum of a signal is changing, calculated by comparing the power spectrum for one frame against the power spectrum from the previous frame. Returns the root-mean-square over the entire stimulus of the change in power spectrum between adjacent time windows, measured as Euclidean distance.
-		>>> sig = slab.Sound.tone()
+		>>> sig = Sound.tone()
 		>>> numpy.testing.assert_allclose(sig.spectral_feature(feature='flux'), desired=0, atol=1e-04)
 
 		'flatness' measures how tone-like a sound is, as opposed to being noise-like.
@@ -1007,7 +1007,7 @@ class Sound(Signal):
 		Returns overlapping time windows as a generator.
 		Use the generator if you need to modify each segment in place like this
 		(this saves you the trouble of crossfading the segments correcly afterwards):
-		>>> sig = slab.Sound.tone()
+		>>> sig = Sound.tone()
 		>>> windows = sig.time_windows()
 		>>> win = 1 # dummy value to get started
 		>>> send = None
