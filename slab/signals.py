@@ -156,12 +156,13 @@ class Signal:
 	def __setitem__(self, key, value):
 		return self.data.__setitem__(key, value)
 
-	# def __getattr__(self, chan): # allows to get channels as sig.ch0, sig.ch1
-	# 	if chan[:2] == 'ch':
-	# 		return self.__dict__['data'][:,int(chan[2:])]
-	# 	else:
-	# 		raise AttributeError(chan)
-	#
+	def __getattr__(self, chan): # allows to get channels as sig.ch0, sig.ch1
+		if chan[:2] == 'ch':
+			return self.__dict__['data'][:,int(chan[2:])]
+		else:
+			raise AttributeError(chan)
+	
+	# TODO: this does not work, because it renders assignable properties (sound.level) unreachable
 	# def __setattr__(self, chan, new):  # allows to set channel data as sig.ch0 = 0
 	# 	if chan[:2] == 'ch': # setting channel data
 	# 		self.__dict__['data'][:,int(chan[2:])] = new
