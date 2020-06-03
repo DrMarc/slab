@@ -78,9 +78,6 @@ class Signal:
 	>>> sig.ch1 # this is equivalent to sig[:,1]
 	array([0., 0., 0., 0., 0., 1., 1., 1., 1., 1.])
 
-	These channel attributes also allow setting:
-	>>> sig.ch1 = 1
-
 	Signals support arithmatic operations (add, sub, mul, truediv, neg ['-sig' inverts phase]):
 	>>> sig2 = sig * 2
 	>>> sig2[-1,1]
@@ -161,7 +158,7 @@ class Signal:
 			return self.__dict__['data'][:,int(chan[2:])]
 		else:
 			raise AttributeError(chan)
-	
+
 	# TODO: this does not work, because it renders assignable properties (sound.level) unreachable
 	# def __setattr__(self, chan, new):  # allows to set channel data as sig.ch0 = 0
 	# 	if chan[:2] == 'ch': # setting channel data
