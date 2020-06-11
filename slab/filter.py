@@ -397,17 +397,16 @@ class Filter(Signal):
             levels_signal[:, idx] = \
                 fbank.apply(signal.channel(idx)).level
         amp_diffs = levels_target - levels_signal
-        amp_diffs[:, np.where(  # add 1 where difference is 0
-            (np.max(np.abs(amp_diffs), axis=0)) == 0)[0][0]] += 1
-        if np.sum(amp_diffs) != 0:  # ignore when signal == target
-            # normalize by divding by maximum for each speaker
-            amp_diffs = (amp_diffs)/np.max(np.abs(amp_diffs), axis=0)
-        amp_diffs += 1  # add 1 because gain = 1 means "do nothing"
+        max_diffs = np.max(np.abs(amp_diffs), axis=0)
+        max_diffs[max_diffs == 0] = 1
+        # normalize by divding by maximum for each speaker
+        amp_diffs = amp_diffs/max_diffs
         if factor is not None:  # apply factor
             if isinstance(factor, tuple):  # make linspaced factor vector
                 factor = np.expand_dims(np.linspace(factor[0], factor[1],
                                                     len(center_freqs)), axis=1)
             amp_diffs *= factor
+        amp_diffs += 1  # add 1 because gain = 1 means "do nothing"
         # filter freqs must include 0 and nyquist frequency:
         freqs = np.concatenate(([0], center_freqs, [target.samplerate/2]))
         filt = np.zeros((length, signal.nchannels))  # filter data
