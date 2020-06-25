@@ -75,6 +75,10 @@ class Signal:
     would be data in the second channel. To extract a channel as a Signal or subclass object
     use sig.channel(1).
 
+    As a convenient shortcut, channel data can also be returned and set by instance attributes:
+    >>> sig.ch1 # this is equivalent to sig[:,1]
+    array([0., 0., 0., 0., 0., 1., 1., 1., 1., 1.])
+
     Signals support arithmatic operations (add, sub, mul, truediv, neg ['-sig' inverts phase]):
     >>> sig2 = sig * 2
     >>> sig2[-1,1]
@@ -150,6 +154,19 @@ class Signal:
 
     def __setitem__(self, key, value):
         return self.data.__setitem__(key, value)
+
+    def __getattr__(self, chan):  # allows to get channels as sig.ch0, sig.ch1
+        if chan[:2] == 'ch':
+            return self.__dict__['data'][:, int(chan[2:])]
+        else:
+            raise AttributeError(chan)
+
+    # TODO: this does not work, because it renders assignable properties (sound.level) unreachable
+    # def __setattr__(self, chan, new):  # allows to set channel data as sig.ch0 = 0
+    # 	if chan[:2] == 'ch': # setting channel data
+    # 		self.__dict__['data'][:,int(chan[2:])] = new
+    # 	else: # setting any other attribute
+    # 		self.__dict__[chan] = new
 
     # arithmatic operators
     def __add__(self, other):
@@ -288,9 +305,9 @@ class Signal:
         supplied, then the interpolation is piecewise linear between pairs of time
         and envelope valued (must have same length).
         Example:
-        >>> sig = Sound.tone()
-        >>> sig.envelope(envelope=[0, 1, 0.2, 0.2, 0])
-        >>> sig.waveform()
+        > sig = Sound.tone()
+        > sig.envelope(envelope=[0, 1, 0.2, 0.2, 0])
+        > sig.waveform()
         '''
         if envelope is None:  # no envelope supplied, compute Hilbert envelope
             if not have_scipy:
