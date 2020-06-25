@@ -85,18 +85,37 @@ class Filter(Signal):
                 filt[round(frequency[1]/df):] = 1
         return Filter(data=filt, samplerate=samplerate, fir=fir)
 
-    def apply(self, sig):
+    def apply(self, sig, compensate_shift=False):
         '''
-        Apply the filter to signal sig.
+        Apply the filter to signal sig. If signal and filter have the same number of channels,
+        each filter channel will be applied to the corresponding channel in the signal.
+        If the filter has multiple channels and the signal only 1, each filter is applied to othe same signal.
+        In that case the filtered signal wil contain the same number of channels as the filter with every
+        channel being a copy of the original signal with one filter channel applied. If the filter has only
+        one channel and the signal has multiple channels, the same filter is applied to each signal channel.
+        When applying a FIR filter one can set compensate_shift = True. This will padd the output signal
+        With zeros equal to half of the filter length and then later remove the same number of samples
+        at the end of the signal.
         '''
         if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
             raise ValueError('Filter and signal have different sampling rates.')
         out = copy.deepcopy(sig)
+        if compensate_shift:
+            if not self.fir:
+                raise ValueError('Delay compensation only implemented for FIR filters!')
+            else:
+                n_shift = int(self.nsamples/2-1)
+                pad = numpy.zeros([n_shift, out.nchannels])
+                out.data = numpy.concatenate([out, pad])
         if self.fir:
             if self.nfilters == sig.nchannels:  # filter each channel with corresponding filter
-                out.data = scipy.signal.lfilter(self.data, [1], out.data, axis=0)
+                for i in range(self.nfilters):
+                    out.data[:, i] = scipy.signal.lfilter(
+                        self.data[:, i], [1], out.data[:, i], axis=0)
             elif (self.nfilters == 1) and (sig.nchannels > 1):  # filter each channel
-                out.data = scipy.signal.lfilter(self.data, [1], out.data, axis=0)
+                for i in range(self.nfilters):
+                    out.data[:, i] = scipy.signal.lfilter(
+                        self.data.flatten(), [1], out.data[:, i], axis=0)
             elif (self.nfilters > 1) and (sig.nchannels == 1):  # apply all filters in bank to signal
                 out.data = numpy.empty((sig.nsamples, self.nfilters))
                 for filt in range(self.nfilters):
@@ -105,6 +124,8 @@ class Filter(Signal):
             else:
                 raise ValueError(
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
+            if compensate_shift:
+                out.data = out.data[n_shift:, :]
         else:  # FFT filter
             sig_rfft = numpy.fft.rfft(sig.data, axis=0)
             sig_freq_bins = numpy.fft.rfftfreq(sig.nsamples, d=1/sig.samplerate)
@@ -128,7 +149,7 @@ class Filter(Signal):
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
         return out
 
-    def tf(self, channels='all', nbins=None, plot=True):
+    def tf(self, channels='all', nbins=None, plot=True, axes=None, show=True, **kwargs):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
         Return transfer functions of filter at index 'channels' (int or list) or,
@@ -160,14 +181,15 @@ class Filter(Signal):
                 h = h_interp
                 w = w_interp
         if plot:
-            fig = plt.figure()
-            plt.plot(w, h, linewidth=2)
-            plt.xlabel('Frequency [Hz]')
-            plt.ylabel('Amplitude [dB]')
-            plt.title('Frequency Response')
-            plt.grid(True)
-            plt.show()
-            return fig
+            if axes is None:
+                axes = plt.subplot(111)
+            axes.plot(w, h, **kwargs)
+            axes.set_xlabel('Frequency [Hz]')
+            axes.set_ylabel('Amplitude [dB]')
+            axes.set_title('Frequency Response')
+            axes.grid(True)
+            if show:
+                plt.show()
         else:
             return w, h
 
@@ -242,42 +264,59 @@ class Filter(Signal):
         return center_freqs
 
     @staticmethod
-    def equalizing_filterbank(played_signal, recorded_signals, reference='max'):
+    def equalizing_filterbank(target, signal, length=1000, low_lim=200, hi_lim=16000, bandwidth=1/8, alpha=1.0):
         '''
-        Generate an equalizing filter from the difference between a signal and its recording
-        through a linear time-invariant system (speaker, headphones, microphone).
-        The filter can be applied to a signal, which when played through the same system will
-        preserve the initial spectrum. The main intent of the function is to help with equalizing
-        the differences between transfer functions in a loudspeaker array.
-        played_signal: Sound or Signal object of the played waveform
-        recorded_signals:
+        Generate an equalizing filter from the difference between a signal and a target.
+        The main intent of the function is to help with equalizing the differences between transfer functions of
+        different loudspeaker. Signal and target are both divided into ERB-sapced frequency bands and the level
+        diference is calculated for each band. The differences are normalized to the range 0 to 2 and used as gain
+        for the filter in each frequency band. 0 means, that the respective band is maximally supressed, 2 means it is
+        maximally amplified. The overall effect of the filter can be regulated by setting alpha (default is 1).
+        Alpha < 1 will reduce the total effect of the filter while alpha > 1 will amplify it (WARNING: large filter
+        gains may result in temporal distortions of the signal).
+        Target and signal must both be instances of slab.Sound. The target must have only a single channel, the signal
+        can have multiple ones.
         '''
-        if played_signal.samplerate > recorded_signals.samplerate:  # resample higher to lower rate if necessary
-            played_signal = played_signal.resample(recorded_signals.samplerate)
+        if target.nchannels > 1:
+            raise ValueError("The target sound must have only one channel!")
+        if bool(target.nsamples % 2):  # number of samples must be even:
+            target.resize(target.nsamples+1)
+        if bool(signal.nsamples % 2):
+            signal.resize(signal.nsamples+1)
+        if target.samplerate > signal.samplerate:  # resample higher to lower rate if necessary
+            target = target.resample(signal.samplerate)
         else:
-            recorded_signals = recorded_signals.resample(played_signal.samplerate)
-        # make filterbank
-        fbank, centre_freqs, _ = Filter.cos_filterbank(
-            length=1000, bandwidth=1/5, samplerate=played_signal.samplerate)
-        # get attenuation values in each subband relative to original signal
-        levels_in = fbank.apply(played_signal).level
-        levels_in = numpy.tile(levels_in, (recorded_signals.nchannels, 1)
-                               ).T  # same shaoe as levels_out
-        levels_out = numpy.ones((len(centre_freqs), recorded_signals.nchannels))
-        for idx in range(recorded_signals.nchannels):
-            levels_out[:, idx] = fbank.apply(recorded_signals.channel(idx)).level
-        if reference == 'max':
-            reference = numpy.max(levels_out.flatten())
-        elif reference == 'mean':
-            reference = numpy.mean(levels_out.flatten())
-        amp_diffs = levels_in - levels_out - reference
-        freqs = numpy.concatenate(([0], centre_freqs, [played_signal.samplerate/2]))
-        filt = numpy.zeros((1000, recorded_signals.nchannels))
-        for idx in range(recorded_signals.nchannels):
-            amps = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
+            signal = signal.resample(target.samplerate)
+        fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_lim=low_lim, hi_lim=hi_lim,
+                                      samplerate=target.samplerate)
+        center_freqs, _, _ = Filter._center_freqs(low_lim, hi_lim, bandwidth)
+        center_freqs = Filter._erb2freq(center_freqs)
+        # level of the target in each of the subbands
+        levels_target = fbank.apply(target).level
+        # make it the same shape as levels_signal
+        levels_target = numpy.tile(levels_target, (signal.nchannels, 1)).T
+        # level of each channel in the signal in each of the subbands
+        levels_signal = numpy.ones((len(center_freqs), signal.nchannels))
+        for idx in range(signal.nchannels):
+            levels_signal[:, idx] = \
+                fbank.apply(signal.channel(idx)).level
+        amp_diffs = levels_target - levels_signal
+        max_diffs = numpy.max(numpy.abs(amp_diffs), axis=0)
+        max_diffs[max_diffs == 0] = 1
+        # normalize by divding by maximum for each speaker
+        amp_diffs = amp_diffs/max_diffs
+        amp_diffs *= alpha  # apply factor for filter regulation
+        amp_diffs += 1  # add 1 because gain = 1 means "do nothing"
+        # filter freqs must include 0 and nyquist frequency:
+        freqs = numpy.concatenate(([0], center_freqs, [target.samplerate/2]))
+        filt = numpy.zeros((length, signal.nchannels))  # filter data
+        # create the filter for each channel of the signal:
+        for idx in range(signal.nchannels):
+            # gain must be 0 at 0 Hz and nyquist frequency
+            gain = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
             filt[:, idx] = scipy.signal.firwin2(
-                1000, freq=freqs, gain=amps, fs=played_signal.samplerate)
-        return Filter(data=filt, samplerate=played_signal.samplerate, fir=True)
+                length, freq=freqs, gain=gain, fs=target.samplerate)
+        return Filter(data=filt, samplerate=target.samplerate, fir=True)
 
     def save(self, filename):
         '''
