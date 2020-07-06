@@ -37,7 +37,6 @@ except FileNotFoundError:
 class Sound(Signal):
     # TODO: debug dynamicripple, add ability to get output of different stages of an auditory periphery model from a sound
     # add other own stim functions (babbelnoise)?
-    # add generator for sliding window processing
     '''
     Class for working with sounds, including loading/saving, manipulating and playing.
     Examples:
@@ -62,8 +61,8 @@ class Sound(Signal):
             >>> sig = slab.Sound.tone(500, 8000, samplerate=8000)
             >>> sig.write('tone.wav')
 
-    Sound.read(filename) or readsound(filename):
-            Load the file given by filename and returns a Sound object.
+    Sound(filename):
+            Load the file given by filename (string or pathlib.Path object) and returns a Sound object.
             Sound file can be either a .wav or a .aif file.
             Example:
             >>> sig2 = slab.Sound('tone.wav')
