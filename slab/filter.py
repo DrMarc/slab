@@ -316,7 +316,6 @@ class Filter(Signal):
             gain = numpy.concatenate(([1.0], amp_diffs[:, idx], [0]))
             filt[:, idx] = scipy.signal.firwin2(
                 length, freq=freqs, gain=gain, fs=target.samplerate)
-
         return Filter(data=filt, samplerate=target.samplerate, fir=True)
 
     def save(self, filename):
