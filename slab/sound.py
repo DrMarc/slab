@@ -862,7 +862,7 @@ class Sound(Signal):
         else:
             return envs
 
-    def spectrum(self, low=16, high=None, log_power=True, plot=True):
+    def spectrum(self, low=16, high=None, log_power=True, plot=True, axes=None, show=True, **kwargs):
         '''
         Returns the spectrum of the sound and optionally plots it.
         Arguments:
@@ -899,15 +899,21 @@ class Sound(Signal):
             Z[Z < 1e-20] = 1e-20  # no zeros because we take logs
             Z = 10 * numpy.log10(Z)
         if plot:
-            plt.subplot(111)
-            plt.semilogx(freqs, Z)
-            ticks_freqs = numpy.round(32000 * 2 ** (numpy.arange(12, dtype=float)*-1))
-            plt.xticks(ticks_freqs, map(str, ticks_freqs.astype(int)))
-            plt.grid()
-            plt.xlim((freqs[1], freqs[-1]))
-            plt.ylabel('Power [dB/Hz]') if log_power else plt.ylabel('Power')
-            plt.title('Spectrum')
-            plt.show()
+            if axes is None:
+                axes = plt.subplot(111)
+            axes.semilogx(freqs, Z, **kwargs)
+            ticks_freqs = numpy.round(32000 * 2 **
+                                      (numpy.arange(12, dtype=float)*-1))
+            # axes.set_xticks(ticks_freqs, map(str, ticks_freqs.astype(int)))
+            axes.set_xticks(ticks_freqs)
+            axes.set_xticklabels(map(str, ticks_freqs.astype(int)))
+            axes.grid()
+            axes.set_xlim((freqs[1], freqs[-1]))
+            axes.set_ylabel(
+                'Power [dB/Hz]') if log_power else plt.ylabel('Power')
+            axes.set_title('Spectrum')
+            if show:
+                plt.show()
         else:
             return Z, freqs
 
