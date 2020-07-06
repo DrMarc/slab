@@ -313,7 +313,7 @@ class Filter(Signal):
         # create the filter for each channel of the signal:
         for idx in range(signal.nchannels):
             # gain must be 0 at 0 Hz and nyquist frequency
-            gain = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
+            gain = numpy.concatenate(([1.0], amp_diffs[:, idx], [0]))
             filt[:, idx] = scipy.signal.firwin2(
                 length, freq=freqs, gain=gain, fs=target.samplerate)
 
