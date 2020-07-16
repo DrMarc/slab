@@ -25,7 +25,15 @@ except ImportError:
 import slab
 
 results_folder = 'Results'
+input_method = 'keyboard' # or 'buttonbox'
 
+class buttonbox:
+    '''Class to allow easy switching between input from the keyboard via curses
+    and from the custon buttonbox adapter (arduino device that sends a number keystroke
+    followed by a return keystroke when pressing a button on the arduino).'''
+    @staticmethod
+    def getch():
+        return int(input()) # buttonbox adapter has to return the keycode of intended keys!
 
 @contextmanager
 def Key():
@@ -35,19 +43,22 @@ def Key():
     with slab.Key() as key:
             response = key.getch()
     '''
-    if not have_curses:
-        raise ImportError(
-            'You need curses to use the keypress class (pip install curses (or windows-curses))')
-    stdscr = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    yield stdscr
-    curses.nocbreak()
-    curses.echo()
-    curses.endwin()
+    if input_method == 'keyboard':
+        if not have_curses:
+            raise ImportError(
+                'You need curses to use the keypress class (pip install curses (or windows-curses))')
+        stdscr = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        yield stdscr
+        curses.nocbreak()
+        curses.echo()
+        curses.endwin()
+    else:
+        yield buttonbox
 
 
-class LoadSaveJson:
+class LoadSaveJson_mixin:
     'Mixin to provide JSON loading and saving functions'
 
     def save_json(self, file_name=None):
@@ -78,8 +89,9 @@ class LoadSaveJson:
             self.__dict__ = json.load(f)
 
 
-class TrialPresentationOptions:
-    'Mixin to provide AFC and Same-Different trial presentation methods to Trialsequence and Staircase.'
+class TrialPresentationOptions_mixin:
+    '''Mixin to provide AFC and Same-Different trial presentation methods and
+    response simulation to Trialsequence and Staircase.'''
 
     def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
         '''
@@ -127,8 +139,33 @@ class TrialPresentationOptions:
         if print_info:
             self.print_trial_info()
 
+    def simulate_response(self, thresh, transition_width=2, intervals=1, hitrates=None):
+        '''Return a simulated response to the current condition index value by calculating the hitrate
+        from a psychometric (logistic) function. This is only sensible for 'method of constant stimuli'
+        trials (self.trials has to be numeric and an interval scale representing a continuous stimulus value.
+        thresh ... midpoint/threshhold (*2*)
+        transition_width ... range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
+        intervals ... use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial.
+        hitrates ... list of hitrates for the different conditions, to allow costum rates instead of simulation.
+                     If given, thresh and transition_width are not used.
+        '''
+        slope = 0.5 / transition_width
+        if self.__class__.__name__ == 'Trialsequence':
+            current_condition = self.trials[self.this_n]
+        else:
+            current_condition = self._next_intensity
+        if hitrates is None:
+            hitrate = 1 / (1 + numpy.exp(4 * slope  * (thresh - current_condition))) # scale/4  = slope at midpoint
+        else:
+            hitrate = hitrates[current_condition]
+        hit = numpy.random.rand() < hitrate # True with probability hitrate
+        if hit or intervals == 1:
+            return hit
+        else: # stim/difference not detected and AFC trial
+            return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
 
-class Trialsequence(collections.abc.Iterator, LoadSaveJson, TrialPresentationOptions):  # TODO: correct string conditions!
+
+class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):  # TODO: correct string conditions!
     """Non-adaptive trial sequences
     Parameters:
     conditions: an integer, list, or flat array specifying condition indices,
@@ -316,8 +353,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson, TrialPresentationOpt
         return Trialsequence(conditions=2, n_reps=1, trials=trials)
 
 
-class Staircase(collections.abc.Iterator, LoadSaveJson, TrialPresentationOptions):
-    # TODO: add Kaernbach1991 weighted up-down method?
+class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):
     # TODO: add QUEST or Bayesian estimation?
     """Class to handle smoothly the selection of the next trial
     and report current values etc.
@@ -345,7 +381,7 @@ class Staircase(collections.abc.Iterator, LoadSaveJson, TrialPresentationOptions
     mean of final 6 reversals: 28.982753492378876
     """
 
-    def __init__(self, start_val, n_reversals=None, step_sizes=4, n_pretrials=4, n_up=1,
+    def __init__(self, start_val, n_reversals=None, step_sizes=4, step_up_factor=1, n_pretrials=4, n_up=1,
                  n_down=2, step_type='lin', min_val=None, max_val=None, name=''):
         """
         :Parameters:
@@ -364,6 +400,11 @@ class Staircase(collections.abc.Iterator, LoadSaveJson, TrialPresentationOptions
                         For a single value the step size is fixed. For an array or
                         list the step size will progress to the next entry
                         at each reversal.
+                step_up_factor:
+                        Allows different sizes for up and down steps to implement
+                        a Kaernbach1991 weighted up-down method. step_sizes sets down steps,
+                        which are multiplied by step_up_factor to obtain up step sizes.
+                        The default is 1, i.e. same size for up and down steps.
                 n_pretrials:
                         The number of pretrials presented as familiarization before
                         the actual experiment. start_val is used presentation level.
@@ -398,6 +439,7 @@ class Staircase(collections.abc.Iterator, LoadSaveJson, TrialPresentationOptions
         except TypeError:
             self.step_sizes = [step_sizes]
         self._variable_step = True if len(self.step_sizes) > 1 else False
+        self.step_up_factor = step_up_factor
         self.step_size_current = self.step_sizes[0]
         if n_reversals is None:
             self.n_reversals = len(self.step_sizes)
@@ -504,6 +546,8 @@ class Staircase(collections.abc.Iterator, LoadSaveJson, TrialPresentationOptions
             else:
                 _sz = len(self.reversal_intensities)
                 self.step_size_current = self.step_sizes[_sz]
+        if self.current_direction == 'up':
+            self.step_size_current *= self.step_up_factor # apply factor for weighted up/down method
         if not self.reversal_intensities:
             if self.data[-1] == 1:
                 self._intensity_dec()
@@ -537,11 +581,6 @@ class Staircase(collections.abc.Iterator, LoadSaveJson, TrialPresentationOptions
         self.correct_counter = 0
         if (self.min_val is not None) and (self._next_intensity < self.min_val):
             self._next_intensity = self.min_val  # check we haven't gone out of the legal range
-
-    def simulate_response(self, thresh):
-        # TODO: use psychometric function (Weibull?) to generate responses
-        'Return a simulated response dependent on thresh and self.'
-        return self._next_intensity >= thresh
 
     def threshold(self, n=6):
         '''Returns the average (arithmetic for step_type == 'lin',
@@ -802,10 +841,10 @@ def load_config(config_file):
 if __name__ == '__main__':
     # Demonstration
     tr = Trialsequence(conditions=5, n_reps=2, name='test')
-    stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=[8, 4, 4, 2, 2, 1],  # reduce step size every two reversals
+    stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=[8, 4, 4, 2, 2, 1],
                        min_val=20, max_val=60, n_up=1, n_down=1, n_pretrials=4)
     for trial in stairs:
-        response = stairs.simulate_response(30)
+        response = stairs.simulate_response(thresh=30, transition_width=10)
         stairs.add_response(response)
         stairs.print_trial_info()
         stairs.plot()
