@@ -267,11 +267,7 @@ class Filter(Signal):
         return center_freqs
 
     @staticmethod
-<<<<<<< HEAD
-    def equalizing_filterbank(target, signal, length=1000, low_lim=200, hi_lim=16000, bandwidth=1/8, alpha=1.0):
-=======
     def equalizing_filterbank(target, signal, length=1000, low_cutoff=200, high_cutoff=16000, bandwidth=1/8, alpha=1.0):
->>>>>>> 7d438ccd3a4f24f90561fede3c9ed94783edaf63
         '''
         Generate an equalizing filter from the difference between a signal and a target.
         The main intent of the function is to help with equalizing the differences between transfer functions of
@@ -294,14 +290,8 @@ class Filter(Signal):
             target = target.resample(signal.samplerate)
         else:
             signal = signal.resample(target.samplerate)
-<<<<<<< HEAD
-        fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_lim=low_lim, hi_lim=hi_lim,
-                                      samplerate=target.samplerate)
-        center_freqs, _, _ = Filter._center_freqs(low_lim, hi_lim, bandwidth)
-=======
         fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_cutoff=low_cutoff, high_cutoff=high_cutoff, samplerate=target.samplerate)
         center_freqs, _, _ = Filter._center_freqs(low_cutoff, high_cutoff, bandwidth)
->>>>>>> 7d438ccd3a4f24f90561fede3c9ed94783edaf63
         center_freqs = Filter._erb2freq(center_freqs)
         # level of the target in each of the subbands
         levels_target = fbank.apply(target).level
@@ -324,12 +314,7 @@ class Filter(Signal):
         filt = numpy.zeros((length, signal.nchannels))  # filter data
         # create the filter for each channel of the signal:
         for idx in range(signal.nchannels):
-            # gain must be 0 at 0 Hz and nyquist frequency
-<<<<<<< HEAD
-            gain = numpy.concatenate(([1.0], amp_diffs[:, idx], [0]))
-=======
-            gain = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
->>>>>>> 7d438ccd3a4f24f90561fede3c9ed94783edaf63
+            gain = numpy.concatenate(([1.0], amp_diffs[:, idx], [0]))  # gain must be 0 at nyquist
             filt[:, idx] = scipy.signal.firwin2(
                 length, freq=freqs, gain=gain, fs=target.samplerate)
         return Filter(data=filt, samplerate=target.samplerate, fir=True)
