@@ -25,7 +25,15 @@ except ImportError:
 import slab
 
 results_folder = 'Results'
+input_method = 'keyboard'  # or 'buttonbox'
 
+class buttonbox:
+    '''Class to allow easy switching between input from the keyboard via curses
+    and from the custon buttonbox adapter (arduino device that sends a number keystroke
+    followed by a return keystroke when pressing a button on the arduino).'''
+    @staticmethod
+    def getch():
+        return int(input())  # buttonbox adapter has to return the keycode of intended keys!
 
 @contextmanager
 def Key():
@@ -35,19 +43,22 @@ def Key():
     with slab.Key() as key:
             response = key.getch()
     '''
-    if not have_curses:
-        raise ImportError(
-            'You need curses to use the keypress class (pip install curses (or windows-curses))')
-    stdscr = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    yield stdscr
-    curses.nocbreak()
-    curses.echo()
-    curses.endwin()
+    if input_method == 'keyboard':
+        if not have_curses:
+            raise ImportError(
+                'You need curses to use the keypress class (pip install curses (or windows-curses))')
+        stdscr = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        yield stdscr
+        curses.nocbreak()
+        curses.echo()
+        curses.endwin()
+    else:
+        yield buttonbox
 
 
-class LoadSaveJson:
+class LoadSaveJson_mixin:
     'Mixin to provide JSON loading and saving functions'
 
     def save_json(self, file_name=None):
@@ -65,9 +76,9 @@ class LoadSaveJson:
             try:
                 with open(file_name, 'w') as f:
                     json.dump(self.__dict__, f, indent=2, default=default)
-                    return 1
+                    return True
             except OSError:
-                return -1
+                return False
 
     def load_json(self, file_name):
         """
@@ -78,35 +89,116 @@ class LoadSaveJson:
             self.__dict__ = json.load(f)
 
 
-class Trialsequence(collections.abc.Iterator, LoadSaveJson):  # TODO: correct string conditions!
+class TrialPresentationOptions_mixin:
+    '''Mixin to provide AFC and Same-Different trial presentation methods and
+    response simulation to Trialsequence and Staircase.'''
+
+    def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
+        '''
+        Present the target (slab sound object) in random order together
+        with the distractor sound object (or list of several sounds) with
+        isi pause (in seconds) in between, then aquire a response keypress
+        via Key(), compare the response to the target interval and record
+        the response via add_response. If key_codes for buttons are given
+        (get with: ord('1') for instance -> ascii code of key 1 is 49),
+        then these keys will be used as answer keys. Default are codes for
+        buttons '1' to '9'.
+        This is a convenience function for implementing alternative forced
+        choice trials. In each trial, generate the target stimulus and
+        distractors, then call present_afc_trial to play them and record
+        the response. Optionally call print_trial_info afterwards.
+        '''
+        if isinstance(distractors, list):
+            stims = [target].extend(distractors)  # assuming sound object and list of sounds
+        else:
+            stims = [target, distractors]  # assuming two sound objects
+        order = numpy.random.permutation(len(stims))
+        print(order)
+        for idx in order:
+            stim = stims[idx]
+            stim.play()
+            plt.pause(isi)
+        with Key() as key:
+            response = key.getch()
+        interval = numpy.where(order == 0)[0][0]
+        print(interval)
+        interval_key = key_codes[interval]
+        print(interval_key)
+        print(response)
+        response = response == interval_key
+        self.add_response(response)
+        if print_info:
+            self.print_trial_info()
+
+    def present_tone_trial(self, stimulus, correct_key_idx, key_codes=(range(49, 58)), print_info=True):
+        stimulus.play()
+        with slab.Key() as key:
+            response = key.getch()
+        response = response == key_codes[correct_key_idx]
+        self.add_response(response)
+        if print_info:
+            self.print_trial_info()
+
+    def simulate_response(self, thresh, transition_width=2, intervals=1, hitrates=None):
+        '''Return a simulated response to the current condition index value by calculating the hitrate
+        from a psychometric (logistic) function. This is only sensible for 'method of constant stimuli'
+        trials (self.trials has to be numeric and an interval scale representing a continuous stimulus value.
+        thresh ... midpoint/threshhold (*2*)
+        transition_width ... range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
+        intervals ... use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial.
+        hitrates ... list of hitrates for the different conditions, to allow costum rates instead of simulation.
+                     If given, thresh and transition_width are not used.
+        '''
+        slope = 0.5 / transition_width
+        if self.__class__.__name__ == 'Trialsequence':
+            current_condition = self.trials[self.this_n]
+        else:
+            current_condition = self._next_intensity
+        if hitrates is None:
+            hitrate = 1 / (1 + numpy.exp(4 * slope  * (thresh - current_condition))) # scale/4  = slope at midpoint
+        else:
+            hitrate = hitrates[current_condition]
+        hit = numpy.random.rand() < hitrate # True with probability hitrate
+        if hit or intervals == 1:
+            return hit
+        else: # stim/difference not detected and AFC trial
+            return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
+
+
+class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):  # TODO: correct string conditions!
     """Non-adaptive trial sequences
     Parameters:
     conditions: an integer, list, or flat array specifying condition indices,
-            or a list strings specifying condition names, or a list of
-            dictionaries with values for each condition index.
+            or a list of strings or other objects (dictionaries/tuples/namedtuples)
+            specifying names or stimulus values for each condition.
             If given an integer x, uses range(x).
             If conditions is a string, then it is treated as the name of a previously
             saved trial sequence object, which is then loaded.
-    n_reps: number of repeats for all conditions
-    trials: a list of condition indices, i.e. the trial sequence. Typically, this
+    n_reps: number of repeats of each condition (total trial number = len(conditions) * n_reps)
+    trials: a list of conditions, i.e. the trial sequence. Typically, this
             list is left empty and generated by the class based on the other parameters.
     kind: The kind of sequence randomization used to generate the trial sequence.
-            'non-repeating' (conditions are repeated in randome order n_reps times without
-            direct repetition - default if n_conds > 2), or 'random_permutation' (
-            conditions are permuted randomly without control over transition probabilities
-            - default if n_conds <= 2).
+            'non_repeating' (conditions are repeated in randome order n_reps times without
+            direct repetition - default if n_conds > 2),
+            'random_permutation' (conditions are permuted randomly without control over
+            transition probabilities - default if n_conds <= 2), or
+            'infinite' (non_repeating [if n_conds <= 2] or random_permutation trial sequence,
+            reset when end is reached to generate an infinite number of trials).
     name: a text label for the sequence.
 
     Attributes:
     .n_trials - the total number of trials that will be run
     .n_remaining - the total number of trials remaining
-    .this_n - total trials completed so far
-    .this_rep_n - which repeat you are currently on
-    .this_trial_n - which trial number *within* that repeat
+    .this_n - trial index in entire sequence, equals total trials completed so far
+    .this_rep_n - index of repetition of the conditions we are currently in
+    .this_trial_n - trial index within this repetition
     .this_trial - a dictionary giving the parameters of the current trial
-    .finished - True/False for have we finished yet
+    .finished - True/False: have we finished yet?
+    .kind - records the kind of sequence ('random_permutation', 'non_repeating', 'infinite')
 """
-
+# TODO: implementation if infinite sequence is a bit of a hack (number of completed trials needs
+# to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
+# TODO: ability to record trials like in staircase needed?
     def __init__(self, conditions=2, n_reps=1, trials=[], kind=None, name=''):
         self.name = name
         self.n_reps = int(n_reps)
@@ -118,30 +210,36 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):  # TODO: correct st
         else:
             self.conditions = conditions
         self.n_conds = len(self.conditions)
-        self.this_rep_n = 0  # records which repetition or pass we are on
-        self.this_trial_n = -1  # records trial number within this repetition
-        self.this_n = -1
-        self.this_trial = []
+        self.this_rep_n = 0  # index of repetition of the conditions we are currently in
+        self.this_trial_n = -1  # trial index within this repetition
+        self.this_n = -1 # trial index in entire sequence
+        self.this_trial = [] # condition of current trial
         self.finished = False
+        self.data = [] # holds responses if TrialPresentationOptions methods are called
         # generate stimulus sequence
         if not trials:
             if not kind:
                 kind = 'random_permutation' if self.n_conds <= 2 else 'non_repeating'
             if kind == 'non_repeating':
-                trials = Trialsequence._create_simple_sequence(len(self.conditions), self.n_reps)
+                self.trials = Trialsequence._create_simple_sequence(len(self.conditions), self.n_reps)
             elif kind == 'random_permutation':
-                trials = Trialsequence._create_random_permutation(len(self.conditions), self.n_reps)
+                self.trials = Trialsequence._create_random_permutation(len(self.conditions), self.n_reps)
+            elif kind == 'infinite':
+                if self.n_conds <= 2:
+                    self.trials = Trialsequence._create_random_permutation(len(self.conditions), 5)
+                else:
+                    self.trials = Trialsequence._create_simple_sequence(len(self.conditions), 1)
             else:
                 raise ValueError(f'Unknown kind parameter: {kind}!')
-        self.trials = trials
         self.n_trials = len(self.trials)
-        self.n_remaining = self.n_trials  # subtract 1 each trial
+        self.n_remaining = self.n_trials
+        self.kind = kind
 
     def __repr__(self):
         return self.__dict__.__repr__()
 
     def __str__(self):
-        return f'Trialsequence, trials {self.n_trials}, remaining {self.n_remaining}, current condition {self.this_trial}'
+        return f'Trialsequence, trials {"inf" if self.kind=="infinite" else self.n_trials}, remaining {"inf" if self.kind=="infinite" else self.n_remaining}, current condition {self.this_trial}'
 
     def __next__(self):
         """Advances to next trial and returns it.
@@ -150,36 +248,48 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):  # TODO: correct st
         trials = Trialsequence(.......)
                 for eachTrial in trials:  # automatically stops when done
         """
-        self.this_trial_n += 1  # number of trial this pass
-        self.this_n += 1  # number of trial in total
+        self.this_trial_n += 1
+        self.this_n += 1
         self.n_remaining -= 1
-        if self.this_trial_n >= self.n_conds and (self.n_reps > 1):
-            self.this_trial_n = 0  # start a new repetition
+        if self.this_trial_n >= self.n_conds: # start a new repetition
+            self.this_trial_n = 0
             self.this_rep_n += 1
-        if self.this_n >= len(self.trials):  # all trials complete
-            self.this_trial = []
-            self.finished = True
+        if self.n_remaining < 0:  # all trials complete
+            if self.kind == 'infinite': # finite sequence -> reset and start again
+                self.trials = Trialsequence._create_simple_sequence(len(self.conditions), 1,
+                                previous=self.trials[-1]) # new sequence, avoid start with previous condition
+                self.this_n = 0
+                self.n_remaining = self.n_trials - 1 # reset trial countdown to length of new trial sequence
+                                # (subtract 1 because we return the 0th trial below)
+            else: # finite sequence -> finish
+                self.this_trial = []
+                self.finished = True
         if self.finished:
             raise StopIteration
         self.this_trial = self.conditions[self.trials[self.this_n]]  # fetch the trial info
         return self.this_trial
 
+    def add_response(self, response):
+        self.data.append(response)
+
+    def print_trial_info(self):
+        print(f'trial # {self.this_n} of {"inf" if self.kind=="infinite" else self.n_trials} ({"inf" if self.kind=="infinite" else self.n_remaining} remaining): condition {self.this_trial}, last response: {self.data[-1] if self.data else None}')
+
     @staticmethod
-    def _create_simple_sequence(n_conditions, n_reps):
+    def _create_simple_sequence(n_conditions, n_reps, previous=1):
         '''Create a sequence of n_conditions x n_reps trials, where each repetitions
         contains all conditions in random order, and no condition is directly
-        repeated across repetitions.'''
+        repeated across repetitions.
+        'previous' can be set to an index in range(n_conditions), which ensures that
+        the sequence does not start with this index.'''
         permute = list(range(n_conditions))
-        trials = []
+        trials = [previous]
         for rep in range(n_reps):
             numpy.random.shuffle(permute)
-            if rep == 0:  # first repetition
-                trials.extend(permute)
-            else:
-                while trials[-1] == permute[0]:
-                    permute = list(range(n_conditions))
-                    numpy.random.shuffle(permute)
-                trials.extend(permute)
+            while trials[-1] == permute[0]:
+                numpy.random.shuffle(permute)
+            trials += permute
+        trials = trials[1:] # delete first entry ('previous')
         return trials
 
     @staticmethod
@@ -223,6 +333,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):  # TODO: correct st
 
     @staticmethod
     def mmn_sequence(n_trials, deviant_freq=0.12):
+    # TODO: integrate in main constructor
         '''Returns a  MMN experiment: 2 different stimuli (conditions),
         between two deviants at least 3 standards
         n_trials: number of trials to return
@@ -242,8 +353,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):  # TODO: correct st
         return Trialsequence(conditions=2, n_reps=1, trials=trials)
 
 
-class Staircase(collections.abc.Iterator):
-    # TODO: add Kaernbach1991 weighted up-down method?
+class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):
     # TODO: add QUEST or Bayesian estimation?
     """Class to handle smoothly the selection of the next trial
     and report current values etc.
@@ -251,8 +361,7 @@ class Staircase(collections.abc.Iterator):
     handler, according to the method specified.
     The staircase will terminate when *n_trials* AND *n_reversals* have
     been exceeded. If *step_sizes* was an array and has been exceeded
-    before n_trials is exceeded then the staircase will continue
-    to reverse.
+    before n_trials is exceeded then the staircase will continue.
     n_up and n_down are always considered as 1 until the first reversal
     is reached. The values entered as arguments are then used.
     Lewitt (1971) gives the up-down values for different threshold points
@@ -272,7 +381,7 @@ class Staircase(collections.abc.Iterator):
     mean of final 6 reversals: 28.982753492378876
     """
 
-    def __init__(self, start_val, n_reversals=None, step_sizes=4, n_pretrials=4, n_up=1,
+    def __init__(self, start_val, n_reversals=None, step_sizes=4, step_up_factor=1, n_pretrials=4, n_up=1,
                  n_down=2, step_type='lin', min_val=None, max_val=None, name=''):
         """
         :Parameters:
@@ -291,6 +400,11 @@ class Staircase(collections.abc.Iterator):
                         For a single value the step size is fixed. For an array or
                         list the step size will progress to the next entry
                         at each reversal.
+                step_up_factor:
+                        Allows different sizes for up and down steps to implement
+                        a Kaernbach1991 weighted up-down method. step_sizes sets down steps,
+                        which are multiplied by step_up_factor to obtain up step sizes.
+                        The default is 1, i.e. same size for up and down steps.
                 n_pretrials:
                         The number of pretrials presented as familiarization before
                         the actual experiment. start_val is used presentation level.
@@ -325,6 +439,7 @@ class Staircase(collections.abc.Iterator):
         except TypeError:
             self.step_sizes = [step_sizes]
         self._variable_step = True if len(self.step_sizes) > 1 else False
+        self.step_up_factor = step_up_factor
         self.step_size_current = self.step_sizes[0]
         if n_reversals is None:
             self.n_reversals = len(self.step_sizes)
@@ -431,6 +546,8 @@ class Staircase(collections.abc.Iterator):
             else:
                 _sz = len(self.reversal_intensities)
                 self.step_size_current = self.step_sizes[_sz]
+        if self.current_direction == 'up':
+            self.step_size_current *= self.step_up_factor # apply factor for weighted up/down method
         if not self.reversal_intensities:
             if self.data[-1] == 1:
                 self._intensity_dec()
@@ -464,11 +581,6 @@ class Staircase(collections.abc.Iterator):
         self.correct_counter = 0
         if (self.min_val is not None) and (self._next_intensity < self.min_val):
             self._next_intensity = self.min_val  # check we haven't gone out of the legal range
-
-    def simulate_response(self, thresh):
-        # TODO: use psychometric function (Weibull?) to generate responses
-        'Return a simulated response dependent on thresh and self.'
-        return self._next_intensity >= thresh
 
     def threshold(self, n=6):
         '''Returns the average (arithmetic for step_type == 'lin',
@@ -561,53 +673,12 @@ class Staircase(collections.abc.Iterator):
         self.pf_percent_correct = binned_resp
         self.pf_responses_per_intensity = n_points
 
-    def present_afc_trial(self, target, distractors, key_codes=(range(48, 58)), isi=0.25, print_info=True):
-        '''
-        Present the target (slab sound object) in random order together
-        with the distractor sound object (or list of several sounds) with
-        isi pause (in seconds) in between, then aquire a response keypress
-        via Key(), compare the response to the target interval and record
-        the response via add_response. If key_codes for buttons are given
-        (get with: ord('1') for instance -> ascii code of key 1 is 49),
-        then these keys will be used as answer keys. Default are codes for
-        buttons '1' to '9'.
-        This is a convenience function for implementing alternative forced
-        choice trials. In each trial, generate the target stimulus and
-        distractors, then call present_afc_trial to play them and record
-        the response. Optionally call print_trial_info afterwards.
-        '''
-        if isinstance(distractors, list):
-            stims = [target].extend(distractors)  # assuming sound object and list of sounds
-        else:
-            stims = [target, distractors]  # assuming two sound objects
-        order = numpy.random.permutation(len(stims))
-        for idx in order:
-            stim = stims[idx]
-            stim.play()
-            plt.pause(isi)
-        with Key() as key:
-            response = key.getch()
-        interval = numpy.where(order == 0)[0][0]
-        interval_key = key_codes[interval]
-        response = response == interval_key
-        self.add_response(response)
-        if print_info:
-            self.print_trial_info()
-
-    def present_tone_trial(self, stimulus, correct_key_idx, key_codes=(range(48, 58)), print_info=True):
-        stimulus.play()
-        with slab.Key() as key:
-            response = key.getch()
-        response = response == key_codes[correct_key_idx]
-        self.add_response(response)
-        if print_info:
-            self.print_trial_info()
-
 
 class Resultsfile():
     '''
     A class for simplifying the typical use cases of results files, including generating the name,
-    creating the folders, and writing to the file after each trial.
+    creating the folders, and writing to the file after each trial. Writes a JSON Lines file,
+    in which each line is a valid self-contained JSON string (http://jsonlines.org).
     Examples:
     >>> Resultsfile.results_folder = 'MyResults'
     >>> file = Resultsfile(subject='MS')
@@ -624,20 +695,47 @@ class Resultsfile():
 
     def write(self, data, tag=None):
         '''
-        Safely write data (must be lines of text or convertable to lines of text) to the file.
+        Safely write data (must be json or convertable to json [string, list, dict, ...]) to the file.
         The file is opened just before writing and closed immediately after to avoid data loss.
         Call this method at the end of each trial to save the response and trial state.
-        A tag (any string or 'time') can be prepended. If tag='time', the current time is prepended.
+        A tag (any string) can be prepended. If none is provided, the current time is used.
         '''
-        if not isinstance(data, str):
-            data = str(data)
-        if tag == 'time':
-            tag = datetime.datetime.now().strftime("time: %Y-%m-%d-%H-%M-%S")
+        try:
+            data = json.loads(data) # if payload is already json, parse it into python object
+        except (json.JSONDecodeError, TypeError):
+            pass # if payload is not json - all good, will be encoded later
+        if tag is None or tag == 'time':
+            tag = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         with open(self.path, 'a') as file:
-            if tag is not None:
-                file.write('tag: ' + str(tag) + '\n')
-            file.write(data)
+            file.write(json.dumps({tag: data}))
             file.write('\n')
+
+    @staticmethod
+    def read_file(file_path, tag=None):
+        '''
+        Returns a list of objects saved in a results file at file_path.
+        If a tag is given, then only the objects saved with that tag are returned.
+        Objects are dictionaries with the tag as key and the saved data as value.
+        '''
+        content = []
+        with open(file_path) as file:
+            if tag is None:
+                for line in file:
+                    content.append(json.loads(line))
+            else:
+                for line in file:
+                    jwd = json.loads(line)
+                    if tag in jwd:
+                        content.append(jwd[tag])
+        return content
+
+    def read(self, tag=None):
+        '''
+        Returns a list of objects saved in the current results file.
+        If a tag is given, then only the objects saved with that tag are returned.
+        Objects are dictionaries with the tag as key and the saved data as value.
+        '''
+        return Resultsfile.read_file(self.path, tag)
 
     def clear(self):
         'Clears the file by erasing all content.'
@@ -743,10 +841,10 @@ def load_config(config_file):
 if __name__ == '__main__':
     # Demonstration
     tr = Trialsequence(conditions=5, n_reps=2, name='test')
-    stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=[8, 4, 4, 2, 2, 1],  # reduce step size every two reversals
+    stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=[8, 4, 4, 2, 2, 1],
                        min_val=20, max_val=60, n_up=1, n_down=1, n_pretrials=4)
     for trial in stairs:
-        response = stairs.simulate_response(30)
+        response = stairs.simulate_response(thresh=30, transition_width=10)
         stairs.add_response(response)
         stairs.print_trial_info()
         stairs.plot()

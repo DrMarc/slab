@@ -194,28 +194,31 @@ class Filter(Signal):
             return w, h
 
     @staticmethod
-    # TODO: oversampling fator needed for cochleagram! HP, LP filters needed
-    def cos_filterbank(length=5000, bandwidth=1/3, low_lim=0, hi_lim=None, samplerate=None):
+    # TODO: oversampling factor needed for cochleagram!
+    def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, samplerate=None):
         """Create ERB cosine filterbank of n_filters.
-        length: Length of signal to be filtered with the generated
+        length ... Length of signal to be filtered with the generated
                 filterbank. The signal length determines the length of the filters.
-        samplerate: Sampling rate associated with the signal waveform.
-        bandwidth: of the filters (subbands) in octaves (default 1/3)
-        low_lim: Lower limit of frequency range (def  saults to 0).
-        hi_lim: Upper limit of frequency range (defaults to samplerate/2).
+        samplerate ... Sampling rate associated with the signal waveform.
+        bandwidth ... of the filters (subbands) in octaves (default 1/3)
+        low_cutoff ... Lower limit of frequency range (def  saults to 0).
+        high_cutoff ... Upper limit of frequency range (defaults to samplerate/2).
+        pass_bands ... boolean [*False*], whether to include half a cosine filter as lowpass and highpass.
+                       If True, allows reconstruction of original bandwidth when collapsing subbands.
+
         Example:
         >>> sig = Sound.pinknoise(samplerate=44100)
-        >>> fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_lim=100, hi_lim=None, samplerate=sig.samplerate)
+        >>> fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_cutoff=100, samplerate=sig.samplerate)
         >>> fbank.tf(plot=True)
         >>> sig_filt = fbank.apply(sig)
         """
         samplerate = Signal.get_samplerate(samplerate)
-        if not hi_lim:
-            hi_lim = samplerate / 2
+        if not high_cutoff:
+            high_cutoff = samplerate / 2
         freq_bins = numpy.fft.rfftfreq(length, d=1/samplerate)
         nfreqs = len(freq_bins)
         center_freqs, bandwidth, erb_spacing = Filter._center_freqs(
-            low_lim=low_lim, hi_lim=hi_lim, bandwidth=bandwidth)
+            low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth, pass_bands=pass_bands)
         nfilters = len(center_freqs)
         filts = numpy.zeros((nfreqs, nfilters))
         freqs_erb = Filter._freq2erb(freq_bins)
@@ -229,17 +232,17 @@ class Filter(Signal):
         return Filter(data=filts, samplerate=samplerate, fir=False)
 
     @staticmethod
-    def _center_freqs(low_lim, hi_lim, bandwidth=1/3):
+    def _center_freqs(low_cutoff, high_cutoff, bandwidth=1/3, pass_bands=False):
         ref_freq = 1000  # Hz, reference for conversion between oct and erb bandwidth
         ref_erb = Filter._freq2erb(ref_freq)
         erb_spacing = Filter._freq2erb(ref_freq*2**bandwidth) - ref_erb
-        h = Filter._freq2erb(hi_lim)
-        l = Filter._freq2erb(low_lim)
+        h = Filter._freq2erb(high_cutoff)
+        l = Filter._freq2erb(low_cutoff)
         nfilters = int(numpy.round((h - l) / erb_spacing))
         center_freqs, erb_spacing = numpy.linspace(l, h, nfilters, retstep=True)
-        center_freqs = center_freqs[1:-1] 	# we need to exclude the endpoints
-        # convert actual erb_spacing to octaves
-        bandwidth = numpy.log2(Filter._erb2freq(ref_erb + erb_spacing) / ref_freq)
+        if not pass_bands:
+            center_freqs = center_freqs[1:-1] # exclude low and highpass filters
+        bandwidth = numpy.log2(Filter._erb2freq(ref_erb + erb_spacing) / ref_freq) # convert erb_spacing to octaves
         return center_freqs, bandwidth, erb_spacing
 
     @staticmethod
@@ -253,7 +256,7 @@ class Filter(Signal):
         subbands = numpy.fft.irfft(subbands_rfft * filter_bank.data, axis=0)
         return Signal(data=subbands.sum(axis=1), samplerate=filter_bank.samplerate)
 
-    def filter_bank_center_freqs(self):  # TODO: test this!
+    def filter_bank_center_freqs(self):
         if self.fir:
             raise NotImplementedError('Not implemented for FIR filter banks.')
         freqs = self.frequencies
@@ -264,7 +267,11 @@ class Filter(Signal):
         return center_freqs
 
     @staticmethod
+<<<<<<< HEAD
     def equalizing_filterbank(target, signal, length=1000, low_lim=200, hi_lim=16000, bandwidth=1/8, alpha=1.0):
+=======
+    def equalizing_filterbank(target, signal, length=1000, low_cutoff=200, high_cutoff=16000, bandwidth=1/8, alpha=1.0):
+>>>>>>> 7d438ccd3a4f24f90561fede3c9ed94783edaf63
         '''
         Generate an equalizing filter from the difference between a signal and a target.
         The main intent of the function is to help with equalizing the differences between transfer functions of
@@ -287,9 +294,14 @@ class Filter(Signal):
             target = target.resample(signal.samplerate)
         else:
             signal = signal.resample(target.samplerate)
+<<<<<<< HEAD
         fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_lim=low_lim, hi_lim=hi_lim,
                                       samplerate=target.samplerate)
         center_freqs, _, _ = Filter._center_freqs(low_lim, hi_lim, bandwidth)
+=======
+        fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_cutoff=low_cutoff, high_cutoff=high_cutoff, samplerate=target.samplerate)
+        center_freqs, _, _ = Filter._center_freqs(low_cutoff, high_cutoff, bandwidth)
+>>>>>>> 7d438ccd3a4f24f90561fede3c9ed94783edaf63
         center_freqs = Filter._erb2freq(center_freqs)
         # level of the target in each of the subbands
         levels_target = fbank.apply(target).level
@@ -313,7 +325,11 @@ class Filter(Signal):
         # create the filter for each channel of the signal:
         for idx in range(signal.nchannels):
             # gain must be 0 at 0 Hz and nyquist frequency
+<<<<<<< HEAD
             gain = numpy.concatenate(([1.0], amp_diffs[:, idx], [0]))
+=======
+            gain = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
+>>>>>>> 7d438ccd3a4f24f90561fede3c9ed94783edaf63
             filt[:, idx] = scipy.signal.firwin2(
                 length, freq=freqs, gain=gain, fs=target.samplerate)
         return Filter(data=filt, samplerate=target.samplerate, fir=True)
@@ -337,7 +353,7 @@ class Filter(Signal):
         data = numpy.load(filename)
         samplerate = data[0][0]  # samplerate is in the first filter
         fir = bool(data[1][0])  # fir is in the first filter
-        data = data[2:, :]  # drop the samplerate entry
+        data = data[2:, :]  # drop the samplerate and fir entries
         return Filter(data, samplerate=samplerate, fir=fir)
 
     @staticmethod
