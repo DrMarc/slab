@@ -228,6 +228,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson):  # TODO: correct st
         n_trials: number of trials to return
         deviant_freq: frequency of deviants (*0.12*, max. 0.25)
         '''
+        # TODO: check number of trials
         n_partials = int(numpy.ceil((2 / deviant_freq) - 7))
         reps = int(numpy.ceil(n_trials/n_partials))
         partials = []
