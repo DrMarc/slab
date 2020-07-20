@@ -137,7 +137,6 @@ class Sound(Signal):
                 level = level.repeat(self.nchannels)
             level = numpy.reshape(level, (1, self.nchannels))
             rms_dB = numpy.reshape(rms_dB, (1, self.nchannels))
-        level -= _calibration_intensity  # account for calibration intensity
         gain = 10**((level-rms_dB)/20.)
         self.data *= gain
 
@@ -989,13 +988,14 @@ class Sound(Signal):
         Returns a new Sound object.
         '''
         fbank = Filter.cos_filterbank(length=self.nsamples, bandwidth=bandwidth,
-                                      low_cutoff=30, samplerate=self.samplerate)
+                                      low_cutoff=30, pass_bands=True, samplerate=self.samplerate)
         subbands = fbank.apply(self.channel(0))
         envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         noise = Sound.whitenoise(duration=self.nsamples, samplerate=self.samplerate) # make white noise
         subbands_noise = fbank.apply(noise) # divide into same subbands as signal
         subbands_noise *= envs # apply envelopes
+        subbands_noise.level = subbands.level
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
 
     def pitch_tracking(self, window_dur=0.005): # TODO: implement!
