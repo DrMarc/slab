@@ -921,7 +921,7 @@ class Sound(Signal):
         Computes one of several features of the spectrogram of a sound and returns either a
         new Signal with the feature value at each sample, or the average (*rms* or mean) feature value over all samples.
         Available features:
-        *centroid* is the centre of mass of the short-term spectrum, and fwhm is the width of a Gaussian of the same variance as the spectrum around the centroid.
+        *centroid* is the centre of mass of the short-term spectrum, and 'fwhm' is the width of a Gaussian of the same variance as the spectrum around the centroid.
         Examples:
         >>> sig = Sound.tone(frequency=500, nchannels=2)
         >>> round(sig.spectral_feature(feature='centroid')[0])
@@ -934,7 +934,7 @@ class Sound(Signal):
         'flatness' measures how tone-like a sound is, as opposed to being noise-like.
         It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean. (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" IEEE Signal Processing Letters, 2004, Vol. 11.)
 
-        'rolloff' is...
+        'rolloff' is the frequency at which the spectrum rolles off and is typically used to find a suitable low-PassSummarycutoff frequency that retains most of the signal power (given as fraction in parameter 'rolloff' [*0.85*]).
 
         '''
         if not frame_duration:
@@ -1085,7 +1085,7 @@ class Sound(Signal):
         idx = 0
         while idx < self.nsamples:
             segment = Sound(self.data[idx:min(self.nsamples, idx +
-                                              window_nsamp), :],  samplerate=self.samplerate)
+                                              window_nsamp), :], samplerate=self.samplerate)
             segment.resize(window_nsamp)  # in case the last window is too short
             segment *= window
             modified_segment = yield segment  # return a new sound object
@@ -1098,16 +1098,18 @@ class Sound(Signal):
             self.data = modified
 
     @staticmethod
-    def calibrate(intensity=None):
+    def calibrate(intensity=None, make_permanent=False):
         '''
         Calibrate the presentation intensity of a setup.
         Enter the calibration intensity, if you know it.
         If None, plays a 1kHz tone. Please measure actual
         intensity with a sound level meter and appropriate
         coupler.
+        Set make_permanent to True to save a calibration
+        file in slab.DATAPATH that is loaded on import.
         '''
         global _calibration_intensity
-        if not intensity:
+        if intensity is None:
             tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
             print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
             tone.play()  # play it
@@ -1115,7 +1117,8 @@ class Sound(Signal):
             intensity = intensity - tone.level  # subtract measured from rms intensity
         # set and save
         _calibration_intensity = intensity
-        Sound.save_calibration_intensity()
+        if make_permanent:
+            Sound.save_calibration_intensity()
 
     @staticmethod
     def save_calibration_intensity():
@@ -1126,13 +1129,14 @@ class Sound(Signal):
         numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
 
 
-def apply_to_path(path, method, kwargs={}, out_path=None):
+def apply_to_path(path='.', method=None, kwargs={}, out_path=None):
     '''
-    Apply a function to all wav files in a directory. This function need to take a Sound
-    as first argument. Other a arguments are passed as dictionary of keyword arguments and values. If out_path is supplied, then the sounds are saved with their original file name in the new path/directory.
-    Example:
+    Apply a function ('method') to all wav files in a given directory ('path', Default is current directory).
+    Arguments to the function are passed as dictionary of keyword arguments and values.
+    If out_path is supplied, then the sounds are saved with their original file name in the new directory.
+    Examples:
     >> slab.apply_to_path('.', slab.Sound.spectral_feature, {'feature':'fwhm'})
-    >> slab.apply_to_path('.', slab.Sound.ramp, out_path='modified')
+    >> slab.apply_to_path('.', slab.Sound.ramp, out_path='./modified')
     >> slab.apply_to_path('.', slab.Sound.ramp, kwargs={'duration':0.3}, out_path='./test')
     '''
     if not callable(method):
@@ -1147,9 +1151,9 @@ def apply_to_path(path, method, kwargs={}, out_path=None):
         sig = Sound(file)
         res = method(sig, **kwargs)
         if out_path:
-            if hasattr(res, 'write'):  # if objects with write methods were returned, write them to sq_dist_from_cog
+            if hasattr(res, 'write'):  # if objects with write methods were returned, write them to out_path
                 res.write(out_path.joinpath(file.name))
-            else:  # otherwise assum the modification was in-place and write sig
+            else:  # otherwise assume the modification was in-place and write sig to out_path
                 sig.write(out_path.joinpath(file.name))
         results[str(file.stem)] = res
     return results  # a dictionary of results for each file name
