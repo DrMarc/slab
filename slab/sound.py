@@ -577,7 +577,7 @@ class Sound(Signal):
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
         if self.samplerate % 1:
-            self.resample(int(self.samplerate))
+            self = self.resample(int(self.samplerate))
             print("Sampling rate must be an integer when writing to .wav!"
                   "\n Resamling from %s to %s" % (self.samplerate, int(self.samplerate)))
 
