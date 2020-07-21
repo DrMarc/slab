@@ -447,7 +447,8 @@ class Sound(Signal):
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
         # get centre_freqs
-        freqs, _, _ = Filter._center_freqs(low_cutoff=f_lower, high_cutoff=f_upper, bandwidth=bandwidth)
+        freqs, _, _ = Filter._center_freqs(
+            low_cutoff=f_lower, high_cutoff=f_upper, bandwidth=bandwidth)
         rand_phases = numpy.random.rand(len(freqs)) * 2 * numpy.pi
         sig = Sound.tone(frequency=freqs, duration=duration,
                          phase=rand_phases, samplerate=samplerate)
@@ -575,6 +576,11 @@ class Sound(Signal):
                 'You need SoundFile to write files (pip install git+https://github.com/bastibe/SoundFile.git')
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
+        if self.samplerate % 1:
+            self.resample(int(self.samplerate))
+            print("Sampling rate must be an integer when writing to .wav!"
+                  "\n Resamling from %s to %s" % (self.samplerate, int(self.samplerate)))
+
         if normalise:
             self.data /= numpy.amax(self.data)
         soundfile.write(filename, self.data, self.samplerate)
@@ -692,7 +698,7 @@ class Sound(Signal):
             data_chans.append(data)  # concatenate channel data
         return Sound(data_chans, self.samplerate)
 
-    def reverb(self, room=4, mic='center', source_distance=1, hrtf=None): # TODO: implement!
+    def reverb(self, room=4, mic='center', source_distance=1, hrtf=None):  # TODO: implement!
         '''
         Returns a Binaural sound with added early reflections computed using
         the image source method and a simple shoe-box room and added late
@@ -992,13 +998,14 @@ class Sound(Signal):
         subbands = fbank.apply(self.channel(0))
         envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
-        noise = Sound.whitenoise(duration=self.nsamples, samplerate=self.samplerate) # make white noise
-        subbands_noise = fbank.apply(noise) # divide into same subbands as signal
-        subbands_noise *= envs # apply envelopes
+        noise = Sound.whitenoise(duration=self.nsamples,
+                                 samplerate=self.samplerate)  # make white noise
+        subbands_noise = fbank.apply(noise)  # divide into same subbands as signal
+        subbands_noise *= envs  # apply envelopes
         subbands_noise.level = subbands.level
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
 
-    def pitch_tracking(self, window_dur=0.005): # TODO: implement!
+    def pitch_tracking(self, window_dur=0.005):  # TODO: implement!
         fbank = Filter.cos_filterbank(length=self.nsamples, bandwidth=1/10,
                                       low_cutoff=30, high_cutoff=None, samplerate=self.samplerate)
         self_bands = fbank.apply(self)  # apply filterbank
@@ -1051,7 +1058,7 @@ class Sound(Signal):
         norm = hist / hist.sum()  # normalize histogram so that it summs to 1
         return numpy.sum(bin_centers * norm)  # compute centroid of histogram
 
-    def time_windows(self, duration=1024): # TODO: pylint error, test!
+    def time_windows(self, duration=1024):  # TODO: pylint error, test!
         '''
         Returns overlapping time windows as a generator.
         Use the generator if you need to modify each segment in place like this
