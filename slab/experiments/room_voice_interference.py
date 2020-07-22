@@ -21,6 +21,7 @@ import slab
 slab.Signal.set_default_samplerate(44100)
 _results_file = None
 slab.Resultsfile.results_folder = 'Results'
+slab.psychoacoustics.input_method = 'keyboard' # or 'buttonbox'
 # possible parameters:
 rooms = tuple(range(40, 161, 8)) # (40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160)
 voices = (0.98, 1.029, 1.078, 1.127, 1.176, 1.225, 1.274, 1.323, 1.372, 1.421, 1.47)
@@ -43,23 +44,23 @@ def jnd(condition, practise=False):
     This threshold is used in the main experiment as jnd.
     condition ... 'room', voice', or 'itd'
     '''
-    print('Two sounds are presented in each trial.')
+    print('Three sounds are presented in each trial.')
     print('They are always different, but sometimes')
     if condition == 'room':
-        print('they are played in two rooms with different sizes,')
-        print('and sometimes both are played in the same room.')
-        print('Was the larger room presented first or second?')
+        print('one sound is played in a larger room,')
+        print('and sometimes all three are played in the same room.')
+        print('Was the larger room presented first, second, or third?')
     elif condition == 'voice':
-        print('they are spoken by two different persons (one larger, one smaller),')
-        print('and sometimes both are spoken by the same person.')
-        print('Was the larger person presented first or second?')
+        print('one is spoken by a different (larger) person,')
+        print('and sometimes all three are spoken by the same person.')
+        print('Was the larger person presented first, second, or third?')
     elif condition == 'itd':
-        print('they are played from two different directions (one slightly to the left),')
-        print('and sometimes both are played from straight ahead.')
-        print('Was the sound slightly from the left played first or second?')
+        print('one is played from a different direction (slightly to the left),')
+        print('and sometimes all three are played from straight ahead.')
+        print('Was the sound slightly from the left played first, second, or third?')
     else:
         raise ValueError(f'Invalid condition {condition}.')
-    print('Press 1 for first, 2 for second.')
+    print('Press 1 for first, 2 for second, 3 for third.')
     print('The difference will get more and more difficult to hear.')
     input('Press enter to start JND estimation...')
     repeat = 'r'
@@ -69,34 +70,36 @@ def jnd(condition, practise=False):
         word_seq = slab.Trialsequence(conditions=word_list, kind='infinite', name='word_seq')
         # define the staircase
         if practise:
-            stairs = slab.Staircase(start_val=len(condition_values)-1, n_reversals=5,
-                                step_sizes=[4, 4, 3, 2], min_val=0, max_val=len(condition_values)-1, n_up=1, n_down=1, n_pretrials=0)
+            stairs = slab.Staircase(start_val=len(condition_values)-1, n_reversals=3,
+                                step_sizes=[4, 3, 2], min_val=0, max_val=len(condition_values)-1, n_up=1, n_down=1, n_pretrials=0)
         else:
-            stairs = slab.Staircase(start_val=len(condition_values)-4, n_reversals=12,
-                                step_sizes=[3, 2, 1], min_val=0, max_val=len(condition_values)-1, n_up=1, n_down=1, n_pretrials=2)
+            stairs = slab.Staircase(start_val=len(condition_values)-4, n_reversals=15,
+                                step_sizes=[4, 2], min_val=0, max_val=len(condition_values)-1, n_up=1, n_down=2, step_up_factor=1.5, n_pretrials=1) # should give approx. 70% hitrate
             _results_file.write(f'{condition} jnd:', tag='time')
         for trial in stairs:
-            current = condition_values[trial]
+            current = condition_values[int(trial)]
             # load stimuli
             word = next(word_seq)
             word2 = next(word_seq)
+            word3 = next(word_seq)
             if condition == 'room':
                 jnd_stim = slab.Sound(stim_folder / word  / f'{word}_SER{default_voice:.4g}_GPR168_{current}_{default_itd}.wav')
             elif condition == 'voice':
                 jnd_stim = slab.Sound(stim_folder / word  / f'{word}_SER{current:.4g}_GPR168_{default_room}_{default_itd}.wav')
             elif condition == 'itd':
                 jnd_stim = slab.Sound(stim_folder / word  / f'{word}_SER{default_voice:.4g}_GPR168_{default_room}_{current}.wav')
-            default_stim = slab.Sound(stim_folder / word2 / f'{word2}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
-            stairs.present_afc_trial(jnd_stim, default_stim, isi=ISI_stairs)
-            if practise:
+            default_stim1 = slab.Sound(stim_folder / word2 / f'{word2}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
+            default_stim2 = slab.Sound(stim_folder / word3 / f'{word3}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
+            stairs.present_afc_trial(jnd_stim, [default_stim1, default_stim2], isi=ISI_stairs)
+            if 1:#practise:
                 stairs.plot()
         thresh = stairs.threshold(n=6)
         thresh_condition_value = condition_values[numpy.ceil(thresh).astype('int')]
-        if practise:
+        if 1:#practise:
             stairs.close_plot()
         else:
-            # TODO: save staircase as json string into results file
             print(f'room jnd: {round(thresh, ndigits=1)}')
+            _results_file.write(stairs, tag=f'stairs {condition}')
             _results_file.write(thresh, tag=f'jnd {condition}')
             _results_file.write(thresh_condition_value, tag=f'jnd condition value {condition}')
         repeat = input('Press enter to continue, "r" to repeat this threshold measurement.\n\n')
@@ -113,10 +116,10 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
     '''
     print('Two sounds are presented in each trial.')
     print('They are always different, but sometimes')
-    print('they are played in two rooms with different sizes,')
-    print('and sometimes both are played in the same room.')
-    print('Was the larger room presented first or second?')
-    print('Press 1 for first, 2 for second.')
+    print('one sound is played in a larger room,')
+    print('and sometimes all three are played in the same room.')
+    print('Was the larger room presented first, second, or third?')
+    print('Press 1 for first, 2 for second, and .')
     input('Press enter to start the test...')
     # set parameter values of conditions in named tuples -> list of these is used for slab.Trialsequence
     default = condition(voice=default_voice, room=default_room, itd=default_itd, label='default')
@@ -133,11 +136,13 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
     _results_file.write(f'interference block:', tag='time')
     for trial_parameters in trials:
         # load stimuli
-        word = next(word_seq)
+        word  = next(word_seq)
         word2 = next(word_seq)
+        word3 = next(word_seq)
         jnd_stim = slab.Sound(stim_folder / word  / word+'_SER%.4g_GPR168_%i_%i.wav' % trial_parameters)
-        default_stim = slab.Sound(stim_folder / word2 / word2+'_SER%.4g_GPR168_%i_%i.wav' % default)
-        trials.present_afc_trial(jnd_stim, default_stim, isi=ISI_stairs)
+        default_stim1 = slab.Sound(stim_folder / word2 / word2+'_SER%.4g_GPR168_%i_%i.wav' % default)
+        default_stim2 = slab.Sound(stim_folder / word3 / word3+'_SER%.4g_GPR168_%i_%i.wav' % default)
+        trials.present_afc_trial(jnd_stim, [default_stim1, default_stim2], isi=ISI_stairs)
         response = trials.data[-1] # read out the last response
         if trial_parameters.label[:4] == 'room' and response: # hit!
             hits += 1
@@ -157,11 +162,11 @@ def main_experiment(subject=None):
         subject = input('Enter subject code: ')
     _results_file = slab.Resultsfile(subject=subject)
     # _ = familiarization() # run the familiarization, the hitrate is saved in the results file
-    jnd('room', practise=True)  # run the stairs practice for the room condition
+    #jnd('room', practise=True)  # run the stairs practice for the room condition
     jnd_room = jnd('room') # mesure
-    jnd('voice', practise=True)  # run the stairs practice for the room condition
+    #jnd('voice', practise=True)  # run the stairs practice for the room condition
     jnd_voice = jnd('voice')
-    jnd('itd', practise=True)  # run the stairs practice for the room condition
+    #jnd('itd', practise=True)  # run the stairs practice for the room condition
     jnd_itd = jnd('itd')
 
     print('The main part of the experiment starts now (interference task).')
