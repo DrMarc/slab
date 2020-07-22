@@ -109,7 +109,7 @@ class TrialPresentationOptions_mixin:
         the response. Optionally call print_trial_info afterwards.
         '''
         if isinstance(distractors, list):
-            stims = [target].extend(distractors)  # assuming sound object and list of sounds
+            stims = [target] + distractors # assuming sound object and list of sounds
         else:
             stims = [target, distractors]  # assuming two sound objects
         order = numpy.random.permutation(len(stims))
@@ -143,14 +143,14 @@ class TrialPresentationOptions_mixin:
         '''Return a simulated response to the current condition index value by calculating the hitrate
         from a psychometric (logistic) function. This is only sensible for 'method of constant stimuli'
         trials (self.trials has to be numeric and an interval scale representing a continuous stimulus value.
-        thresh ... midpoint/threshhold (*2*)
-        transition_width ... range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
-        intervals ... use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial.
-        hitrates ... list of hitrates for the different conditions, to allow costum rates instead of simulation.
+        thresh ... midpoint/threshhold
+        transition_width ... range of stimulus intensities over which the hitrate increases from 0.25 to 0.75 (*2*)
+        intervals ... use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
+        hitrates ... list of hitrates for the different conditions, to allow custom rates instead of simulation.
                      If given, thresh and transition_width are not used.
         '''
         slope = 0.5 / transition_width
-        if self.__class__.__name__ == 'Trialsequence':
+        if self.__class__.__name__ == 'Trialsequence': # check which class the mixin is in
             current_condition = self.trials[self.this_n]
         else:
             current_condition = self._next_intensity
@@ -539,13 +539,13 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
             self.reversal_intensities.append(self.intensities[-1])
         if len(self.reversal_intensities) >= self.n_reversals:
             self.finished = True  # we're done
-        if reversal and self._variable_step:  # new step size if necessary
+        #if reversal and self._variable_step:  # new step size if necessary
             # if beyond the list of step sizes, use the last one
-            if len(self.reversal_intensities) >= len(self.step_sizes):
-                self.step_size_current = self.step_sizes[-1]
-            else:
-                _sz = len(self.reversal_intensities)
-                self.step_size_current = self.step_sizes[_sz]
+        if len(self.reversal_intensities) >= len(self.step_sizes):
+            self.step_size_current = self.step_sizes[-1]
+        else:
+            _sz = len(self.reversal_intensities)
+            self.step_size_current = self.step_sizes[_sz]
         if self.current_direction == 'up':
             self.step_size_current *= self.step_up_factor # apply factor for weighted up/down method
         if not self.reversal_intensities:
@@ -582,12 +582,12 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
         if (self.min_val is not None) and (self._next_intensity < self.min_val):
             self._next_intensity = self.min_val  # check we haven't gone out of the legal range
 
-    def threshold(self, n=6):
+    def threshold(self, n=None):
         '''Returns the average (arithmetic for step_type == 'lin',
-        geometric otherwise) of the last n reversals (default 6).'''
+        geometric otherwise) of the last n reversals (default: n_reversals - 1).'''
         if self.finished:
-            if n > self.n_reversals:
-                n = self.n_reversals
+            if n > self.n_reversals or n is None:
+                n = int(self.n_reversals) - 1
             if self.step_type == 'lin':
                 return numpy.mean(self.reversal_intensities[-n:])
             else:
@@ -622,7 +622,7 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
         plt.clf()
         plt.plot(x, y)
         ax = plt.gca()
-        ax.set_xlim(-self.n_pretrials, min(20, (self.this_trial_n + 15)//10*10))  # plot
+        ax.set_xlim(-self.n_pretrials, max(20, (self.this_trial_n + 15)//10*10))
         ax.set_ylim(self.min_val, self.max_val)
         # plot green dots at correct/yes responses
         ax.scatter(x[responses], y[responses], color='green')
