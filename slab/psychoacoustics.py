@@ -784,15 +784,17 @@ class Precomputed(list):
                 list.append(self, sound)
         else:
             raise TypeError('Unknown type for list argument.')
-        self.previous = None  # this property holds the index of the previously played sound
         if not all(hasattr(sound, 'play') for sound in self):
-            raise TypeError('Cannot play all of the provided items.')
+            raise TypeError('Cannot play all of the provided items.') # all items in list need to have a play method
+        self.previous = None  # this property holds the index of the previously played sound
+        self.sequence = [] # keep a list of indices of played stimuli, in case needed for later analysis
 
     def play(self):
         idx = self.previous
         while idx == self.previous:
             idx = numpy.random.randint(len(self))
         self.previous = idx
+        self.sequence.append(idx) # add to the list of played stimuli
         self[idx].play()
 
     def random_choice(self, n=1):
