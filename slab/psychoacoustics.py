@@ -5,7 +5,8 @@ This module uses doctests. Use like so:
 python -m doctest psychoacoustics.py
 '''
 import os
-from pathlib import Path
+import io
+import pathlib
 import datetime
 import json
 import zipfile
@@ -684,11 +685,11 @@ class Resultsfile():
     >>> file = Resultsfile(subject='MS')
     >>> print(file.name)
     '''
-    name = property(fget=lambda self: str(self.path.name), doc='The name of the results file.')
+    name = property(fget=lambda self: self.path.name, doc='The name of the results file.')
 
     def __init__(self, subject='test'):
         self.subject = subject
-        self.path = Path(results_folder / Path(subject) / Path(subject +
+        self.path = pathlib.Path(results_folder / pathlib.Path(subject) / pathlib.Path(subject +
                                                                datetime.datetime.now().strftime("_%Y-%m-%d-%H-%M-%S") + '.txt'))
         # make the Results folder and subject subfolder
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -759,8 +760,7 @@ class Precomputed(list):
     'n': [int, *10*], only used if list is a callable, calls it n times to make the stimuli
     Examples:
     >>> stims = slab.Precomputed(sound_list) # using a pre-made list
-    >>> stims = slab.Precomputed(lambda: slab.Sound.pinknoise(), n=10) # using a lambda function
-    >>> # to make 10 examples of pink noise
+    >>> stims = slab.Precomputed(lambda: slab.Sound.pinknoise(), n=10) # using a lambda function to make 10 examples of pink noise
     >>> stims = slab.Precomputed( (slab.Sound.vowel(vowel=v) for v in ['a','e','i']) ) # using a generator
     >>> stims.play() # playing a sound from the list
     '''
@@ -796,19 +796,30 @@ class Precomputed(list):
         self[idx].play()
 
     def random_choice(self, n=1):
-        'Return a random sample of sounds with replacement from the list.'
+        'Returns a list of n random sounds with replacement.'
         idxs = numpy.random.randint(0, len(self), size=n)
         return [self[i] for i in idxs]
 
     def write(self, fname):
-        fnames = list()
-        for idx, sound in enumerate(self):
-            f = f's_{idx}.wav'
-            fnames.append(f)
-            sound.write(f)
-        with zipfile.ZipFile(fname, mode='w') as zip:
-            for f in fnames:
-                zip.write(f)
+        'Writes the Precomputed object to disk as a zip file containing all sounds as wav files.'
+        with zipfile.ZipFile(fname, mode='a') as zip_file: # open an empty zip file in 'append' mode
+            for idx, sound in enumerate(self):
+                f = io.BytesIO() # open a virtual file (file-like memory buffer)
+                sound.write(f) # write sound to virtual file
+                f.seek(0) # rewind the file so we can read it from start
+                zip_file.writestr(f's_{idx}.wav', f.read())
+                f.close()
+
+    @staticmethod
+    def read(fname):
+        'Reads a zip file containing wav files and returns them as Precomputed object.'
+        stims = Precomputed([])
+        with zipfile.ZipFile(fname, 'r') as zip:
+            files = zip.namelist()
+            for file in files:
+                wav_bytes = zip.read(file)
+                stims.append(slab.Sound.read(io.BytesIO(wav_bytes)))
+        return stims
 
 
 def load_config(config_file):
