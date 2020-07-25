@@ -1,6 +1,7 @@
 import array
 import time
 import pathlib
+import tempfile
 import numpy
 try:
     import soundfile
@@ -27,6 +28,8 @@ except ImportError:
 from slab.signals import Signal
 from slab.filter import Filter
 from slab import DATAPATH
+
+_tmpdir = pathlib.Path(tempfile.gettempdir()) # get a temporary directory for writing intermediate files
 
 try:  # try getting a previously set calibration intensity from file
     _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
@@ -564,7 +567,7 @@ class Sound(Signal):
         return Sound(x, samplerate)
 
     # instance methods
-    def write(self, filename, normalise=False):
+    def write(self, filename, normalise=False, fmt='WAV'):
         '''
         Save the sound as a WAV.
         If the normalise keyword is set to True, the amplitude of the sound will be
@@ -577,7 +580,7 @@ class Sound(Signal):
             filename = str(filename)
         if normalise:
             self.data /= numpy.amax(self.data)
-        soundfile.write(filename, self.data, self.samplerate)
+        soundfile.write(filename, self.data, self.samplerate, format=fmt)
 
     def ramp(self, when='both', duration=0.01, envelope=None):
         '''
@@ -732,22 +735,23 @@ class Sound(Signal):
         if have_soundcard:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
-            self.write('tmp.wav')
-            Sound.play_file('tmp.wav')
+            self.write(_tmpdir / 'tmp.wav')
+            Sound.play_file(_tmpdir / 'tmp.wav')
         if sleep:  # all current play methods are blocking, there is no reason to sleep!
             time.sleep(self.duration)
 
     @staticmethod
     def play_file(fname):
+        fname = str(fname) # in case it is a pathlib.Path object, get the name string
         from platform import system
         system = system()
         if system == 'Windows':
             import winsound
-            winsound.PlaySound('%s.wav' % fname, winsound.SND_FILENAME)
-        elif system == 'Darwin':
+            winsound.PlaySound(fname, winsound.SND_FILENAME)
+        elif system == 'Darwin': # MacOS
             import subprocess
             subprocess.call(['afplay', fname])
-        else:  # Linux/Unix, install sox (sudo apt-get install sox libsox-fmt-all)
+        else:  # Linux
             import subprocess
             try:
                 subprocess.call(['sox', fname, '-d'])
