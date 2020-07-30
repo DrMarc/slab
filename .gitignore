@@ -12,3 +12,6 @@
 
 # pycharm metadata
 /.idea/
+
+# calibration files should only be local
+/data/calibration_intesity.npy
