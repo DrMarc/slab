@@ -231,6 +231,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                     self.trials = Trialsequence._create_simple_sequence(len(self.conditions), 1)
             else:
                 raise ValueError(f'Unknown kind parameter: {kind}!')
+        else:
+            self.trials = trials
         self.n_trials = len(self.trials)
         self.n_remaining = self.n_trials
         self.kind = kind
