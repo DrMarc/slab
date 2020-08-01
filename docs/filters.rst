@@ -1,0 +1,20 @@
+.. currentmodule:: slab
+
+Filters
+=======
+
+**Filter**: Inherits from Signal and provides methods for generating, measuring, and manipulating FIR and FFT filters, filter banks, and transfer functions.::
+
+    filt = Filter.rectangular_filter(frequency=15000, kind='hp') # make a highpass filter
+	filt.tf() # plot the transfer function
+	sig_filt = filt.apply(sig) # apply it to a signal
+	# applying a whole filterbank is equally easy:
+	fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_cutoff=100) # make a cosine filter bank
+	fbank.tf() # plot the transfer function of all filters in the bank
+	subbands = fbank.apply(sig) # make a multi-channel signal containing the passbands of the filters in the filter bank
+	# the subbands could now be manipulated and then combined with the collapse_subbands method
+	fbank.filter_bank_center_freqs() # return the centre frequencies of the filters in the filter bank
+	fbank = equalizing_filterbank(target, measured) # generates an inverse filter bank for equalizing the differences
+	# between measured signals (single- or multi-channel Sound object) and a target signal. Used for equalizing loudspeakers,
+	microphones, or speaker arrays.
+	fbank.save('equalizing_filters.npy') # saves the filter bank as .npy file.
