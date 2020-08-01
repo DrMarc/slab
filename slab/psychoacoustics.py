@@ -30,7 +30,7 @@ input_method = 'keyboard' # or 'buttonbox'
 
 class buttonbox:
     '''Class to allow easy switching between input from the keyboard via curses
-    and from the custon buttonbox adapter (arduino device that sends a number keystroke
+    and from the custom buttonbox adapter (arduino device that sends a keystroke
     followed by a return keystroke when pressing a button on the arduino).'''
     @staticmethod
     def getch():
@@ -131,7 +131,7 @@ class TrialPresentationOptions_mixin:
         if print_info:
             self.print_trial_info()
 
-    def present_tone_trial(self, stimulus, correct_key_idx, key_codes=(range(49, 58)), print_info=True):
+    def present_tone_trial(self, stimulus, correct_key_idx=0, key_codes=(range(49, 58)), print_info=True):
         stimulus.play()
         with slab.Key() as key:
             response = key.getch()
@@ -219,7 +219,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         self.data = [] # holds responses if TrialPresentationOptions methods are called
         # generate stimulus sequence
         if not trials:
-            if not kind:
+            if kind is None:
                 kind = 'random_permutation' if self.n_conds <= 2 else 'non_repeating'
             if kind == 'non_repeating':
                 self.trials = Trialsequence._create_simple_sequence(len(self.conditions), self.n_reps)

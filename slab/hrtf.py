@@ -4,14 +4,19 @@ Class for reading and manipulating head-related transfer functions.
 
 import warnings
 import pathlib
-import matplotlib
 import numpy
 
 try:
+    import matplotlib
     import matplotlib.pyplot as plt
     have_pyplot = True
 except ImportError:
     have_pyplot = False
+try:
+    from mpl_toolkits.mplot3d import Axes3D
+    have_mplot3d = True
+except:
+    have_mplot3d = False
 try:
     import scipy.signal
     have_scipy = True
@@ -175,6 +180,8 @@ class HRTF():
         Waterfall (as in Wightman and Kistler, 1989) and image plots
         (as in Hofman 1998) are available by setting 'kind'.
         '''
+        if not have_pyplot:
+            raise ImportError('Plotting HRTFs requires matplotlib.')
         if ear == 'left':
             chan = 0
         elif ear == 'right':
@@ -320,8 +327,9 @@ class HRTF():
         return tfs
 
     def plot_sources(self, idx=False):
-        'DOC'
-        from mpl_toolkits.mplot3d import Axes3D
+        'Plot source locations in 3D, highlighting a list of sources if indices are provided with argument idx.'
+        if not have_pyplot and not have_mplot3d:
+            raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         fig = plt.figure()
         ax = Axes3D(fig)
         azimuth = numpy.deg2rad(self.sources[:, 0])

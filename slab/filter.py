@@ -65,6 +65,8 @@ class Filter(Signal):
         '''
         samplerate = Filter.get_samplerate(samplerate)
         if fir:  # design a FIR filter
+            if not have_scipy:
+                raise ImportError('Generating FIR filters requires Scipy.')
             if kind in ['lp', 'bs']:
                 pass_zero = True
             elif kind in ['hp', 'bp']:
@@ -108,6 +110,8 @@ class Filter(Signal):
                 pad = numpy.zeros([n_shift, out.nchannels])
                 out.data = numpy.concatenate([out, pad])
         if self.fir:
+            if not have_scipy:
+                raise ImportError('Applying FIR filters requires Scipy.')
             if self.nfilters == sig.nchannels:  # filter each channel with corresponding filter
                 for i in range(self.nfilters):
                     out.data[:, i] = scipy.signal.lfilter(
@@ -149,7 +153,7 @@ class Filter(Signal):
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
         return out
 
-    def tf(self, channels='all', nbins=None, plot=True, axes=None, show=True, **kwargs):
+    def tf(self, channels='all', nbins=None, plot=True, axes=None, **kwargs):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
         Return transfer functions of filter at index 'channels' (int or list) or,
@@ -165,6 +169,8 @@ class Filter(Signal):
         if not nbins:
             nbins = self.data.shape[0]
         if self.fir:
+            if not have_scipy:
+                raise ImportError('Computing transfer functions of FIR filters requires Scipy.')
             h = numpy.empty((nbins, len(channels)))
             for i, idx in enumerate(channels):
                 w, _h = scipy.signal.freqz(self.channel(idx), worN=nbins, fs=self.samplerate)
@@ -181,6 +187,8 @@ class Filter(Signal):
                 h = h_interp
                 w = w_interp
         if plot:
+            if not have_pyplot:
+                raise ImportError('Plotting transfer functions requires matplotlib.')
             if axes is None:
                 axes = plt.subplot(111)
             axes.plot(w, h, **kwargs)
@@ -188,8 +196,7 @@ class Filter(Signal):
             axes.set_ylabel('Amplitude [dB]')
             axes.set_title('Frequency Response')
             axes.grid(True)
-            if show:
-                plt.show()
+            plt.show()
         else:
             return w, h
 
@@ -272,7 +279,7 @@ class Filter(Signal):
         Generate an equalizing filter from the difference between a signal and a target.
         The main intent of the function is to help with equalizing the differences between transfer functions of
         different loudspeaker. Signal and target are both divided into ERB-sapced frequency bands and the level
-        diference is calculated for each band. The differences are normalized to the range 0 to 2 and used as gain
+        difference is calculated for each band. The differences are normalized to the range 0 to 2 and used as gain
         for the filter in each frequency band. 0 means, that the respective band is maximally supressed, 2 means it is
         maximally amplified. The overall effect of the filter can be regulated by setting alpha (default is 1).
         Alpha < 1 will reduce the total effect of the filter while alpha > 1 will amplify it (WARNING: large filter
@@ -280,6 +287,8 @@ class Filter(Signal):
         Target and signal must both be instances of slab.Sound. The target must have only a single channel, the signal
         can have multiple ones.
         '''
+        if not have_scipy:
+            raise ImportError('Generating equalizing filter banks requires Scipy.')
         if target.nchannels > 1:
             raise ValueError("The target sound must have only one channel!")
         if bool(target.nsamples % 2):  # number of samples must be even:

@@ -1,4 +1,3 @@
-import array
 import time
 import pathlib
 import tempfile
@@ -38,8 +37,6 @@ except FileNotFoundError:
 
 
 class Sound(Signal):
-    # TODO: debug dynamicripple, add ability to get output of different stages of an auditory periphery model from a sound
-    # add other own stim functions (babbelnoise)?
     '''
     Class for working with sounds, including loading/saving, manipulating and playing.
     Examples:
@@ -58,7 +55,7 @@ class Sound(Signal):
     80.0
 
     **Reading, writing and playing**
-    Sound.write(sound, filename) or writesound(sound, filename):
+    Sound.write(sound, filename):
             Write a sound object to a wav file.
             Example:
             >>> sig = slab.Sound.tone(500, 8000, samplerate=8000)
@@ -72,12 +69,9 @@ class Sound(Signal):
             >>> print(sig2)
             <class 'slab.sound.Sound'> duration 1.0, samples 8000, channels 1, samplerate 8000
 
-    Sound.play(*sounds, **kwargs):
+    Sound.play(*sounds):
     Plays a sound or sequence of sounds. For example::
-            >>> sig.play(sleep=True)
-
-    If ``sleep=True`` the function will wait
-    until the sounds have finished playing before returning.
+            >>> sig.play()
 
     **Generating sounds**
     All sound generating methods can be used with durations arguments in samples (int) or seconds (float).
@@ -172,7 +166,7 @@ class Sound(Signal):
         '''
         if not have_soundfile:
             raise ImportError(
-                'You need SoundFile to read files (pip install git+https://github.com/bastibe/SoundFile.git')
+                'Reading wav files requires SoundFile (pip install git+https://github.com/bastibe/SoundFile.git')
         data, samplerate = soundfile.read(filename)
         return Sound(data, samplerate=samplerate)
 
@@ -268,9 +262,10 @@ class Sound(Signal):
         >>> noise = Sound.powerlawnoise(0.2, 1, samplerate=8000)
 
         Arguments:
-        ``duration`` : Duration of the desired output.
-        ``alpha`` : Power law exponent.
-        ``samplerate`` : Desired output samplerate
+        duration... duration of the output.
+        alpha... power law exponent.
+        samplerate... output samplerate (*_default_samplerate*)
+        
         '''
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
@@ -317,8 +312,8 @@ class Sound(Signal):
     @staticmethod
     def irn(delay=0.01, gain=1, niter=16, duration=1.0, samplerate=None):  # TODO: produces no pitch!
         '''
-        Returns an iterated ripple noise. The noise is obtained many attenuated and
-        delayed version of the original broadband noise.
+        Returns an iterated ripple noise. The noise is obtained many attenuated (by multiplication with gain) and
+        delayed (delay, *0.01* sec) versions of the original white noise.
         '''
         samplerate = Sound.get_samplerate(samplerate)
         delay = Sound.in_samples(delay, samplerate)
@@ -366,6 +361,8 @@ class Sound(Signal):
 
     @staticmethod
     def chirp(duration=1.0, from_freq=100, to_freq=None, samplerate=None, kind='quadratic'):
+        if not have_scipy:
+            raise ImportError('Generating chirps requires Scipy.')
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
         t = numpy.arange(0, duration, 1) / samplerate  # generate a time vector
@@ -575,7 +572,7 @@ class Sound(Signal):
         '''
         if not have_soundfile:
             raise ImportError(
-                'You need SoundFile to write files (pip install git+https://github.com/bastibe/SoundFile.git')
+                'Writing wav files requires SoundFile (pip install git+https://github.com/bastibe/SoundFile.git')
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
         if normalise:
@@ -677,7 +674,12 @@ class Sound(Signal):
         self.data = filt.apply(self).data
 
     def aweight(self):
-        'Returns A-weighted first channel as new sound.'
+        '''
+        Returns A-weighted sound. A-weighting is applied to instrument-recorded sounds
+        to account for the relative loudness of different frequencies perceived by the
+        human ear. See: https://en.wikipedia.org/wiki/A-weighting'''
+        if not have_scipy:
+            raise ImportError('Applying a-weighting requires Scipy.')
         f1 = 20.598997
         f2 = 107.65265
         f3 = 737.86223
@@ -724,14 +726,14 @@ class Sound(Signal):
             try:
                 subprocess.call(f'sox -d -r {samplerate} tmp.wav trim 0 {duration}')
             except:
-                raise NotImplementedError(
-                    'Need sox for recording on Linux whithout SoundCard module. Install: sudo apt-get install sox libsox-fmt-all OR pip install git+https://github.com/bastibe/SoundCard).')
+                raise ImportError(
+                    'Recording whithout SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all OR pip install git+https://github.com/bastibe/SoundCard.git.')
             time.sleep(duration)
             out = Sound('tmp.wav')
         return out
 
     def play(self, sleep=False):
-        'Plays the sound.'
+        'Plays the sound through the default device.'
         if have_soundcard:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
@@ -757,7 +759,7 @@ class Sound(Signal):
                 subprocess.call(['sox', fname, '-d'])
             except:
                 raise NotImplementedError(
-                    'Need sox for playing from files on Linux. Install: sudo apt-get install sox libsox-fmt-all')
+                    'Playing from files on Linux without SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all')
 
     def waveform(self, start=0, end=None):
         '''
@@ -766,6 +768,8 @@ class Sound(Signal):
         ``start``, ``end`` (samples or time)
         If these are left unspecified, it shows the full waveform
         '''
+        if not have_pyplot:
+            raise ImportError('Plotting waveforms requires matplotlib.')
         start = self.in_samples(start, self.samplerate)
         if end is None:
             end = self.nsamples
@@ -798,6 +802,8 @@ class Sound(Signal):
         ``freqs, times, power`` where ``power`` is a 2D array of powers,
         ``freqs`` is the corresponding frequencies, and ``times`` are the time bins.
         '''
+        if not have_scipy:
+            raise ImportError('Computing spectrograms requires Scipy.')
         if self.nchannels > 1:
             raise ValueError('Can only compute spectrograms for mono sounds.')
         if other is not None:
@@ -819,6 +825,8 @@ class Sound(Signal):
         freqs, times, power = scipy.signal.spectrogram(
             x, mode='psd', fs=self.samplerate, scaling='density', noverlap=noverlap, window=window, nperseg=window_nsamp)
         if plot:
+            if not have_pyplot:
+                raise ImportError('Ploting spectrograms requires matplotlib.')
             p_ref = 2e-5  # 20 μPa, the standard reference pressure for sound in air
             power = 10 * numpy.log10(power / (p_ref ** 2))  # logarithmic power for plotting
             # set lower bound of colormap (vmin) from dynamic range.
@@ -838,11 +846,12 @@ class Sound(Signal):
 
     def cochleagram(self, bandwidth=1/5, plot=True):
         '''
-        Computes a cochleagram of the sound by filtering with a bank of erb-spaced
-        filters cos filter with given bandwidth (*1/5* th octave) and applying a
-        cube-root compression to the resulting envelopes.
+        Computes a cochleagram of the sound by filtering with
+        a bank of cosine-shaped filters with given bandwidth
+        (*1/5* th octave) and applying a cube-root compression
+        to the resulting envelopes.
         If plot is False, returns the envelopes.
-        '''  # TODO: freq axis is incorrect (lin instead of erb)
+        '''
         fbank = Filter.cos_filterbank(bandwidth=bandwidth, low_cutoff=20,
                                       high_cutoff=None, samplerate=self.samplerate)
         freqs = fbank.filter_bank_center_freqs()
@@ -851,6 +860,8 @@ class Sound(Signal):
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         envs = envs.data ** (1/3)  # apply non-linearity (cube-root compression)
         if plot:
+            if not have_pyplot:
+                raise ImportError('Plotting cochleagrams requires matplotlib.')
             cmap = matplotlib.cm.get_cmap('Greys')
             _, ax = plt.subplots()
             ax.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
@@ -902,6 +913,8 @@ class Sound(Signal):
             Z[Z < 1e-20] = 1e-20  # no zeros because we take logs
             Z = 10 * numpy.log10(Z)
         if plot:
+            if not have_pyplot:
+                raise ImportError('Plotting spectra requires matplotlib.')
             if axes is None:
                 axes = plt.subplot(111)
             axes.semilogx(freqs, Z, **kwargs)
@@ -1004,9 +1017,9 @@ class Sound(Signal):
 
     def pitch_tracking(self, window_dur=0.005): # TODO: implement!
         fbank = Filter.cos_filterbank(length=self.nsamples, bandwidth=1/10,
-                                      low_cutoff=30, high_cutoff=None, samplerate=self.samplerate)
-        self_bands = fbank.apply(self)  # apply filterbank
-        envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))  # get envelope
+                                      low_cutoff=30, samplerate=self.samplerate)
+        subbands = fbank.apply(self.channel(0))  # apply filterbank
+        envs = subbands.envelope()  # get subband envelopes
         # X[X < 0] = 0
         # smooth the results with a moving average filter
         # autocorrelation in each band and frame
@@ -1075,6 +1088,8 @@ class Sound(Signal):
         >>>		w.waveform() # process window here
 
         '''
+        if not have_scipy:
+            raise ImportError('Need scipy for time window processing.')
         window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
         # step_dur optimal for Gaussian windows
         step_nsamp = numpy.floor(window_nsamp/numpy.sqrt(numpy.pi)/8).astype(int)
@@ -1122,15 +1137,7 @@ class Sound(Signal):
         # set and save
         _calibration_intensity = intensity
         if make_permanent:
-            Sound.save_calibration_intensity()
-
-    @staticmethod
-    def save_calibration_intensity():
-        '''
-        Saves the calibration intensity value to a file in the data folder.
-        This file is loaded upon import of the toolbox.
-        '''
-        numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
+            numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
 
 
 def apply_to_path(path='.', method=None, kwargs={}, out_path=None):

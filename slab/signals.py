@@ -22,15 +22,6 @@ class Signal:
     slicing, and conversion between samples and times.
     This class is intended to be subclassed. See Sound class for an example.
 
-    Minimal example:
-    class SignalWithInfo(Signal):
-    def __init__(self,data,samplerate=None,info=None):
-            # call the baseclass init() so that we don't have to repeat that code here:
-            super().__init__(data,samplerate)
-            # add the new attribute
-            self.info = info
-
-
     The following arguments are used to initialise a Signal object:
 
     ``data``
@@ -74,10 +65,6 @@ class Signal:
 
     would be data in the second channel. To extract a channel as a Signal or subclass object
     use sig.channel(1).
-
-    As a convenient shortcut, channel data can also be returned and set by instance attributes:
-    >>> sig.ch1 # this is equivalent to sig[:,1]
-    array([0., 0., 0., 0., 0., 1., 1., 1., 1., 1.])
 
     Signals support arithmatic operations (add, sub, mul, truediv, neg ['-sig' inverts phase]):
     >>> sig2 = sig * 2
