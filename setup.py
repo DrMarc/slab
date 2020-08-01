@@ -4,7 +4,7 @@ with open('README.rst') as f:
     readme = f.read()
 
 setup(name='soundtools',
-	version='0.6',
+	version='0.7',
 	description='Tools for generating and manipulating digital signals, particularly sounds.',
 	long_description=readme,
 	url='http://github.com/DrMarc/soundtools.git',
