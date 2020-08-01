@@ -1,5 +1,5 @@
-..![Python package](https://github.com/DrMarc/soundtools/workflows/Python%20package/badge.svg)
-..![PyPI](https://github.com/DrMarc/soundtools/workflows/TestPyPi/badge.svg)
+.. image:: https://github.com/DrMarc/soundtools/workflows/Python%20package/badge.svg
+.. image:: https://github.com/DrMarc/soundtools/workflows/TestPyPi/badge.svg
 
 slab: easy manipulation of sounds and psychoacoustic experiments in Python
 ==========================================================================
@@ -30,6 +30,7 @@ Slab represents sounds as Numpy_ arrays and provides classes and methods to perf
 Signal: Provides a generic signal object with properties duration, number of samples, sample times, number of channels. Keeps the data in a 'data' property and implements slicing, arithmetic operations, and conversion between sample points and time points.
 
 .. code:: python
+
     sig = slab.Sound.pinknoise(nchannels=2) # make a pink noise
     sig.duration
 	out: 1.0
@@ -42,6 +43,7 @@ Signal: Provides a generic signal object with properties duration, number of sam
 Sound: Inherits from Signal and provides methods for generating, manipulating, displaying, and analysing sound stimuli. Can compute descriptive sound features and apply manipulations to all sounds in a folder.
 
 .. code:: python
+
     vowel = slab.Sound.vowel(vowel='a', duration=.5) # make a 0.5-second synthetic vowel sound
     vowel.ramp() # apply default raised-cosine onset and offset ramps
     vowel.filter(kind='bp', f=[50, 3000]) # apply bandpass filter between 50 and 3000 Hz
@@ -55,6 +57,7 @@ Sound: Inherits from Signal and provides methods for generating, manipulating, d
 Binaural: Inherits from Sound and provides methods for generating and manipulating binaural sounds, including advanced interaural time and intensity manipulation. Binaural sounds have left and a right channel properties.
 
 .. code:: python
+
     sig = slab.Binaural.pinknoise()
 	sig.pulse() # make a 2-channel pulsed pink noise
     sig.nchannels
@@ -69,6 +72,7 @@ Binaural: Inherits from Sound and provides methods for generating and manipulati
 Filter: Inherits from Signal and provides methods for generating, measuring, and manipulating FIR and FFT filters, filter banks, and transfer functions.
 
 .. code:: python
+
     filt = Filter.rectangular_filter(frequency=15000, kind='hp') # make a highpass filter
 	filt.tf() # plot the transfer function
 	sig_filt = filt.apply(sig) # apply it to a signal
@@ -86,6 +90,7 @@ Filter: Inherits from Signal and provides methods for generating, measuring, and
 HRTF: Inherits from Filter, reads .sofa format HRTFs and provides methods for manipulating, plotting, and applying head-related transfer functions.
 
 .. code:: python
+
     hrtf = slab.HRTF(data='mit_kemar_normal_pinna.sofa') # load HRTF from a sofa file (the standard KEMAR data is included)
     print(hrtf) # print information
     <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
@@ -97,6 +102,7 @@ HRTF: Inherits from Filter, reads .sofa format HRTFs and provides methods for ma
 Psychoacoustics: A collection of classes for working trial sequences, adaptive staircases, forced-choice procedures, stimulus presentation and response recording from the keyboard and USB button boxes, handling of precomputed stimulus lists, results files, and experiment configuration files.
 
 .. code:: python
+
     # set up an 1up-2down adaptive weighted staircase with dynamic step sizes:
     stairs = slab.Staircase(start_val=10, max_val=40, n_up=1, n_down=2, step_sizes=[3, 1], step_up_factor=1.5)
     for trial in stairs: # draw a value from the staircase; the loop terminates with the staircase
