@@ -1,5 +1,4 @@
-.. image:: https://github.com/DrMarc/soundtools/workflows/Python%20package/badge.svg
-.. image:: https://github.com/DrMarc/soundtools/workflows/TestPyPi/badge.svg
+[![Python Package](https://github.com/DrMarc/soundtools/workflows/Python%20package/badge.svg)](https://test.pypi.org/project/soundtools/)[![TestPyPI](https://github.com/DrMarc/soundtools/workflows/TestPyPi/badge.svg)](https://test.pypi.org/project/soundtools/)
 
 slab: easy manipulation of sounds and psychoacoustic experiments in Python
 ==========================================================================
