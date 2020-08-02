@@ -1,5 +1,6 @@
 ![Package](https://github.com/DrMarc/soundtools/workflows/Python%20package/badge.svg)
 [![TestPyPI](https://github.com/DrMarc/soundtools/workflows/TestPyPi/badge.svg)](https://test.pypi.org/project/soundtools/)
+[![Documentation Status](https://readthedocs.org/projects/soundtools/badge/?version=latest)](https://soundtools.readthedocs.io/en/latest/?badge=latest)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/soundtools/graphs/commit-activity)
 ![PyPI pyversions](https://img.shields.io/badge/python-%3E3.6-blue)
 ![PyPI license](https://img.shields.io/badge/license-MIT-brightgreen)
