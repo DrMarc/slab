@@ -23,7 +23,7 @@ Binaural sounds
 ---------------
 Binaural sounds inherit from Sound and provide methods for manipulating interaural parameters of two-channel sounds.
 
-.. autoclass:: sounds.Binaural
+.. autoclass:: Binaural
   :members:
 
 Psychoacoustic procedures
