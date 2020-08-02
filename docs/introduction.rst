@@ -47,7 +47,7 @@ To describe a function:
 This also works for ``.. class::`` and ``..method::``
 
 You can then refer to these definitions elsewhere in the text: The :func:`enumerate` function can be used for ...
-
+Thanks to intersphinx you can also refer to external functions in numpy, scipy and matplotlib: :func:`scipy.signal.spectrogram`
 
 .. rubric:: Footnotes
 .. [#f1] if necessary.

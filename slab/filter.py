@@ -57,6 +57,7 @@ class Filter(Signal):
         taken as the target magnitude of the spectrum (imposing one sound's
         spectrum on the current sound).
         Examples:
+
         >>> sig = Sound.whitenoise()
         >>> filt = Filter(f=3000, kind='lp', fir=False)
         >>> sig = filt.apply(sig)
@@ -157,8 +158,8 @@ class Filter(Signal):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
         Return transfer functions of filter at index 'channels' (int or list) or,
-        if channels='all' (default) return all transfer functions.
-        If plot=True (default) then plot the response and return the figure handle,
+        if channels='all' return all transfer functions.
+        If plot=True then plot the response and return the figure handle,
         else return magnitude and frequency vectors.
         '''
         # check chan is in range of nfilters
@@ -204,20 +205,23 @@ class Filter(Signal):
     # TODO: oversampling factor needed for cochleagram!
     def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, samplerate=None):
         """Create ERB cosine filterbank of n_filters.
-        length ... Length of signal to be filtered with the generated
-                filterbank. The signal length determines the length of the filters.
-        samplerate ... Sampling rate associated with the signal waveform.
-        bandwidth ... of the filters (subbands) in octaves (default 1/3)
-        low_cutoff ... Lower limit of frequency range (def  saults to 0).
-        high_cutoff ... Upper limit of frequency range (defaults to samplerate/2).
-        pass_bands ... boolean [*False*], whether to include half a cosine filter as lowpass and highpass.
-                       If True, allows reconstruction of original bandwidth when collapsing subbands.
+
+        length: Length of signal to be filtered with the generated
+        filterbank. The signal length determines the length of the filters.
+        samplerate: Sampling rate associated with the signal waveform.
+        bandwidth: of the filters (subbands) in octaves (default 1/3)
+        low_cutoff: Lower limit of frequency range (def  saults to 0).
+        high_cutoff: Upper limit of frequency range (defaults to samplerate/2).
+        pass_bands: boolean [*False*], whether to include half a cosine filter as lowpass and highpass.
+        If True, allows reconstruction of original bandwidth when collapsing subbands.
 
         Example:
+
         >>> sig = Sound.pinknoise(samplerate=44100)
         >>> fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_cutoff=100, samplerate=sig.samplerate)
         >>> fbank.tf(plot=True)
         >>> sig_filt = fbank.apply(sig)
+
         """
         samplerate = Signal.get_samplerate(samplerate)
         if not high_cutoff:

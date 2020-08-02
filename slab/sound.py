@@ -456,24 +456,25 @@ class Sound(Signal):
     @staticmethod
     def dynamicripple(Am=0.9, Rt=6, Om=2, Ph=0, duration=1., f0=1000, samplerate=None, BW=5.8, RO=0, df=1/16, ph_c=None):
         '''
-        Return a moving ripple stimulus
-        s = mvripfft(para)
-        [s, ph_c, fdx] = mvripfft(para, cond, ph_c)
-        para = [Am, Rt, Om, Ph]
-                Am: modulation depth, 0 < Am < 1, DEFAULT = .9;
-                Rt: rate (Hz), integer preferred, typically, 1 .. 128, DEFAULT = 6;
-                Om: scale (cyc/oct), any real number, typically, .25 .. 4, DEFAULT = 2;
-                Ph: (optional) symmetry (Pi) at f0, -1 < Ph < 1, DEFAULT = 0.
-        cond = (optional) [T0, f0, SF, BW, RO, df]
-                T0: duartion (sec), DEFAULT = 1.
-                f0: center freq. (Hz), DEFAULT = 1000.
-                samplerate: sample freq. (Hz), must be power of 2, DEFAULT = 16384
-                BW: excitation band width (oct), DEFAULT = 5.8.
-                RO: roll-off (dB/oct), 0 means log-spacing, DEFAULT = 0;
-                df: freq. spacing, in oct (RO=0) or in Hz (RO>0), DEFAULT = 1/16.
-                ph_c: component phase
-        Converted to python by Jessica Thompson based on Jonathan Simon and Didier Dipereux's matlab program [ripfft.m], based on Jian Lin's C program [rip.c].
+        Return a moving ripple stimulus.
+
+        Arguments:
+            Am: modulation depth, 0 < Am < 1,
+            Rt: rate (Hz), integer preferred, typically, 1 .. 128
+            Om: scale (cyc/oct), any real number, typically, .25 .. 4
+            Ph: (optional) symmetry (Pi) at f0, -1 < Ph < 1
+            f0: center freq. (Hz)
+            samplerate: sample freq. (Hz), must be power of 2
+            BW: excitation band width (oct), DEFAULT = 5.8.
+            RO: roll-off (dB/oct), 0 means log-spacing
+            df: freq. spacing, in oct (RO=0) or in Hz (RO>0)
+            ph_c: component phase
+
+        Converted to python by Jessica Thompson based on Jonathan Simon and Didier
+        Dipereux's matlab program [ripfft.m], based on Jian Lin's C program [rip.c].
+
         Example:
+
         >>> ripple = Sound.dynamicripple()
 
         '''
@@ -549,14 +550,12 @@ class Sound(Signal):
 
     def ramp(self, when='both', duration=0.01, envelope=None):
         '''
-        Adds a ramp on/off to the sound (in place)
+        Adds a ramp on/off to the sound (in place).
 
-        ``when='onset'``
-                Can take values 'onset', 'offset' or 'both'
-        ``duration=0.01``
-                The time over which the ramping happens (in samples or seconds)
-        ``envelope``
-                A ramping function, if not specified uses ``sin(pi*t/2)**2``. The
+        Arguments:
+            when: Can take values 'onset', 'offset' or 'both'
+            duration: The time over which the ramping happens (in samples or seconds)
+            envelope: A ramping function, if not specified uses ``sin(pi*t/2)**2``. The
                 function should be a function of one variable ``t`` ranging from
                 0 to 1, and should increase from ``f(0)=0`` to ``f(0)=1``. The
                 reverse is applied for the offset ramp.
@@ -760,15 +759,12 @@ class Sound(Signal):
         '''
         Plots a spectrogram of the sound
         Arguments:
-        ``window_dur``
-                Duration of time window for short-term FFT (*0.005sec*)
-        ``dyn_range``
-                Dynamic range in dB to plot (*120*)
-        ```other```
-                If a sound object is given, subtract the waveform and plot the difference spectrogram.
-        If plot is False, returns the values returned by scipy.signal's ``spectrogram``, namely
-        ``freqs, times, power`` where ``power`` is a 2D array of powers,
-        ``freqs`` is the corresponding frequencies, and ``times`` are the time bins.
+        window_dur: Duration of time window for short-term FFT (*0.005sec*)
+        dyn_range: Dynamic range in dB to plot (*120*)
+        other: If a sound object is given, subtract the waveform and plot the difference spectrogram.
+        If plot is False, returns the values returned by :func:`scipy.signal.spectrogram`, namely
+        freqs, times, power where power is a 2D array of powers, freqs are the corresponding frequencies,
+        and times are the time bins.
         '''
         if not have_scipy:
             raise ImportError('Computing spectrograms requires Scipy.')
@@ -848,16 +844,12 @@ class Sound(Signal):
         '''
         Returns the spectrum of the sound and optionally plots it.
         Arguments:
-        ``low``, ``high``
-                If these are left unspecified, it shows the full spectrum,
-                otherwise it shows only between ``low`` and ``high`` in Hz.
-        ``log_power=True``
-                If True it returns the log of the power.
-        ``plot=True``
-                Whether to plot the output.
-        If plot=False, returns ``Z, freqs``
-        where ``Z`` is a 1D array of powers and ``freqs`` is the corresponding
-        frequencies.
+        low, high: If these are left unspecified, it shows the full spectrum,
+        otherwise it shows only between ``low`` and ``high`` in Hz.
+        log_power: If True it returns the log of the power.
+        plot: Whether to plot the output.
+        If plot=False, returns ``Z, freqs``, where ``Z`` is a 1D array of powers
+        and ``freqs`` are the corresponding frequencies.
         '''
         freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
         sig_rfft = numpy.zeros((len(freqs), self.nchannels))

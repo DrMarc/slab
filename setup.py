@@ -3,8 +3,11 @@ from setuptools import setup
 with open('README.md') as f:
     readme = f.read()
 
+with open('VERSION.txt') as f:
+    version = f.read().strip()
+
 setup(name='soundtools',
-	version='0.7',
+	version=version,
 	description='Tools for generating and manipulating digital signals, particularly sounds.',
 	long_description=readme,
 	long_description_content_type='text/markdown',
