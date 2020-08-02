@@ -1,0 +1,2 @@
+numpy
+[-e] git+https://github.com/bastibe/SoundFile.git
