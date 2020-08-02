@@ -9,6 +9,25 @@
 
 # MacOS Desktop Services Store
 /.DS_Store
+/slab/.DS_Store
 
 # pycharm metadata
 /.idea/
+
+# documentation
+/docs/_build/
+/docs/_static/
+/docs/_templates/
+/docs/.DS_Store
+
+# slab build
+/build/
+
+# extra HRTF databases
+/slab/data/aachen/
+/slab/data/ari/
+/slab/data/cipic/
+/slab/data/.DS_Store
+
+# slab experiments
+/slab/experiments/.DS_Store
