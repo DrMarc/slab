@@ -34,6 +34,20 @@ Test-render your text `here. <http://rst.ninjs.org/?theme=nature>`_
 
 As described in [Hofman98]_, you can cite papers. The references should be at the end of the document, but it may be more useful to directly link to the pubmed page: `Hofman (1998) <https://pubmed.ncbi.nlm.nih.gov/10196533/>`
 
+Python-specific
+---------------
+
+To describe a function:
+
+.. function:: enumerate(sequence[, start=0])
+
+   Return an iterator that yields tuples of an index and an item of the
+   *sequence*. (And so on.)
+
+This also works for ``.. class::`` and ``..method::``
+
+You can then refer to these definitions elsewhere in the text: The :func:`enumerate` function can be used for ...
+
 
 .. rubric:: Footnotes
 .. [#f1] if necessary.

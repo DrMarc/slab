@@ -1,4 +1,3 @@
-.. currentmodule:: slab
 
 Sound
 =====

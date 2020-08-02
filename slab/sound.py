@@ -33,13 +33,15 @@ _tmpdir = pathlib.Path(tempfile.gettempdir()) # get a temporary directory for wr
 try:  # try getting a previously set calibration intensity from file
     _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
 except FileNotFoundError:
-    _calibration_intensity = 0  # dB, difference between rms intensity and measured output intensity
+    _calibration_intensity = 0 #: Difference between rms intensity and measured output intensity in dB
 
 
 class Sound(Signal):
     '''
     Class for working with sounds, including loading/saving, manipulating and playing.
+
     Examples:
+
     >>> import slab
     >>> import numpy
     >>> print(slab.Sound(numpy.ones([10,2]),samplerate=10))
@@ -47,60 +49,26 @@ class Sound(Signal):
     >>> print(slab.Sound(numpy.ones([10,2]),samplerate=10).channel(0))
     <class 'slab.sound.Sound'> duration 1.0, samples 10, channels 1, samplerate 10
 
-    ** Properties**
-    Level:
+    **Properties**
+
     >>> sig = slab.Sound.tone()
     >>> sig.level = 80
     >>> sig.level
     80.0
 
-    **Reading, writing and playing**
-    Sound.write(sound, filename):
-            Write a sound object to a wav file.
-            Example:
-            >>> sig = slab.Sound.tone(500, 8000, samplerate=8000)
-            >>> sig.write('tone.wav')
-
-    Sound(filename):
-            Load the file given by filename (string or pathlib.Path object) and returns a Sound object.
-            Sound file can be either a .wav or a .aif file.
-            Example:
-            >>> sig2 = slab.Sound('tone.wav')
-            >>> print(sig2)
-            <class 'slab.sound.Sound'> duration 1.0, samples 8000, channels 1, samplerate 8000
-
-    Sound.play(*sounds):
-    Plays a sound or sequence of sounds. For example::
-            >>> sig.play()
-
     **Generating sounds**
+
     All sound generating methods can be used with durations arguments in samples (int) or seconds (float).
     One can also set the number of channels by setting the keyword argument nchannels to the desired value.
-    See doc string in respective function.
-    - tone(frequency, duration, phase=0, samplerate=None, nchannels=1)
-    - harmoniccomplex(f0, duration, amplitude=1, phase=0, samplerate=None, nchannels=1)
-    - whitenoise(duration, samplerate=None, nchannels=1)
-    - powerlawnoise(duration, alpha, samplerate=None, nchannels=1,normalise=False)
-    Pinknoise and brownnoise are wrappers of powerlawnoise with different exponents.
-    - click(duration, peak=None, samplerate=None, nchannels=1)
-    - clicktrain(duration, freq, peak=None, samplerate=None, nchannels=1)
-    - silence(duration, samplerate=None, nchannels=1)
-    - vowel(vowel='a', gender=''male'', duration=1., samplerate=None, nchannels=1)
-    - irn(delay, gain, niter, duration, samplerate=None, nchannels=1)
-    - dynamicripple(Am=0.9, Rt=6, Om=2, Ph=0, duration=1., f0=1000, samplerate=None, BW=5.8, RO=0, df=1/16, ph_c=None)
-
-    **Timing and sequencing**
-    - sequence(*sounds, samplerate=None)
-    - sig.repeat(n)
-    - sig.ramp(when='both', duration=0.01, envelope=None)
 
     **Plotting**
-    Examples:
-            >>> vowel = slab.Sound.vowel(vowel='a', duration=.5, samplerate=8000)
-            >>> vowel.ramp()
-            >>> vowel.spectrogram(dyn_range = 50)
-            >>> vowel.spectrum(low=100, high=4000, log_power=True)
-            >>> vowel.waveform(start=0, end=.1)
+
+    >>> vowel = slab.Sound.vowel(vowel='a', duration=.5, samplerate=8000)
+    >>> vowel.ramp()
+    >>> vowel.spectrogram(dyn_range = 50)
+    >>> vowel.spectrum(low=100, high=4000, log_power=True)
+    >>> vowel.waveform(start=0, end=.1)
+
     '''
     # instance properties
 
@@ -138,11 +106,11 @@ class Sound(Signal):
         self.data *= gain
 
     level = property(fget=_get_level, fset=_set_level, doc='''
-		Can be used to get or set the level of a sound, which should be in dB.
+		Can be used to get or set the rms level of a sound, which should be in dB.
 		For single channel sounds a value in dB is used, for multiple channel
 		sounds a value in dB can be used for setting the level (all channels
-		will be set to the same level), or a list/tuple/array of levels. It
-		is assumed that the unit of the sound is Pascals.
+		will be set to the same level), or a list/tuple/array of levels. Use
+		:meth:`slab.Sound.calibrate` to make the computed level reflect output intensity.
 		''')
 
     def __init__(self, data, samplerate=None):
@@ -265,7 +233,7 @@ class Sound(Signal):
         duration... duration of the output.
         alpha... power law exponent.
         samplerate... output samplerate (*_default_samplerate*)
-        
+
         '''
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
