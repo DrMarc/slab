@@ -23,7 +23,7 @@ author = 'Marc Schoenwiesner, Ole Bialas'
 
 # -- General configuration ---------------------------------------------------
 
-needs_sphinx = '3.0'
+needs_sphinx = '1.8'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
