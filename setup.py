@@ -6,12 +6,12 @@ with open('README.md') as f:
 with open('VERSION.txt') as f:
     version = f.read().strip()
 
-setup(name='soundtools',
+setup(name='soundlab',
 	version=version,
 	description='Tools for generating and manipulating digital signals, particularly sounds.',
 	long_description=readme,
 	long_description_content_type='text/markdown',
-	url='http://github.com/DrMarc/soundtools.git',
+	url='http://github.com/DrMarc/soundlab.git',
 	author='Marc Schoenwiesner',
 	author_email='marc.schoenwiesner@gmail.com',
 	license='MIT',
