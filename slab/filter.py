@@ -47,7 +47,7 @@ class Filter(Signal):
             return f'{type(self)}, filters {self.nfilters}, FFT: freqs {self.nfrequencies}, samplerate {self.samplerate}'
 
     @staticmethod
-    def rectangular_filter(frequency=100, kind='hp', samplerate=None, length=1000, fir=False):
+    def cutoff_filter(frequency=100, kind='hp', samplerate=None, length=1000, fir=True):
         '''
         Generates a rectangular filter and returns it as new Filter object.
         frequency: edge frequency in Hz (*1*) or tuple of frequencies for bp and bs.
@@ -88,7 +88,7 @@ class Filter(Signal):
                 filt[round(frequency[1]/df):] = 1
         return Filter(data=filt, samplerate=samplerate, fir=fir)
 
-    def apply(self, sig, compensate_shift=False):
+    def apply(self, sig):
         '''
         Apply the filter to signal sig. If signal and filter have the same number of channels,
         each filter channel will be applied to the corresponding channel in the signal.
@@ -96,20 +96,10 @@ class Filter(Signal):
         In that case the filtered signal wil contain the same number of channels as the filter with every
         channel being a copy of the original signal with one filter channel applied. If the filter has only
         one channel and the signal has multiple channels, the same filter is applied to each signal channel.
-        When applying a FIR filter one can set compensate_shift = True. This will padd the output signal
-        With zeros equal to half of the filter length and then later remove the same number of samples
-        at the end of the signal.
         '''
         if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
             raise ValueError('Filter and signal have different sampling rates.')
         out = copy.deepcopy(sig)
-        if compensate_shift:
-            if not self.fir:
-                raise ValueError('Delay compensation only implemented for FIR filters!')
-            else:
-                n_shift = int(self.nsamples/2-1)
-                pad = numpy.zeros([n_shift, out.nchannels])
-                out.data = numpy.concatenate([out, pad])
         if self.fir:
             if not have_scipy:
                 raise ImportError('Applying FIR filters requires Scipy.')
@@ -124,13 +114,11 @@ class Filter(Signal):
             elif (self.nfilters > 1) and (sig.nchannels == 1):  # apply all filters in bank to signal
                 out.data = numpy.empty((sig.nsamples, self.nfilters))
                 for filt in range(self.nfilters):
-                    out.data[:, filt] = scipy.signal.lfilter(
+                    out.data[:, filt] = scipy.signal.filtfilt(
                         self[:, filt], [1], sig.data, axis=0).flatten()
             else:
                 raise ValueError(
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
-            if compensate_shift:
-                out.data = out.data[n_shift:, :]
         else:  # FFT filter
             sig_rfft = numpy.fft.rfft(sig.data, axis=0)
             sig_freq_bins = numpy.fft.rfftfreq(sig.nsamples, d=1/sig.samplerate)
@@ -366,7 +354,7 @@ class Filter(Signal):
 
 
 if __name__ == '__main__':
-    filt = Filter.rectangular_filter(frequency=15000, kind='hp', samplerate=44100)
+    filt = Filter.cutoff_filter(frequency=15000, kind='hp', samplerate=44100)
     sig_filt = filt.apply(filt)
     f, Pxx = scipy.signal.welch(sig_filt.data, sig_filt.samplerate, axis=0)
     plt.semilogy(f, Pxx)
