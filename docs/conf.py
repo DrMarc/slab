@@ -19,7 +19,9 @@ release = version
 
 # -- General configuration ---------------------------------------------------
 needs_sphinx = '1.8'
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.napoleon']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.napoleon', 'sphinx.ext.mathjax']
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
 master_doc = 'index'
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 autodoc_default_options = {'member-order': 'bysource'}
@@ -27,4 +29,4 @@ intersphinx_mapping = {'python': ('https://docs.python.org/', None),
                        'matplotlib': ('http://matplotlib.org/', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy/', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None)}
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
