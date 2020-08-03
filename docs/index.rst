@@ -31,4 +31,5 @@ The package aims to lower the entrance barrier for working with sounds in Python
   Reference documentation <reference>
 
 Index of functions and classes: :ref:`genindex`
+
 Search the documentation: :ref:`search`
