@@ -1,8 +1,8 @@
-![Package](https://github.com/DrMarc/soundtools/workflows/Python%20package/badge.svg)
-[![TestPyPI](https://github.com/DrMarc/soundtools/workflows/TestPyPi/badge.svg)](https://test.pypi.org/project/soundtools/)
-[![Documentation Status](https://readthedocs.org/projects/soundtools/badge/?version=latest)](https://soundtools.readthedocs.io/en/latest/?badge=latest)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/soundtools/graphs/commit-activity)
-![PyPI pyversions](https://img.shields.io/badge/python-%3E3.6-blue)
+![Package](https://github.com/DrMarc/soundlab/workflows/Python%20package/badge.svg)
+[![TestPyPI](https://github.com/DrMarc/soundlab/workflows/TestPyPi/badge.svg)](https://test.pypi.org/project/soundlab/)
+[![Documentation Status](https://readthedocs.org/projects/soundlab/badge/?version=latest)](https://soundlab.readthedocs.io/en/latest/?badge=latest)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/soundlab/graphs/commit-activity)
+![PyPI pyversions](https://img.shields.io/badge/python-%3E%3D3.6-blue)
 ![PyPI license](https://img.shields.io/badge/license-MIT-brightgreen)
 
 **slab**: easy manipulation of sounds and psychoacoustic experiments in Python
@@ -17,12 +17,12 @@
         stimulus.level = level
         stairs.present_tone_trial(stimulus) # plays the tone and records a keypress (1 for 'heard', 2 for 'not heard')
         stairs.print_trial_info() # optionally print information about the current state of the staircase
-    print(stairs.threshold()) # print threshold then done
+    print(stairs.threshold()) # print threshold when done
 ```
 
 Why slab?
 ---------
-The package aims to lower the entrance barrier for working with sounds in Python and provide easy access to typical operations in psychoacoustics, specifically for students and researchers in the life sciences. The typical BSc or MSc student entering our lab has limited programming and signal processing training and is unable to implement a psychoacoustic experiment from scratch within the time limit of a BSc or MSc thesis. Slab solves this issue by providing easy-to-use building blocks for such experiments. The implementation is well documented and sufficiently simple for curious students to understand. All functions provide sensible defaults and will many cases 'just work' without arguments (vowel = slab.Sound.vowel() gives you a 1-second synthetic vowel 'a' from a male speaker; vowel.spectrogram() plots the spectrogram). This turned out to be useful for teaching and demonstrations. Many students in our lab have now used the package to implement their final projects and exit the lab as proficient Python programmers.
+The package aims to lower the entrance barrier for working with sounds in Python and provide easy access to typical operations in psychoacoustics, specifically for students and researchers in the life sciences. The typical BSc or MSc student entering our lab has limited programming and signal processing training and is unable to implement a psychoacoustic experiment from scratch within the time limit of a BSc or MSc thesis. Slab solves this issue by providing easy-to-use building blocks for such experiments. The implementation is well documented and sufficiently simple for curious students to understand. All functions provide sensible defaults and will many cases 'just work' without arguments (vowel = slab.Sound.vowel() gives you a 1-second synthetic vowel 'a', vowel.spectrogram() plots the spectrogram). This turned out to be useful for teaching and demonstrations. Many students in our lab have now used the package to implement their final projects and exit the lab as proficient Python programmers.
 
 Features
 --------
@@ -127,25 +127,26 @@ Slab represents sounds as [Numpy](https://www.numpy.org) arrays and provides cla
     stims = slab.Precomputed.read('stims.zip') # reloads the file into a Precomputed object
 ```
 
-The basic functionality of the Signal class and some methods of the Sound class was based on the brian.hears Sound class (now [brain2hears](https://brian2hears.readthedocs.io/en/stable/), an auditory modelling package), but we have significantly expanded the functionality and simplified the architecture to remove recurrent stumbling stones for students without training in object oriented programming (the buffering interface,  direct inheritance from Numpy.array, and the unit package).
+The basic functionality of the Signal class and many of the sound generation methods in the Sound class were based on the brian.hears Sound class (now [brain2hears](https://brian2hears.readthedocs.io/en/stable/), an auditory modelling package).
 
 Installation
 ------------
 Install slab directly from github (if you have git) by running:
-```pip git+https://github.com/DrMarc/soundtools.git```
+```pip git+https://github.com/DrMarc/soundlab.git```
 
 or from the python package index with pip:
-```pip install soundtools```
+```pip install soundlab```
 
 Documentation
 -------------
 
+[ReadTheDocs](https://soundlab.readthedocs.io/)
 
 Contribute
 ----------
 
-- Issue Tracker: github.com/DrMarc/soundtools/issues
-- Source Code: github.com/DrMarc/soundtools
+- [GitHub Issue Tracker](https://github.com/DrMarc/soundlab/issues)
+- [Source Code on GitHub](https://github.com/DrMarc/soundlab/tree/master/slab)
 
 License
 -------
