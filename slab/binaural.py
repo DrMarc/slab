@@ -111,7 +111,7 @@ class Binaural(Sound):
         of one channel with a dynamic delay. The resulting virtual sound
         source moves to the left or right. from_itd and to_itd are the itd
         values at the beginning and end of the sound. Delays in between are
-        linearely interpolated. moving_ild requires a sound with two channels.
+        linearely interpolated.
         >>> sig = Binaural.whitenoise()
         >>> _ = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
 
@@ -230,7 +230,7 @@ class Binaural(Sound):
         Compute the ITD of a binaural sound by cross-correlation in a
         physiological range of lags up to 800 µseconds.
         '''
-        pass
+        pass # TODO: implement!
 
     @staticmethod
     def _make_level_spectrum_filter(hrtf=None):
@@ -323,6 +323,8 @@ class Binaural(Sound):
         if kind == 'dichotic':
             out = Binaural(Sound.powerlawnoise(
                 duration, 1.0, samplerate=samplerate, nchannels=2, normalise=normalise))
+            out.left = Sound.powerlawnoise(
+                duration, 1.0, samplerate=samplerate, normalise=normalise)
         elif kind == 'diotic':
             out = Binaural(Sound.powerlawnoise(
                 duration, 1.0, samplerate=samplerate, nchannels=2, normalise=normalise))

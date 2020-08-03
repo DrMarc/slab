@@ -9,9 +9,28 @@
 
 # MacOS Desktop Services Store
 /.DS_Store
+/slab/.DS_Store
 
 # pycharm metadata
 /.idea/
 
-# calibration files should only be local
-/data/calibration_intensity.npy
+# documentation
+/docs/_build/
+/docs/_static/
+/docs/_templates/
+/docs/.DS_Store
+
+# slab build
+/build/
+
+# extra HRTF databases
+/slab/data/aachen/
+/slab/data/ari/
+/slab/data/cipic/
+/slab/data/.DS_Store
+
+# loudness calibration
+/slab/data/calibration_intensity.npy
+
+# slab experiments
+/slab/experiments/.DS_Store

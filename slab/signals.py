@@ -12,46 +12,39 @@ try:
 except ImportError:
     have_scipy = False
 
-_default_samplerate = 8000  # Hz
+_default_samplerate = 8000  #: The default samplerate in Hz; used by all methods if on samplerate argument is provided.
 
 
 class Signal:
     '''
-    Base class for Signal data (sounds and filters)
+    Base class for Signal data (sounds and filters).
+
     Provides duration, nsamples, times, nchannels properties,
     slicing, and conversion between samples and times.
     This class is intended to be subclassed. See Sound class for an example.
 
-    Minimal example:
-    class SignalWithInfo(Signal):
-    def __init__(self,data,samplerate=None,info=None):
-            # call the baseclass init() so that we don't have to repeat that code here:
-            super().__init__(data,samplerate)
-            # add the new attribute
-            self.info = info
+    Arguments:
 
+    data: Can be an array, a function or a sequence (list or tuple).
+        If its an array, it should have shape ``(nsamples, nchannels)``. If its a
+        function, it should be a function f(t). If its a sequence, the items
+        in the sequence can be functions, arrays or Signal objects.
+        The output will be a multi-channel Signal with channels corresponding to
+        Signals for each element of the sequence.
 
-    The following arguments are used to initialise a Signal object:
+    samplerate: The samplerate, if necessary, will use the default (for an array or
+        function) or the samplerate of the data (for a filename). Default: None
 
-    ``data``
-            Can be an array, a function or a sequence (list or tuple).
-            If its an array, it should have shape ``(nsamples, nchannels)``. If its a
-            function, it should be a function f(t). If its a sequence, the items
-            in the sequence can be functions, arrays or Signal objects.
-            The output will be a multi-channel Signal with channels corresponding to
-            Signals for each element of the sequence.
-    ``samplerate=None``
-            The samplerate, if necessary, will use the default (for an array or
-            function) or the samplerate of the data (for a filename).
+    Examples:
 
-            Examples:
     >>> import slab
     >>> import numpy
     >>> sig = slab.Signal(numpy.ones([10,2]),samplerate=10)
     >>> print(sig)
     <class 'slab.signals.Signal'> duration 1.0, samples 10, channels 2, samplerate 10
 
-            **Properties**
+    **Properties**
+
     >>> sig.duration
     1.0
     >>> sig.nsamples
@@ -61,53 +54,29 @@ class Signal:
     >>> len(sig.times)
     10
 
-            **Slicing**
+    **Slicing**
+
     Signal implements __getitem__ and __setitem___ and thus supports slicing.
     Slicing returns numpy.ndarrays or floats, not Signal objects.
     You can also set values using slicing:
+
     >>> sig[:5] = 0
 
     will set the first 5 samples to zero.
     You can also select a subset of channels:
+
     >>> sig[:,1]
     array([0., 0., 0., 0., 0., 1., 1., 1., 1., 1.])
 
     would be data in the second channel. To extract a channel as a Signal or subclass object
     use sig.channel(1).
 
-    As a convenient shortcut, channel data can also be returned and set by instance attributes:
-    >>> sig.ch1 # this is equivalent to sig[:,1]
-    array([0., 0., 0., 0., 0., 1., 1., 1., 1., 1.])
-
     Signals support arithmatic operations (add, sub, mul, truediv, neg ['-sig' inverts phase]):
+
     >>> sig2 = sig * 2
     >>> sig2[-1,1]
     2.0
 
-            **Static methods**
-
-    Signal.in_samples(time,samplerate)
-            Converts time values in seconds to samples.
-            This is used to enable input in either samples (int) or seconds (float) in the class.
-
-    Signal.get_samplerate(samplerate)
-            Return samplerate if supplied, otherwise return the default samplerate.
-
-    Signal.set_default_samplerate(samplerate)
-            Sets the global default samplerate for Signal objects, by default 8000 Hz.
-
-            **Instance methods**
-
-    sig.channel(n)
-            Returns the nth channel as new object of the calling class.
-            >>> print(sig.channel(0))
-            <class 'slab.signals.Signal'> duration 1.0, samples 10, channels 1, samplerate 10
-
-    sig.resize(L)
-            Extends or contracts the length of the data in the object in place to have L samples.
-            >>> sig.resize(8)
-            >>> print(sig)
-            <class 'slab.signals.Signal'> duration 0.8, samples 8, channels 2, samplerate 10
     '''
 
     # instance properties
