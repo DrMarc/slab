@@ -1,0 +1,266 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Psychoacoustics &mdash; slab 0.7 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Filters" href="filters.html" />
+    <link rel="prev" title="Sound" href="sounds.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> slab
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sounds.html">Sound</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Psychoacoustics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filters.html">Filters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hrtf.html">HRTFs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Worked examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">Reference documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">slab</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Psychoacoustics</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/psychoacoustics.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="psychoacoustics">
+<h1>Psychoacoustics<a class="headerlink" href="#psychoacoustics" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="trial-sequences">
+<h2>Trial sequences<a class="headerlink" href="#trial-sequences" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="adaptive-staircases">
+<h2>Adaptive staircases<a class="headerlink" href="#adaptive-staircases" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="precomputed-sounds">
+<h2>Precomputed sounds<a class="headerlink" href="#precomputed-sounds" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="other-useful-functions">
+<h2>Other useful functions<a class="headerlink" href="#other-useful-functions" title="Permalink to this headline">¶</a></h2>
+<p><strong>Psychoacoustics</strong>: A collection of classes for working trial sequences, adaptive staircases, forced-choice procedures, stimulus presentation and response recording from the keyboard and USB button boxes, handling of precomputed stimulus lists, results files, and experiment configuration files.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set up an 1up-2down adaptive weighted staircase with dynamic step sizes:</span>
+<span class="n">stairs</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Staircase</span><span class="p">(</span><span class="n">start_val</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">max_val</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">n_up</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_down</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">step_sizes</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">step_up_factor</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">stairs</span><span class="p">:</span> <span class="c1"># draw a value from the staircase; the loop terminates with the staircase</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">stairs</span><span class="o">.</span><span class="n">simulate_response</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="c1"># simulate a response from a participant using a psychometric function</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;trial # </span><span class="si">{</span><span class="n">stairs</span><span class="o">.</span><span class="n">this_trial_n</span><span class="si">}</span><span class="s1">: intensity </span><span class="si">{</span><span class="n">trial</span><span class="si">}</span><span class="s1">, response </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">stairs</span><span class="o">.</span><span class="n">add_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="c1"># logs the response and advances the staircase</span>
+            <span class="n">stairs</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span> <span class="c1"># updates a plot of the staircase in each trial to keep an eye on the performance of the listener</span>
+<span class="n">stairs</span><span class="o">.</span><span class="n">reversal_intensities</span> <span class="c1"># returns a list of stimulus values at the reversal points of the staircase</span>
+<span class="n">stairs</span><span class="o">.</span><span class="n">threshold</span><span class="p">()</span> <span class="c1"># computes and returns the final threshold</span>
+<span class="n">stairs</span><span class="o">.</span><span class="n">save_json</span><span class="p">(</span><span class="s1">&#39;stairs.json&#39;</span><span class="p">)</span> <span class="c1"># the staircase object can be saved as a human readable json file</span>
+
+<span class="c1"># for non-adaptive experiments and all other cases where you need a controlled sequence of stimulus values:</span>
+<span class="n">trials</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Trialsequence</span><span class="p">(</span><span class="n">conditions</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">n_reps</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># sequence of 5 conditions, repeated twice, without direct repetitions</span>
+<span class="n">trials</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Trialsequence</span><span class="p">(</span><span class="n">conditions</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="s1">&#39;blue&#39;</span><span class="p">],</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;infinite&#39;</span><span class="p">)</span> <span class="c1"># infinite sequence of color names</span>
+<span class="n">trials</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Trialsequence</span><span class="o">.</span><span class="n">mmn_sequence</span><span class="p">(</span><span class="n">n_trials</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">deviant_freq</span><span class="o">=</span><span class="mf">0.12</span><span class="p">)</span> <span class="c1"># stimulus sequence for an oddball design</span>
+<span class="n">trials</span><span class="o">.</span><span class="n">transitions</span><span class="p">()</span> <span class="c1"># return the array of transition probabilities between all combinations of conditions.</span>
+<span class="n">trials</span><span class="o">.</span><span class="n">condition_probabilities</span><span class="p">()</span> <span class="c1"># return a list of frequencies of conditions</span>
+<span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">trials</span><span class="p">:</span> <span class="c1"># use the trials object in a loop to go through the trials</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">trial</span><span class="p">)</span> <span class="c1"># here you would generate or select a stimulus according to the condition</span>
+    <span class="n">trials</span><span class="o">.</span><span class="n">present_afc_trial</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">distractor</span><span class="p">,</span> <span class="n">isi</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span> <span class="c1"># present a 2-alternative forced-choice trial and record the response</span>
+
+<span class="n">stims</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Precomputed</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">slab</span><span class="o">.</span><span class="n">Sound</span><span class="o">.</span><span class="n">pinknoise</span><span class="p">(),</span> <span class="n">n</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span> <span class="c1"># make 10 instances of noise as one Sound-like object</span>
+<span class="n">stims</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Precomputed</span><span class="p">([</span><span class="n">stim1</span><span class="p">,</span> <span class="n">stim2</span><span class="p">,</span> <span class="n">stim3</span><span class="p">,</span> <span class="n">stim4</span><span class="p">,</span> <span class="n">stim5</span><span class="p">])</span> <span class="c1"># or use a list of sound objects, or a list comprehension</span>
+<span class="n">stims</span><span class="o">.</span><span class="n">play</span><span class="p">()</span> <span class="c1"># play a random instance</span>
+<span class="n">stims</span><span class="o">.</span><span class="n">play</span><span class="p">()</span> <span class="c1"># play another one, guaranteed to be different from the previous one</span>
+    <span class="n">stims</span><span class="o">.</span><span class="n">sequence</span> <span class="c1"># the sequence of instances played so far</span>
+<span class="n">stims</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;stims.zip&#39;</span><span class="p">)</span> <span class="c1"># save the sounds as zip file</span>
+<span class="n">stims</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Precomputed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;stims.zip&#39;</span><span class="p">)</span> <span class="c1"># reloads the file into a Precomputed object</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="filters.html" class="btn btn-neutral float-right" title="Filters" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="sounds.html" class="btn btn-neutral float-left" title="Sound" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Marc Schoenwiesner, Ole Bialas
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

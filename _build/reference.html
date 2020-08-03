@@ -1,0 +1,1361 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Reference documentation &mdash; slab 0.7 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Worked examples" href="examples.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> slab
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sounds.html">Sound</a></li>
+<li class="toctree-l1"><a class="reference internal" href="psychoacoustics.html">Psychoacoustics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filters.html">Filters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hrtf.html">HRTFs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Worked examples</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Reference documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">slab</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Reference documentation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/reference.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="reference-documentation">
+<h1>Reference documentation<a class="headerlink" href="#reference-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This reference documentation is auto-generated from the doc strings in the module. For a tutorial-like overview of the functionality of slab, please see the previous sections.</p>
+</div>
+<div class="section" id="sounds">
+<h2>Sounds<a class="headerlink" href="#sounds" title="Permalink to this headline">¶</a></h2>
+<p>Inherits from <a class="reference internal" href="#slab.Signal" title="slab.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">slab.Signal</span></code></a>.</p>
+<dl class="py class">
+<dt id="slab.Sound">
+<em class="property">class </em><code class="sig-prename descclassname">slab.</code><code class="sig-name descname">Sound</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for working with sounds, including loading/saving, manipulating and playing.</p>
+<p>Examples:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">slab</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">slab</span><span class="o">.</span><span class="n">Sound</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span><span class="mi">2</span><span class="p">]),</span><span class="n">samplerate</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
+<span class="go">&lt;class &#39;slab.sound.Sound&#39;&gt; duration 1.0, samples 10, channels 2, samplerate 10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">slab</span><span class="o">.</span><span class="n">Sound</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span><span class="mi">2</span><span class="p">]),</span><span class="n">samplerate</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">channel</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+<span class="go">&lt;class &#39;slab.sound.Sound&#39;&gt; duration 1.0, samples 10, channels 1, samplerate 10</span>
+</pre></div>
+</div>
+<p><strong>Properties</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Sound</span><span class="o">.</span><span class="n">tone</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span><span class="o">.</span><span class="n">level</span> <span class="o">=</span> <span class="mi">80</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span><span class="o">.</span><span class="n">level</span>
+<span class="go">80.0</span>
+</pre></div>
+</div>
+<p><strong>Generating sounds</strong></p>
+<p>All sound generating methods can be used with durations arguments in samples (int) or seconds (float).
+One can also set the number of channels by setting the keyword argument nchannels to the desired value.</p>
+<p><strong>Plotting</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vowel</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Sound</span><span class="o">.</span><span class="n">vowel</span><span class="p">(</span><span class="n">vowel</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">duration</span><span class="o">=.</span><span class="mi">5</span><span class="p">,</span> <span class="n">samplerate</span><span class="o">=</span><span class="mi">8000</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vowel</span><span class="o">.</span><span class="n">ramp</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vowel</span><span class="o">.</span><span class="n">spectrogram</span><span class="p">(</span><span class="n">dyn_range</span> <span class="o">=</span> <span class="mi">50</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vowel</span><span class="o">.</span><span class="n">spectrum</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">4000</span><span class="p">,</span> <span class="n">log_power</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vowel</span><span class="o">.</span><span class="n">waveform</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span><span class="o">=.</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt id="slab.Sound.level">
+<em class="property">property </em><code class="sig-name descname">level</code><a class="headerlink" href="#slab.Sound.level" title="Permalink to this definition">¶</a></dt>
+<dd><p>Can be used to get or set the rms level of a sound, which should be in dB.
+For single channel sounds a value in dB is used, for multiple channel
+sounds a value in dB can be used for setting the level (all channels
+will be set to the same level), or a list/tuple/array of levels. Use
+<a class="reference internal" href="#slab.Sound.calibrate" title="slab.Sound.calibrate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">slab.Sound.calibrate()</span></code></a> to make the computed level reflect output intensity.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.read">
+<em class="property">static </em><code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the file given by filename (wav) and returns a Sound object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.tone">
+<em class="property">static </em><code class="sig-name descname">tone</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frequency</span><span class="o">=</span><span class="default_value">500</span></em>, <em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">phase</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.tone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a pure tone at frequency for duration, using the default
+samplerate or the given one. The <code class="docutils literal notranslate"><span class="pre">frequency</span></code> and <code class="docutils literal notranslate"><span class="pre">phase</span></code> parameters
+can be single values, in which case multiple channels can be
+specified with the <code class="docutils literal notranslate"><span class="pre">nchannels</span></code> argument, or they can be sequences
+(lists/tuples/arrays) in which case there is one frequency or phase for
+each channel.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.harmoniccomplex">
+<em class="property">static </em><code class="sig-name descname">harmoniccomplex</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">f0</span><span class="o">=</span><span class="default_value">500</span></em>, <em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">amplitude</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">phase</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.harmoniccomplex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a harmonic complex composed of pure tones at integer multiples
+of the fundamental frequency <code class="docutils literal notranslate"><span class="pre">f0</span></code>.
+The <code class="docutils literal notranslate"><span class="pre">amplitude</span></code> and <code class="docutils literal notranslate"><span class="pre">phase</span></code> keywords can be set to either a single
+value or an array of values. In the former case the value is set for all
+harmonics, and harmonics up to the sampling frequency are
+generated. In the latter each harmonic parameter is set
+separately, and the number of harmonics generated corresponds
+to the length of the array. Amplitudes are relateve to full scale
+(i.e. 0 corresponds to maximum intensity; -30 would be 30 dB softer).
+Example:
+&gt;&gt;&gt; sig = Sound.harmoniccomplex(f0=200, amplitude=[0,-10,-20,-30])
+&gt;&gt;&gt; _ = sig.spectrum()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.whitenoise">
+<em class="property">static </em><code class="sig-name descname">whitenoise</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">normalise</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.whitenoise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a white noise. If the samplerate is not specified, the global
+default value will be used. nchannels = 2 produces uncorrelated noise (dichotic).
+&gt;&gt;&gt; noise = Sound.whitenoise(1.0,nchannels=2)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.powerlawnoise">
+<em class="property">static </em><code class="sig-name descname">powerlawnoise</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">normalise</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.powerlawnoise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a power-law noise for the given duration. Spectral density per unit of bandwidth scales as 1/(f**alpha).
+Example:
+&gt;&gt;&gt; noise = Sound.powerlawnoise(0.2, 1, samplerate=8000)</p>
+<p>Arguments:
+duration… duration of the output.
+alpha… power law exponent.
+samplerate… output samplerate (<em>_default_samplerate</em>)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.pinknoise">
+<em class="property">static </em><code class="sig-name descname">pinknoise</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">normalise</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.pinknoise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns pink noise, i.e <a class="reference internal" href="#slab.Sound.powerlawnoise" title="slab.Sound.powerlawnoise"><code class="xref py py-func docutils literal notranslate"><span class="pre">powerlawnoise()</span></code></a> with alpha=1</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.brownnoise">
+<em class="property">static </em><code class="sig-name descname">brownnoise</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">normalise</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.brownnoise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns brown noise, i.e <a class="reference internal" href="#slab.Sound.powerlawnoise" title="slab.Sound.powerlawnoise"><code class="xref py py-func docutils literal notranslate"><span class="pre">powerlawnoise()</span></code></a> with alpha=2</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.irn">
+<em class="property">static </em><code class="sig-name descname">irn</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">delay</span><span class="o">=</span><span class="default_value">0.01</span></em>, <em class="sig-param"><span class="n">gain</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">niter</span><span class="o">=</span><span class="default_value">16</span></em>, <em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.irn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an iterated ripple noise. The noise is obtained many attenuated (by multiplication with gain) and
+delayed (delay, <em>0.01</em> sec) versions of the original white noise.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.click">
+<em class="property">static </em><code class="sig-name descname">click</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">0.0001</span></em>, <em class="sig-param"><span class="n">peak</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.click" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a click of the given duration (<em>100 microsec</em>).
+If <code class="docutils literal notranslate"><span class="pre">peak</span></code> is not specified, the amplitude will be 1, otherwise
+<code class="docutils literal notranslate"><span class="pre">peak</span></code> refers to the peak dB SPL of the click, according to the
+formula <code class="docutils literal notranslate"><span class="pre">28e-6*10**(peak/20.)</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.clicktrain">
+<em class="property">static </em><code class="sig-name descname">clicktrain</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">freq</span><span class="o">=</span><span class="default_value">500</span></em>, <em class="sig-param"><span class="n">clickduration</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">peak</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.clicktrain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a series of n clicks (see <a class="reference internal" href="#slab.Sound.click" title="slab.Sound.click"><code class="xref py py-func docutils literal notranslate"><span class="pre">click()</span></code></a>) at a frequency of freq (<em>500 Hz</em>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.silence">
+<em class="property">static </em><code class="sig-name descname">silence</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.silence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a silent, zero sound for the given duration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.vowel">
+<em class="property">static </em><code class="sig-name descname">vowel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">vowel</span><span class="o">=</span><span class="default_value">'a'</span></em>, <em class="sig-param"><span class="n">gender</span><span class="o">=</span><span class="default_value">'male'</span></em>, <em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nchannels</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.vowel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a vowel sound.
+vowel: ‘a’, ‘e’, ‘i’, ‘o’, ‘u’, ‘ae’, ‘oe’, or ‘ue’ (pre-set format frequencies)
+or ‘none’ for random formants in the range of the vowel formants.
+gender: ‘male’, ‘female’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.multitone_masker">
+<em class="property">static </em><code class="sig-name descname">multitone_masker</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">f_lower</span><span class="o">=</span><span class="default_value">125</span></em>, <em class="sig-param"><span class="n">f_upper</span><span class="o">=</span><span class="default_value">4000</span></em>, <em class="sig-param"><span class="n">bandwidth</span><span class="o">=</span><span class="default_value">0.3333333333333333</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.multitone_masker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a noise made of ERB-spaced random-phase sinetones in the band
+between f_lower and f_upper. This noise does not have random amplitude
+variations and is useful for testing CI patients. See Oxenham 2014, Trends Hear.
+Example:
+&gt;&gt;&gt; sig = Sound.multitone_masker()
+&gt;&gt;&gt; sig.ramp()
+&gt;&gt;&gt; _ = sig.spectrum()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.erb_noise">
+<em class="property">static </em><code class="sig-name descname">erb_noise</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">f_lower</span><span class="o">=</span><span class="default_value">125</span></em>, <em class="sig-param"><span class="n">f_upper</span><span class="o">=</span><span class="default_value">4000</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.erb_noise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an equally-masking noise (ERB noise) in the band between
+f_lower and f_upper.
+Example:
+&gt;&gt;&gt; sig = Sound.erb_noise()
+&gt;&gt;&gt; sig.ramp()
+&gt;&gt;&gt; _ = sig.spectrum()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.dynamicripple">
+<em class="property">static </em><code class="sig-name descname">dynamicripple</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Am</span><span class="o">=</span><span class="default_value">0.9</span></em>, <em class="sig-param"><span class="n">Rt</span><span class="o">=</span><span class="default_value">6</span></em>, <em class="sig-param"><span class="n">Om</span><span class="o">=</span><span class="default_value">2</span></em>, <em class="sig-param"><span class="n">Ph</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">f0</span><span class="o">=</span><span class="default_value">1000</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">BW</span><span class="o">=</span><span class="default_value">5.8</span></em>, <em class="sig-param"><span class="n">RO</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">df</span><span class="o">=</span><span class="default_value">0.0625</span></em>, <em class="sig-param"><span class="n">ph_c</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.dynamicripple" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a moving ripple stimulus.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><p>Am: modulation depth, 0 &lt; Am &lt; 1,
+Rt: rate (Hz), integer preferred, typically, 1 .. 128
+Om: scale (cyc/oct), any real number, typically, .25 .. 4
+Ph: (optional) symmetry (Pi) at f0, -1 &lt; Ph &lt; 1
+f0: center freq. (Hz)
+samplerate: sample freq. (Hz), must be power of 2
+BW: excitation band width (oct), DEFAULT = 5.8.
+RO: roll-off (dB/oct), 0 means log-spacing
+df: freq. spacing, in oct (RO=0) or in Hz (RO&gt;0)
+ph_c: component phase</p>
+</dd>
+</dl>
+<p>Converted to python by Jessica Thompson based on Jonathan Simon and Didier
+Dipereux’s matlab program [ripfft.m], based on Jian Lin’s C program [rip.c].</p>
+<p>Example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ripple</span> <span class="o">=</span> <span class="n">Sound</span><span class="o">.</span><span class="n">dynamicripple</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.sequence">
+<em class="property">static </em><code class="sig-name descname">sequence</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">sounds</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Joins the sounds in the list sounds into a new sound object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em>, <em class="sig-param"><span class="n">normalise</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">fmt</span><span class="o">=</span><span class="default_value">'WAV'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the sound as a WAV.
+If the normalise keyword is set to True, the amplitude of the sound will be
+normalised to 1.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.ramp">
+<code class="sig-name descname">ramp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">when</span><span class="o">=</span><span class="default_value">'both'</span></em>, <em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">0.01</span></em>, <em class="sig-param"><span class="n">envelope</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.ramp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds a ramp on/off to the sound (in place).</p>
+<dl>
+<dt>Arguments:</dt><dd><p>when: Can take values ‘onset’, ‘offset’ or ‘both’
+duration: The time over which the ramping happens (in samples or seconds)
+envelope: A ramping function, if not specified uses <code class="docutils literal notranslate"><span class="pre">sin(pi*t/2)**2</span></code>. The</p>
+<blockquote>
+<div><p>function should be a function of one variable <code class="docutils literal notranslate"><span class="pre">t</span></code> ranging from
+0 to 1, and should increase from <code class="docutils literal notranslate"><span class="pre">f(0)=0</span></code> to <code class="docutils literal notranslate"><span class="pre">f(0)=1</span></code>. The
+reverse is applied for the offset ramp.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.repeat">
+<code class="sig-name descname">repeat</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.repeat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Repeats the sound n times.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.copychannel">
+<code class="sig-name descname">copychannel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.copychannel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copies a single-channel sound inplace to make an n-channel sound.
+If a multi-channel sound is supplied, all channels except the first are silently dropped.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.crossfade">
+<em class="property">static </em><code class="sig-name descname">crossfade</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sound1</span></em>, <em class="sig-param"><span class="n">sound2</span></em>, <em class="sig-param"><span class="n">overlap</span><span class="o">=</span><span class="default_value">0.01</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.crossfade" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new sound that is a crossfade of sound1 and sound2.
+Overlap by overlap samples (if int) or seconds (if float, <em>0.01</em>).
+Example:
+&gt;&gt;&gt; noise = Sound.whitenoise(duration=1.0)
+&gt;&gt;&gt; vowel = Sound.vowel()
+&gt;&gt;&gt; noise2vowel = Sound.crossfade(noise,vowel,overlap=0.4)
+&gt;&gt;&gt; noise2vowel.play()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.pulse">
+<code class="sig-name descname">pulse</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pulse_freq</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">duty</span><span class="o">=</span><span class="default_value">0.75</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.pulse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply a pulse envelope to the sound with a pulse frequency (in Hz, <em>4</em>) and duty cycle (<em>3/4</em>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.filter">
+<code class="sig-name descname">filter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">f</span><span class="o">=</span><span class="default_value">100</span></em>, <em class="sig-param"><span class="n">kind</span><span class="o">=</span><span class="default_value">'hp'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filters a sound in place. This is a convenience function to avoid calling
+the Filter class.
+f: edge frequency in Hz (<em>100</em>) or tuple of frequencies for bp and notch.
+type: ‘lp’, <em>‘hp’</em>, bp, ‘notch’
+Examples:
+&gt;&gt;&gt; sig = Sound.whitenoise()
+&gt;&gt;&gt; sig.filter(f=3000, kind=’lp’)
+&gt;&gt;&gt; _ = sig.spectrum()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.aweight">
+<code class="sig-name descname">aweight</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.aweight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns A-weighted sound. A-weighting is applied to instrument-recorded sounds
+to account for the relative loudness of different frequencies perceived by the
+human ear. See: <a class="reference external" href="https://en.wikipedia.org/wiki/A-weighting">https://en.wikipedia.org/wiki/A-weighting</a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.reverb">
+<code class="sig-name descname">reverb</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">room</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">mic</span><span class="o">=</span><span class="default_value">'center'</span></em>, <em class="sig-param"><span class="n">source_distance</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">hrtf</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.reverb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a Binaural sound with added early reflections computed using
+the image source method and a simple shoe-box room and added late
+reverberation. This is a convenience wrapper around the pyroomacoustics
+toolbox.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.record">
+<em class="property">static </em><code class="sig-name descname">record</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">44100</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.record" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.
+Uses SoundCard module if installed [recommended], otherwise uses SoX (duration must be in sec in this case).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.play">
+<code class="sig-name descname">play</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sleep</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.play" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plays the sound through the default device.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.waveform">
+<code class="sig-name descname">waveform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">start</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">end</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.waveform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the waveform of the sound.
+Arguments:
+<code class="docutils literal notranslate"><span class="pre">start</span></code>, <code class="docutils literal notranslate"><span class="pre">end</span></code> (samples or time)
+If these are left unspecified, it shows the full waveform</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.spectrogram">
+<code class="sig-name descname">spectrogram</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">window_dur</span><span class="o">=</span><span class="default_value">0.005</span></em>, <em class="sig-param"><span class="n">dyn_range</span><span class="o">=</span><span class="default_value">120</span></em>, <em class="sig-param"><span class="n">other</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.spectrogram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots a spectrogram of the sound
+Arguments:
+window_dur: Duration of time window for short-term FFT (<em>0.005sec</em>)
+dyn_range: Dynamic range in dB to plot (<em>120</em>)
+other: If a sound object is given, subtract the waveform and plot the difference spectrogram.
+If plot is False, returns the values returned by <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.spectrogram.html#scipy.signal.spectrogram" title="(in SciPy v1.5.2)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.signal.spectrogram()</span></code></a>, namely
+freqs, times, power where power is a 2D array of powers, freqs are the corresponding frequencies,
+and times are the time bins.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.cochleagram">
+<code class="sig-name descname">cochleagram</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">bandwidth</span><span class="o">=</span><span class="default_value">0.2</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.cochleagram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes a cochleagram of the sound by filtering with
+a bank of cosine-shaped filters with given bandwidth
+(<em>1/5</em> th octave) and applying a cube-root compression
+to the resulting envelopes.
+If plot is False, returns the envelopes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.spectrum">
+<code class="sig-name descname">spectrum</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">low</span><span class="o">=</span><span class="default_value">16</span></em>, <em class="sig-param"><span class="n">high</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">log_power</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">show</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the spectrum of the sound and optionally plots it.
+Arguments:
+low, high: If these are left unspecified, it shows the full spectrum,
+otherwise it shows only between <code class="docutils literal notranslate"><span class="pre">low</span></code> and <code class="docutils literal notranslate"><span class="pre">high</span></code> in Hz.
+log_power: If True it returns the log of the power.
+plot: Whether to plot the output.
+If plot=False, returns <code class="docutils literal notranslate"><span class="pre">Z,</span> <span class="pre">freqs</span></code>, where <code class="docutils literal notranslate"><span class="pre">Z</span></code> is a 1D array of powers
+and <code class="docutils literal notranslate"><span class="pre">freqs</span></code> are the corresponding frequencies.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.spectral_feature">
+<code class="sig-name descname">spectral_feature</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">feature</span><span class="o">=</span><span class="default_value">'centroid'</span></em>, <em class="sig-param"><span class="n">mean</span><span class="o">=</span><span class="default_value">'rms'</span></em>, <em class="sig-param"><span class="n">frame_duration</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rolloff</span><span class="o">=</span><span class="default_value">0.85</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.spectral_feature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes one of several features of the spectrogram of a sound and returns either a
+new Signal with the feature value at each sample, or the average (<em>rms</em> or mean) feature value over all samples.
+Available features:
+<em>centroid</em> is the centre of mass of the short-term spectrum, and ‘fwhm’ is the width of a Gaussian of the same variance as the spectrum around the centroid.
+Examples:
+&gt;&gt;&gt; sig = Sound.tone(frequency=500, nchannels=2)
+&gt;&gt;&gt; round(sig.spectral_feature(feature=’centroid’)[0])
+500.0</p>
+<p>‘flux’ is a measure of how quickly the power spectrum of a signal is changing, calculated by comparing the power spectrum for one frame against the power spectrum from the previous frame. Returns the root-mean-square over the entire stimulus of the change in power spectrum between adjacent time windows, measured as Euclidean distance.
+&gt;&gt;&gt; sig = Sound.tone()
+&gt;&gt;&gt; numpy.testing.assert_allclose(sig.spectral_feature(feature=’flux’), desired=0, atol=1e-04)</p>
+<p>‘flatness’ measures how tone-like a sound is, as opposed to being noise-like.
+It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean. (Dubnov, Shlomo  “Generalization of spectral flatness measure for non-gaussian linear processes” IEEE Signal Processing Letters, 2004, Vol. 11.)</p>
+<p>‘rolloff’ is the frequency at which the spectrum rolles off and is typically used to find a suitable low-PassSummarycutoff frequency that retains most of the signal power (given as fraction in parameter ‘rolloff’ [<em>0.85</em>]).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.vocode">
+<code class="sig-name descname">vocode</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">bandwidth</span><span class="o">=</span><span class="default_value">0.3333333333333333</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.vocode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply noise vocoding to the sound by computing the envelope in different frequency subbands (ERB-spaced),
+filling these envelopes with noise, and collapsing the subbands into one sound. This removes most spectral
+information but retains temporal information in a speech signal.
+bandwidth … width of the subbands in octaves (<em>1/3</em>)
+Returns a new Sound object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.crest_factor">
+<code class="sig-name descname">crest_factor</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.crest_factor" title="Permalink to this definition">¶</a></dt>
+<dd><p>The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
+and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB.
+Numerically identical to the peak-to-average power ratio.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.onset_slope">
+<code class="sig-name descname">onset_slope</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.onset_slope" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the centroid of a histogram of onset slopes as a measure of how many
+quick intensity increases the sound has. These onset-like features make the
+sound easier to localize via envelope ITD.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.time_windows">
+<code class="sig-name descname">time_windows</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1024</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.time_windows" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns overlapping time windows as a generator.
+Use the generator if you need to modify each segment in place like this
+(this saves you the trouble of crossfading the segments correcly afterwards):
+&gt;&gt;&gt; sig = Sound.tone()
+&gt;&gt;&gt; windows = sig.time_windows()
+&gt;&gt;&gt; win = 1 # dummy value to get started
+&gt;&gt;&gt; send = None
+&gt;&gt;&gt; while win: # get windows one by one
+&gt;&gt;&gt;             win = windows.send(send) # returns each window as Sound object
+&gt;&gt;&gt;             win.ramp() # modify the windowed signal
+&gt;&gt;&gt;             send = win</p>
+<p>If you don’t need to write back into the sound
+&gt;&gt;&gt; windows = sig.time_windows()
+&gt;&gt;&gt; for w in windows:
+&gt;&gt;&gt;             w.waveform() # process window here</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Sound.calibrate">
+<em class="property">static </em><code class="sig-name descname">calibrate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">intensity</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">make_permanent</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Sound.calibrate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calibrate the presentation intensity of a setup.
+Enter the calibration intensity, if you know it.
+If None, plays a 1kHz tone. Please measure actual
+intensity with a sound level meter and appropriate
+coupler.
+Set make_permanent to True to save a calibration
+file in slab.DATAPATH that is loaded on import.</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="signal">
+<h3>Signal<a class="headerlink" href="#signal" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="#slab.Sound" title="slab.Sound"><code class="xref py py-class docutils literal notranslate"><span class="pre">slab.Sound</span></code></a> inherits from Signal, which provides basic methods to handle signals:</p>
+<dl class="py class">
+<dt id="slab.Signal">
+<em class="property">class </em><code class="sig-prename descclassname">slab.</code><code class="sig-name descname">Signal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for Signal data (sounds and filters).</p>
+<p>Provides duration, nsamples, times, nchannels properties,
+slicing, and conversion between samples and times.
+This class is intended to be subclassed. See Sound class for an example.</p>
+<p>Arguments:</p>
+<dl class="simple">
+<dt>data: Can be an array, a function or a sequence (list or tuple).</dt><dd><p>If its an array, it should have shape <code class="docutils literal notranslate"><span class="pre">(nsamples,</span> <span class="pre">nchannels)</span></code>. If its a
+function, it should be a function f(t). If its a sequence, the items
+in the sequence can be functions, arrays or Signal objects.
+The output will be a multi-channel Signal with channels corresponding to
+Signals for each element of the sequence.</p>
+</dd>
+<dt>samplerate: The samplerate, if necessary, will use the default (for an array or</dt><dd><p>function) or the samplerate of the data (for a filename). Default: None</p>
+</dd>
+</dl>
+<p>Examples:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">slab</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span> <span class="o">=</span> <span class="n">slab</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span><span class="mi">2</span><span class="p">]),</span><span class="n">samplerate</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+<span class="go">&lt;class &#39;slab.signals.Signal&#39;&gt; duration 1.0, samples 10, channels 2, samplerate 10</span>
+</pre></div>
+</div>
+<p><strong>Properties</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span><span class="o">.</span><span class="n">duration</span>
+<span class="go">1.0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span><span class="o">.</span><span class="n">nsamples</span>
+<span class="go">10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span><span class="o">.</span><span class="n">nchannels</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">times</span><span class="p">)</span>
+<span class="go">10</span>
+</pre></div>
+</div>
+<p><strong>Slicing</strong></p>
+<p>Signal implements __getitem__ and __setitem___ and thus supports slicing.
+Slicing returns numpy.ndarrays or floats, not Signal objects.
+You can also set values using slicing:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>will set the first 5 samples to zero.
+You can also select a subset of channels:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+<span class="go">array([0., 0., 0., 0., 0., 1., 1., 1., 1., 1.])</span>
+</pre></div>
+</div>
+<p>would be data in the second channel. To extract a channel as a Signal or subclass object
+use sig.channel(1).</p>
+<p>Signals support arithmatic operations (add, sub, mul, truediv, neg [‘-sig’ inverts phase]):</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sig2</span> <span class="o">=</span> <span class="n">sig</span> <span class="o">*</span> <span class="mi">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig2</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+<span class="go">2.0</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt id="slab.Signal.nsamples">
+<em class="property">property </em><code class="sig-name descname">nsamples</code><a class="headerlink" href="#slab.Signal.nsamples" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of samples in the Signal. Setting calls resize.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.duration">
+<em class="property">property </em><code class="sig-name descname">duration</code><a class="headerlink" href="#slab.Signal.duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>The length of the Signal in seconds.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.times">
+<em class="property">property </em><code class="sig-name descname">times</code><a class="headerlink" href="#slab.Signal.times" title="Permalink to this definition">¶</a></dt>
+<dd><p>An array of times (in seconds) corresponding to each sample.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.nchannels">
+<em class="property">property </em><code class="sig-name descname">nchannels</code><a class="headerlink" href="#slab.Signal.nchannels" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of channels in the Signal.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.in_samples">
+<em class="property">static </em><code class="sig-name descname">in_samples</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ctime</span></em>, <em class="sig-param"><span class="n">samplerate</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.in_samples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts time values in seconds to samples.
+This is used to enable input in either samples (integers) or seconds (floating point numbers) in the class.
+ctime can be of type int, float, numpy.ndarray of numpy.int64 or numpy.float64, list of a mix of ints or floats, or tuple of a mix of ints or floats.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.get_samplerate">
+<em class="property">static </em><code class="sig-name descname">get_samplerate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">samplerate</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.get_samplerate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return samplerate if supplied, otherwise return the default samplerate.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.set_default_samplerate">
+<em class="property">static </em><code class="sig-name descname">set_default_samplerate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">samplerate</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.set_default_samplerate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the global default samplerate for Signal objects, by default 8000 Hz.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.channel">
+<code class="sig-name descname">channel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the nth channel as new object of the calling class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.channels">
+<code class="sig-name descname">channels</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.channels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns generator that yields channel data as objects of the calling class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.resize">
+<code class="sig-name descname">resize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">L</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.resize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extends or contracts the length of the data in the object in place to have L samples.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.resample">
+<code class="sig-name descname">resample</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">samplerate</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.resample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a resampled version of the sound. Requires scipy.signal.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.envelope">
+<code class="sig-name descname">envelope</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">envelope</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">times</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">kind</span><span class="o">=</span><span class="default_value">'gain'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.envelope" title="Permalink to this definition">¶</a></dt>
+<dd><p>If envelope is None, returns the Hilbert envelope of a signal as new Signal.
+If envelope is a list or numpy array, returns a new object of the same type,
+with the signal data multiplied by the envelope. The envelope is linearely
+interpolated to the same length as the signal. The kind parameter (‘gain’ or
+‘dB’) determines the unit of the envelope values. If time points (in seconds,
+clamped to the the signal duration) for the amplitude values in envelope are
+supplied, then the interpolation is piecewise linear between pairs of time
+and envelope valued (must have same length).
+Example:
+&gt; sig = Sound.tone()
+&gt; sig.envelope(envelope=[0, 1, 0.2, 0.2, 0])
+&gt; sig.waveform()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Signal.delay">
+<code class="sig-name descname">delay</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">chan</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">filter_length</span><span class="o">=</span><span class="default_value">2048</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Signal.delay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delays one channel (chan) by duration (in seconds if float, or samples if int).
+If duration is a vector with self.nsamples entries, then each sample is delayed
+by the corresponsding number of seconds. This option is used by the itd_ramp
+method of the Binaural class.
+filter_length determines the accuracy of the reconstruction when using fractional
+sample delays and is 2048, or the signal length for shorter signals.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="binaural-sounds">
+<h3>Binaural sounds<a class="headerlink" href="#binaural-sounds" title="Permalink to this headline">¶</a></h3>
+<p>Binaural sounds inherit from Sound and provide methods for manipulating interaural parameters of two-channel sounds.</p>
+<dl class="py class">
+<dt id="slab.Binaural">
+<em class="property">class </em><code class="sig-prename descclassname">slab.</code><code class="sig-name descname">Binaural</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for working with binaural sounds, including ITD and ILD manipulation. Binaural inherits all signal generation functions from the Sound class, but returns binaural signals. Recasting an object of class sound or signal with 1 or 3+ channels calls Sound.copychannel to return a binaural sound with two channels identical to the first channel of the original signal.
+Properties:
+Binaural.left: left (0th)channel
+Binaural.right: right (1st) channel</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span> <span class="o">=</span> <span class="n">Binaural</span><span class="o">.</span><span class="n">whitenoise</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span><span class="o">.</span><span class="n">nchannels</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">all</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">left</span> <span class="o">-</span> <span class="n">sig</span><span class="o">.</span><span class="n">right</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt id="slab.Binaural.left">
+<em class="property">property </em><code class="sig-name descname">left</code><a class="headerlink" href="#slab.Binaural.left" title="Permalink to this definition">¶</a></dt>
+<dd><p>The left channel for a stereo sound.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.right">
+<em class="property">property </em><code class="sig-name descname">right</code><a class="headerlink" href="#slab.Binaural.right" title="Permalink to this definition">¶</a></dt>
+<dd><p>The right channel for a stereo sound.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.itd">
+<code class="sig-name descname">itd</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">0.0006</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.itd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a binaural sound object with one channel delayed with respect to the other channel by duration (<em>600 microseconds</em>), which can be the number of samples or a length of time in seconds.
+Negative dB values delay the right channel (virtual sound source moves to the left). itd requires a sound with two channels.
+&gt;&gt;&gt; sig = Binaural.whitenoise()
+&gt;&gt;&gt; _ = sig.itd(1)
+&gt;&gt;&gt; _ = sig.itd(-0.001)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.ild">
+<code class="sig-name descname">ild</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dB</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.ild" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a sound object with one channel attenuated with respect to
+the other channel by dB. Negative dB values attenuate the right channel
+(virtual sound source moves to the left). The mean intensity of the signal
+is kept constant.
+ild requires a sound with two channels.
+&gt;&gt;&gt; sig = Binaural.whitenoise()
+&gt;&gt;&gt; _ = sig.ild(3)
+&gt;&gt;&gt; _ = sig.ild(-3)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.itd_ramp">
+<code class="sig-name descname">itd_ramp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">from_itd</span></em>, <em class="sig-param"><span class="n">to_itd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.itd_ramp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a sound object with a linearly increasing or decreasing
+interaural time difference. This is achieved by sinc interpolation
+of one channel with a dynamic delay. The resulting virtual sound
+source moves to the left or right. from_itd and to_itd are the itd
+values at the beginning and end of the sound. Delays in between are
+linearely interpolated.
+&gt;&gt;&gt; sig = Binaural.whitenoise()
+&gt;&gt;&gt; _ = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.ild_ramp">
+<code class="sig-name descname">ild_ramp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">from_ild</span></em>, <em class="sig-param"><span class="n">to_ild</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.ild_ramp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a sound object with a linearly increasing or decreasing interaural level difference. The resulting virtual sound source moves to the left
+or right. from_ild and to_ild are the itd values at the beginning and end of the sound. ILDs in between are linearely interpolated. moving_ild requires a sound with two channels.
+&gt;&gt;&gt; sig = Binaural.whitenoise()
+&gt;&gt;&gt; move = sig.ild_ramp(from_ild=-50, to_ild=50)
+&gt;&gt;&gt; move.play()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.azimuth_to_itd">
+<em class="property">static </em><code class="sig-name descname">azimuth_to_itd</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">azimuth</span></em>, <em class="sig-param"><span class="n">frequency</span><span class="o">=</span><span class="default_value">2000</span></em>, <em class="sig-param"><span class="n">head_radius</span><span class="o">=</span><span class="default_value">8.75</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.azimuth_to_itd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the ITD corresponding to a given azimuth and head radius
+(default 8.75 cm). ITD depends slightly on sound frequency.
+For frequencies &gt;= 2 kHz the Woodworth (1962) formula is used.
+For frequencies &lt;= 500 Hz the low-frequency approximation mentioned
+in Aronson and Hartmann (2014) is used. For frequencies in between,
+we interpolate linearely between the two formulas. Use the default
+freqency (<em>2000</em>) for broadband sounds.
+Example:
+&gt;&gt;&gt; slab.Binaural.azimuth_to_itd(-90)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.azimuth_to_ild">
+<em class="property">static </em><code class="sig-name descname">azimuth_to_ild</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">azimuth</span></em>, <em class="sig-param"><span class="n">frequency</span><span class="o">=</span><span class="default_value">2000</span></em>, <em class="sig-param"><span class="n">hrtf</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.azimuth_to_ild" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the ILD corresponding to a given azimuth. ILD depends on
+sound frequency. The ILD is taken from the MIT KEMAR recordings
+by default, but a different slab.HRTF object can be supplied.
+Use the default freqency (<em>2000</em>) for broadband sounds.
+Example:
+&gt;&gt;&gt; slab.Binaural.azimuth_to_ild(-90)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.at_azimuth">
+<code class="sig-name descname">at_azimuth</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">azimuth</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.at_azimuth" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function for adding ITD and ILD corresponding to the
+given to the sound. Values are obtained from azimuth_to_itd
+and azimuth_to_ild. Frequency parameters for these functions are
+generated from the centroid frequency of the sound.
+Returns a new Binaural object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.externalize">
+<code class="sig-name descname">externalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">hrtf</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.externalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convolve the sound object in place with a smoothed HRTF (KEMAR
+if no slab.HRTF object is supplied) to evoke the impression of
+an external sound source without adding directional information.
+See Kulkarni &amp; Colburn (1998) for why that works.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.measure_itd">
+<code class="sig-name descname">measure_itd</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.measure_itd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the ITD of a binaural sound by cross-correlation in a
+physiological range of lags up to 800 µseconds.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.interaural_level_spectrum">
+<code class="sig-name descname">interaural_level_spectrum</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">azimuth</span></em>, <em class="sig-param"><span class="n">level_spectrum_filter</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.interaural_level_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply a frequency-dependend interaural level difference
+corresponding to a given azimuth to a binaural sound.
+The level difference cues are taken from a filter generated
+with the _make_level_spectrum_filter function from an hrtf
+recording. The default will generate the filter from the MIT
+KEMAR recordings. The left and right channel of the sound
+should have the same level.
+Example:
+&gt;&gt;&gt; noise = Binaural.pinknoise(kind=’diotic’)
+&gt;&gt;&gt; noise.interaural_level_spectrum(azimuth=-45).play()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.whitenoise">
+<em class="property">static </em><code class="sig-name descname">whitenoise</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">kind</span><span class="o">=</span><span class="default_value">'diotic'</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">normalise</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.whitenoise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a white noise. If the samplerate is not specified, the global default value will be used. kind = ‘diotic’ produces the same noise samples in both channels, kind = ‘dichotic’ produces uncorrelated noise.
+&gt;&gt;&gt; noise = Binaural.whitenoise(kind=’diotic’)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Binaural.pinknoise">
+<em class="property">static </em><code class="sig-name descname">pinknoise</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">duration</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">kind</span><span class="o">=</span><span class="default_value">'diotic'</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">normalise</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Binaural.pinknoise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a pink noise. If the samplerate is not specified, the global default value will be used. kind = ‘diotic’ produces the same noise samples in both channels, kind = ‘dichotic’ produces uncorrelated noise.
+&gt;&gt;&gt; noise = Binaural.pinknoise(kind=’diotic’)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="psychoacoustic-procedures">
+<h2>Psychoacoustic procedures<a class="headerlink" href="#psychoacoustic-procedures" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="slab.Trialsequence">
+<em class="property">class </em><code class="sig-prename descclassname">slab.</code><code class="sig-name descname">Trialsequence</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">conditions</span><span class="o">=</span><span class="default_value">2</span></em>, <em class="sig-param"><span class="n">n_reps</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">trials</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">kind</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">name</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Trialsequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Non-adaptive trial sequences.</p>
+<p>Parameters:</p>
+<p>conditions: an integer, list, or flat array specifying condition indices,
+or a list of strings or other objects (dictionaries/tuples/namedtuples)
+specifying names or stimulus values for each condition.
+If given an integer x, uses range(x).
+If conditions is a string, then it is treated as the name of a previously
+saved trial sequence object, which is then loaded.
+n_reps: number of repeats of each condition (total trial number = len(conditions) * n_reps)
+trials: a list of conditions, i.e. the trial sequence. Typically, this
+list is left empty and generated by the class based on the other parameters.
+kind: The kind of sequence randomization used to generate the trial sequence.
+‘non_repeating’ (conditions are repeated in randome order n_reps times without
+direct repetition - default if n_conds &gt; 2),
+‘random_permutation’ (conditions are permuted randomly without control over
+transition probabilities - default if n_conds &lt;= 2), or
+‘infinite’ (non_repeating [if n_conds &lt;= 2] or random_permutation trial sequence,
+reset when end is reached to generate an infinite number of trials).
+name: a text label for the sequence.</p>
+<p>Attributes:</p>
+<p>.n_trials: the total number of trials that will be run
+.n_remaining: the total number of trials remaining
+.this_n: trial index in entire sequence, equals total trials completed so far
+.this_rep_n: index of repetition of the conditions we are currently in
+.this_trial_n: trial index within this repetition
+.this_trial: a dictionary giving the parameters of the current trial
+.finished: True/False: have we finished yet?
+.kind: records the kind of sequence (‘random_permutation’, ‘non_repeating’, ‘infinite’)</p>
+<dl class="py method">
+<dt id="slab.Trialsequence.get_future_trial">
+<code class="sig-name descname">get_future_trial</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Trialsequence.get_future_trial" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the condition for n trials into the future or past,
+without advancing the trials. A negative n returns a previous (past)
+trial. Returns ‘None’ if attempting to go beyond the last trial.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Trialsequence.transitions">
+<code class="sig-name descname">transitions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Trialsequence.transitions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return array (n_conds x n_conds) of transition probabilities.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Trialsequence.condition_probabilities">
+<code class="sig-name descname">condition_probabilities</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Trialsequence.condition_probabilities" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return list of frequencies of conditions in the order listed in .conditions</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Trialsequence.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Trialsequence.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the trial sequence as scatter plot.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Trialsequence.mmn_sequence">
+<em class="property">static </em><code class="sig-name descname">mmn_sequence</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n_trials</span></em>, <em class="sig-param"><span class="n">deviant_freq</span><span class="o">=</span><span class="default_value">0.12</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Trialsequence.mmn_sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a  MMN experiment: 2 different stimuli (conditions),
+between two deviants at least 3 standards
+n_trials: number of trials to return
+deviant_freq: frequency of deviants (<em>0.12</em>, max. 0.25)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="slab.Staircase">
+<em class="property">class </em><code class="sig-prename descclassname">slab.</code><code class="sig-name descname">Staircase</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">start_val</span></em>, <em class="sig-param"><span class="n">n_reversals</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">step_sizes</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">step_up_factor</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">n_pretrials</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">n_up</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">n_down</span><span class="o">=</span><span class="default_value">2</span></em>, <em class="sig-param"><span class="n">step_type</span><span class="o">=</span><span class="default_value">'lin'</span></em>, <em class="sig-param"><span class="n">min_val</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_val</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">name</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Staircase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to handle smoothly the selection of the next trial
+and report current values etc.
+Calls to next() will fetch the next object given to this
+handler, according to the method specified.
+The staircase will terminate when <em>n_trials</em> AND <em>n_reversals</em> have
+been exceeded. If <em>step_sizes</em> was an array and has been exceeded
+before n_trials is exceeded then the staircase will continue.
+n_up and n_down are always considered as 1 until the first reversal
+is reached. The values entered as arguments are then used.
+Lewitt (1971) gives the up-down values for different threshold points
+on the psychometric function: 1-1 (0.5), 1-2 (0.707), 1-3 (0.794),
+1-4 (0.841), 1-5 (0.891).
+Example:
+&gt;&gt;&gt; stairs = Staircase(start_val=50, n_reversals=10, step_type=’lin’,                    step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1, n_trials=10)
+&gt;&gt;&gt; print(stairs)
+&lt;class ‘psychoacoustics.Staircase’&gt; 1up1down, trial -1, 0 reversals of 10
+&gt;&gt;&gt; for trial in stairs:
+…         response = stairs.simulate_response(30)
+…         stairs.add_response(response)
+&gt;&gt;&gt; print(f’reversals: {stairs.reversal_intensities}’)
+reversals: [26, 30, 28, 30, 28, 30, 28, 30, 28, 30]
+&gt;&gt;&gt; print(f’mean of final 6 reversals: {stairs.threshold()}’)
+mean of final 6 reversals: 28.982753492378876</p>
+<dl class="py method">
+<dt id="slab.Staircase.add_response">
+<code class="sig-name descname">add_response</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">result</span></em>, <em class="sig-param"><span class="n">intensity</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Staircase.add_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a True or 1 to indicate a correct/detected trial
+or False or 0 to indicate an incorrect/missed trial.
+This is essential to advance the staircase to a new intensity level.
+Supplying an <cite>intensity</cite> value indicates that you did not use
+the recommended intensity in your last trial and the staircase will
+replace its recorded value with the one supplied.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Staircase.calculatenext_intensity">
+<code class="sig-name descname">calculatenext_intensity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Staircase.calculatenext_intensity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Based on current intensity, counter of correct responses, and current direction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Staircase.threshold">
+<code class="sig-name descname">threshold</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Staircase.threshold" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the average (arithmetic for step_type == ‘lin’,
+geometric otherwise) of the last n reversals (default: n_reversals - 1).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Staircase.save_csv">
+<code class="sig-name descname">save_csv</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fileName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Staircase.save_csv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a text file with the data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Staircase.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.Staircase.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the staircase. If called after each trial, one plot is created and updated.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="slab.Precomputed">
+<em class="property">class </em><code class="sig-prename descclassname">slab.</code><code class="sig-name descname">Precomputed</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sounds</span></em>, <em class="sig-param"><span class="n">n</span><span class="o">=</span><span class="default_value">10</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Precomputed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for randomly playing pre-computed sound stimuli without direct repetition.
+‘sounds’ can be a list of Sound objects, a function, or an iterable.
+This class simplifies generation and presentation of pre-computed sound stimuli
+and is typically used when stimulus generation takes too long to happen in each trial.
+In this case, a list of stimuli is precomputed and a random stimulus from the list is
+presented in each trial, ideally without direct repetition.
+The class allows easy generation of such stimulus lists (type ‘slab.Precomputed’) and
+keeps track of the previously presented stimulus. The list has a play method which
+automatically selects an element other than the previous one for playing, and
+can be used like an slab.Sound object.
+‘sounds’: [list|callable|iterator], the stimulus objects (must have a play method)
+‘n’: [int, <em>10</em>], only used if list is a callable, calls it n times to make the stimuli
+Examples:
+&gt;&gt;&gt; stims = slab.Precomputed(sound_list) # using a pre-made list
+&gt;&gt;&gt; stims = slab.Precomputed(lambda: slab.Sound.pinknoise(), n=10) # using a lambda function to make 10 examples of pink noise
+&gt;&gt;&gt; stims = slab.Precomputed( (slab.Sound.vowel(vowel=v) for v in [‘a’,’e’,’i’]) ) # using a generator
+&gt;&gt;&gt; stims.play() # playing a sound from the list</p>
+<dl class="py method">
+<dt id="slab.Precomputed.random_choice">
+<code class="sig-name descname">random_choice</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Precomputed.random_choice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list of n random sounds with replacement.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Precomputed.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fname</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Precomputed.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes the Precomputed object to disk as a zip file containing all sounds as wav files.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Precomputed.read">
+<em class="property">static </em><code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fname</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Precomputed.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a zip file containing wav files and returns them as Precomputed object.</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="filters">
+<h3>Filters<a class="headerlink" href="#filters" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="slab.Filter">
+<em class="property">class </em><code class="sig-prename descclassname">slab.</code><code class="sig-name descname">Filter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">fir</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for generating and manipulating filterbanks and transfer functions.</p>
+<dl class="py method">
+<dt id="slab.Filter.nfilters">
+<em class="property">property </em><code class="sig-name descname">nfilters</code><a class="headerlink" href="#slab.Filter.nfilters" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of filters in the bank.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.ntaps">
+<em class="property">property </em><code class="sig-name descname">ntaps</code><a class="headerlink" href="#slab.Filter.ntaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of filter taps.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.nfrequencies">
+<em class="property">property </em><code class="sig-name descname">nfrequencies</code><a class="headerlink" href="#slab.Filter.nfrequencies" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of frequency bins.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.frequencies">
+<em class="property">property </em><code class="sig-name descname">frequencies</code><a class="headerlink" href="#slab.Filter.frequencies" title="Permalink to this definition">¶</a></dt>
+<dd><p>The frequency axis of the filter.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.rectangular_filter">
+<em class="property">static </em><code class="sig-name descname">rectangular_filter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frequency</span><span class="o">=</span><span class="default_value">100</span></em>, <em class="sig-param"><span class="n">kind</span><span class="o">=</span><span class="default_value">'hp'</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">length</span><span class="o">=</span><span class="default_value">1000</span></em>, <em class="sig-param"><span class="n">fir</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Filter.rectangular_filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a rectangular filter and returns it as new Filter object.
+frequency: edge frequency in Hz (<em>1</em>) or tuple of frequencies for bp and bs.
+type: ‘lp’ (lowpass), <em>‘hp’</em> (highpass), bp (bandpass), ‘bs’ (bandstop, notch)
+TODO: For costum filter shapes f and type are tuples with frequencies
+in Hz and corresponding attenuations in dB. If f is a numpy array it is
+taken as the target magnitude of the spectrum (imposing one sound’s
+spectrum on the current sound).
+Examples:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span> <span class="o">=</span> <span class="n">Sound</span><span class="o">.</span><span class="n">whitenoise</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">filt</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span><span class="n">f</span><span class="o">=</span><span class="mi">3000</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;lp&#39;</span><span class="p">,</span> <span class="n">fir</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">spectrum</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.apply">
+<code class="sig-name descname">apply</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sig</span></em>, <em class="sig-param"><span class="n">compensate_shift</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Filter.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply the filter to signal sig. If signal and filter have the same number of channels,
+each filter channel will be applied to the corresponding channel in the signal.
+If the filter has multiple channels and the signal only 1, each filter is applied to othe same signal.
+In that case the filtered signal wil contain the same number of channels as the filter with every
+channel being a copy of the original signal with one filter channel applied. If the filter has only
+one channel and the signal has multiple channels, the same filter is applied to each signal channel.
+When applying a FIR filter one can set compensate_shift = True. This will padd the output signal
+With zeros equal to half of the filter length and then later remove the same number of samples
+at the end of the signal.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.tf">
+<code class="sig-name descname">tf</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">channels</span><span class="o">=</span><span class="default_value">'all'</span></em>, <em class="sig-param"><span class="n">nbins</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Filter.tf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the transfer function of a filter (magnitude over frequency).
+Return transfer functions of filter at index ‘channels’ (int or list) or,
+if channels=’all’ return all transfer functions.
+If plot=True then plot the response and return the figure handle,
+else return magnitude and frequency vectors.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.cos_filterbank">
+<em class="property">static </em><code class="sig-name descname">cos_filterbank</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">length</span><span class="o">=</span><span class="default_value">5000</span></em>, <em class="sig-param"><span class="n">bandwidth</span><span class="o">=</span><span class="default_value">0.3333333333333333</span></em>, <em class="sig-param"><span class="n">low_cutoff</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">high_cutoff</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">pass_bands</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Filter.cos_filterbank" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create ERB cosine filterbank of n_filters.</p>
+<p>length: Length of signal to be filtered with the generated
+filterbank. The signal length determines the length of the filters.
+samplerate: Sampling rate associated with the signal waveform.
+bandwidth: of the filters (subbands) in octaves (default 1/3)
+low_cutoff: Lower limit of frequency range (def  saults to 0).
+high_cutoff: Upper limit of frequency range (defaults to samplerate/2).
+pass_bands: boolean [<em>False</em>], whether to include half a cosine filter as lowpass and highpass.
+If True, allows reconstruction of original bandwidth when collapsing subbands.</p>
+<p>Example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span> <span class="o">=</span> <span class="n">Sound</span><span class="o">.</span><span class="n">pinknoise</span><span class="p">(</span><span class="n">samplerate</span><span class="o">=</span><span class="mi">44100</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fbank</span> <span class="o">=</span> <span class="n">Filter</span><span class="o">.</span><span class="n">cos_filterbank</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="n">sig</span><span class="o">.</span><span class="n">nsamples</span><span class="p">,</span> <span class="n">bandwidth</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">10</span><span class="p">,</span> <span class="n">low_cutoff</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">samplerate</span><span class="o">=</span><span class="n">sig</span><span class="o">.</span><span class="n">samplerate</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fbank</span><span class="o">.</span><span class="n">tf</span><span class="p">(</span><span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sig_filt</span> <span class="o">=</span> <span class="n">fbank</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.equalizing_filterbank">
+<em class="property">static </em><code class="sig-name descname">equalizing_filterbank</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">signal</span></em>, <em class="sig-param"><span class="n">length</span><span class="o">=</span><span class="default_value">1000</span></em>, <em class="sig-param"><span class="n">low_cutoff</span><span class="o">=</span><span class="default_value">200</span></em>, <em class="sig-param"><span class="n">high_cutoff</span><span class="o">=</span><span class="default_value">16000</span></em>, <em class="sig-param"><span class="n">bandwidth</span><span class="o">=</span><span class="default_value">0.125</span></em>, <em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Filter.equalizing_filterbank" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an equalizing filter from the difference between a signal and a target.
+The main intent of the function is to help with equalizing the differences between transfer functions of
+different loudspeaker. Signal and target are both divided into ERB-sapced frequency bands and the level
+difference is calculated for each band. The differences are normalized to the range 0 to 2 and used as gain
+for the filter in each frequency band. 0 means, that the respective band is maximally supressed, 2 means it is
+maximally amplified. The overall effect of the filter can be regulated by setting alpha (default is 1).
+Alpha &lt; 1 will reduce the total effect of the filter while alpha &gt; 1 will amplify it (WARNING: large filter
+gains may result in temporal distortions of the signal).
+Target and signal must both be instances of slab.Sound. The target must have only a single channel, the signal
+can have multiple ones.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.save">
+<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Filter.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the filter in numpy’s .npy format to a file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.Filter.load">
+<em class="property">static </em><code class="sig-name descname">load</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.Filter.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a filter from a .npy file.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="hrtfs">
+<h3>HRTFs<a class="headerlink" href="#hrtfs" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="slab.HRTF">
+<em class="property">class </em><code class="sig-prename descclassname">slab.</code><code class="sig-name descname">HRTF</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">samplerate</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sources</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">listener</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for reading and manipulating head-related transfer functions. This is essentially
+a collection of two Filter objects (hrtf.left and hrtf.right) with functions to manage them.
+&gt;&gt;&gt; hrtf = HRTF(data=’mit_kemar_normal_pinna.sofa’) # initialize from sofa file
+&gt;&gt;&gt; print(hrtf)
+&lt;class ‘hrtf.HRTF’&gt; sources 710, elevations 14, samples 710, samplerate 44100.0
+&gt;&gt;&gt; sourceidx = hrtf.cone_sources(20)
+&gt;&gt;&gt; hrtf.plot_sources(sourceidx)
+&gt;&gt;&gt; hrtf.plot_tf(sourceidx,ear=’left’)</p>
+<dl class="py method">
+<dt id="slab.HRTF.nsources">
+<em class="property">property </em><code class="sig-name descname">nsources</code><a class="headerlink" href="#slab.HRTF.nsources" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of sources in the HRTF.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.nelevations">
+<em class="property">property </em><code class="sig-name descname">nelevations</code><a class="headerlink" href="#slab.HRTF.nelevations" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of elevations in the HRTF.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.elevations">
+<code class="sig-name descname">elevations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF.elevations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the list of sources</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.plot_tf">
+<code class="sig-name descname">plot_tf</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sourceidx</span></em>, <em class="sig-param"><span class="n">ear</span><span class="o">=</span><span class="default_value">'left'</span></em>, <em class="sig-param"><span class="n">plot_limits</span><span class="o">=</span><span class="default_value">1000, 18000</span></em>, <em class="sig-param"><span class="n">nbins</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">kind</span><span class="o">=</span><span class="default_value">'waterfall'</span></em>, <em class="sig-param"><span class="n">linesep</span><span class="o">=</span><span class="default_value">20</span></em>, <em class="sig-param"><span class="n">xscale</span><span class="o">=</span><span class="default_value">'linear'</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF.plot_tf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots transfer functions of FIR filters for a given ear
+[‘left’, ‘right’, ‘both’] at a list of source indices.
+Sourceidx should be generated like this: hrtf.cone_sources(cone=0).
+plot_limits determines the plotted frequency range in Hz.
+n_bins is passed to Filter.tf and determines freqency resolution (<em>128</em>).
+linesep sets the vertical distance between tfs (<em>20</em>).
+xscale (<em>‘linear’</em>, ‘log’) sets x-axis scaling.
+If a plot axis is supplied, then the figure is drawn in it.
+Waterfall (as in Wightman and Kistler, 1989) and image plots
+(as in Hofman 1998) are available by setting ‘kind’.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.diffuse_field_avg">
+<code class="sig-name descname">diffuse_field_avg</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF.diffuse_field_avg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the diffuse field average transfer function,
+i.e. the constant non-spatial portion of a set of HRTFs.
+The filters for all sources are averaged, which yields
+an unbiased average only if the sources are uniformely
+distributed around the head.
+Returns the diffuse field average as FFR filter object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.diffuse_field_equalization">
+<code class="sig-name descname">diffuse_field_equalization</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF.diffuse_field_equalization" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply a diffuse field equalization to an HRTF in place.
+The resulting filters have zero mean and are of type FFR.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.cone_sources">
+<code class="sig-name descname">cone_sources</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cone</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF.cone_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return indices of sources along a vertical off-axis sphere slice.
+The default cone = 0 returns sources along the fronal median plane.
+Note: This currently only works as intended for HRTFs recorded in horizontal rings.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.elevation_sources">
+<code class="sig-name descname">elevation_sources</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">elevation</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF.elevation_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return indices of sources along a horizontal sphere slice at the given elevation.
+The default elevation = 0 returns sources along the fronal horizon.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.tfs_from_sources">
+<code class="sig-name descname">tfs_from_sources</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source_list</span></em>, <em class="sig-param"><span class="n">n_bins</span><span class="o">=</span><span class="default_value">96</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF.tfs_from_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract transfer functions from a list of source indices (generated for instance,
+with hrtf.cone_sources) as (n_bins, n_sources) numpy array.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="slab.HRTF.plot_sources">
+<code class="sig-name descname">plot_sources</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">idx</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#slab.HRTF.plot_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot source locations in 3D, highlighting a list of sources if indices are provided with argument idx.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="examples.html" class="btn btn-neutral float-left" title="Worked examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Marc Schoenwiesner, Ole Bialas
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
