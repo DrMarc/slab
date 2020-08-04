@@ -91,7 +91,7 @@ def jnd(condition, practise=False):
             default_stim1 = slab.Sound(stim_folder / word2 / f'{word2}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
             default_stim2 = slab.Sound(stim_folder / word3 / f'{word3}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
             stairs.present_afc_trial(jnd_stim, [default_stim1, default_stim2], isi=ISI_stairs)
-            if 1:#practise:
+            if practise:
                 stairs.plot()
         thresh = stairs.threshold(n=6)
         thresh_condition_value = condition_values[numpy.ceil(thresh).astype('int')]
