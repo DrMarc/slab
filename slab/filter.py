@@ -142,7 +142,7 @@ class Filter(Signal):
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
         return out
 
-    def tf(self, channels='all', nbins=None, plot=True, axes=None, **kwargs):
+    def tf(self, channels='all', nbins=None, show=True, axes=None, **kwargs):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
         Return transfer functions of filter at index 'channels' (int or list) or,
@@ -175,16 +175,15 @@ class Filter(Signal):
                     h_interp[:, idx] = numpy.interp(w_interp, w, h[:, idx])
                 h = h_interp
                 w = w_interp
-        if plot:
+        if show or (axes is not None):
             if not have_pyplot:
                 raise ImportError('Plotting transfer functions requires matplotlib.')
             if axes is None:
                 axes = plt.subplot(111)
             axes.plot(w, h, **kwargs)
-            axes.set_xlabel('Frequency [Hz]')
-            axes.set_ylabel('Amplitude [dB]')
-            axes.set_title('Frequency Response')
+            axes.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
             axes.grid(True)
+        if show:
             plt.show()
         else:
             return w, h
