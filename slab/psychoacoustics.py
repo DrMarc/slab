@@ -65,9 +65,10 @@ class LoadSaveJson_mixin:
     def save_json(self, file_name=None):
         """
         Serialize the object to the JSON format.
-        fileName: string, or None
-                the name of the file to create or append. If `None`,
-                will not write to a file, but return an in-memory JSON object.
+
+        Arguments:
+            fileName: string, or None; the name of the file to create or append. If `None`, will not write to a file,
+                but return an in-memory JSON object.
         """
         # self_copy = copy.deepcopy(self) use if reading the json file sometimes fails
         def default(o): return int(o) if isinstance(o, numpy.int64) else o
@@ -122,10 +123,7 @@ class TrialPresentationOptions_mixin:
         with Key() as key:
             response = key.getch()
         interval = numpy.where(order == 0)[0][0]
-        print(interval)
         interval_key = key_codes[interval]
-        print(interval_key)
-        print(response)
         response = response == interval_key
         self.add_response(response)
         if print_info:

@@ -95,11 +95,11 @@ def jnd(condition, practise=False):
                 stairs.plot()
         thresh = stairs.threshold(n=6)
         thresh_condition_value = condition_values[numpy.ceil(thresh).astype('int')]
-        if 1:#practise:
+        if practise:
             stairs.close_plot()
         else:
             print(f'room jnd: {round(thresh, ndigits=1)}')
-            _results_file.write(stairs, tag=f'stairs {condition}')
+            _results_file.write(repr(stairs), tag=f'stairs {condition}')
             _results_file.write(thresh, tag=f'jnd {condition}')
             _results_file.write(thresh_condition_value, tag=f'jnd condition value {condition}')
         repeat = input('Press enter to continue, "r" to repeat this threshold measurement.\n\n')
