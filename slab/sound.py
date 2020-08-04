@@ -450,72 +450,6 @@ class Sound(Signal):
         return Sound(data=fnoise, samplerate=samplerate)
 
     @staticmethod
-    def dynamicripple(Am=0.9, Rt=6, Om=2, Ph=0, duration=1., f0=1000, samplerate=None, BW=5.8, RO=0, df=1/16, ph_c=None):
-        '''
-        Return a moving ripple stimulus.
-
-        Arguments:
-            Am: modulation depth, 0 < Am < 1,
-            Rt: rate (Hz), integer preferred, typically, 1 .. 128
-            Om: scale (cyc/oct), any real number, typically, .25 .. 4
-            Ph: (optional) symmetry (Pi) at f0, -1 < Ph < 1
-            f0: center freq. (Hz)
-            samplerate: sample freq. (Hz), must be power of 2
-            BW: excitation band width (oct), DEFAULT = 5.8.
-            RO: roll-off (dB/oct), 0 means log-spacing
-            df: freq. spacing, in oct (RO=0) or in Hz (RO>0)
-            ph_c: component phase
-
-        Converted to python by Jessica Thompson based on Jonathan Simon and Didier
-        Dipereux's matlab program [ripfft.m], based on Jian Lin's C program [rip.c].
-
-        >>> ripple = Sound.dynamicripple()
-
-        '''
-        samplerate = Sound.get_samplerate(samplerate)
-        # duration = Sound.in_samples(duration, samplerate) # TODO: duration has to be in seconds for this function!
-        duration = Sound.in_samples(duration, samplerate)
-        Ri = Rt*duration  # modulation lag, in number of df's
-        if RO:  # compute tones freqs
-            R1 = numpy.round(2**(numpy.array(-1, 1)*BW/2)*f0/df)
-            fr = df*(numpy.arange(R1[1], R1[2]))
-        else:  # compute log-spaced tones freqs
-            R1 = numpy.round(BW/2/df)
-            fr = f0*2**(numpy.arange(-R1, R1+1)*df)
-        M = len(fr)  # of component
-        S = 0j*numpy.zeros((int(duration*samplerate/2), 1))  # memory allocation
-        fdx = int(numpy.round(fr*duration)+1)  # freq. index MATLAB INDEXING??? -> not an index!!!
-        x = numpy.log2(fr/f0)  # tono. axis (oct)
-        # roll-off and phase relation
-        r = 10**(-x*RO/20)  # roll-off, -x*RO = 20log10(r)
-        if ph_c is not None:
-            th = ph_c
-        else:
-            th = 2*numpy.pi*numpy.random.rand(M, 1)  # component phase, theta
-        ph_c = th
-        ph = (2*Om*x+Ph)*numpy.pi  # ripple phase, phi, modulation phase
-        # modulation
-        maxidx = numpy.zeros((M, 2))
-        maxidx[:, 0] = fdx-Ri
-        idx = numpy.max(maxidx, axis=1).astype(int)
-        S[idx] = S[idx] + numpy.dot(r, numpy.exp(1j*(th-ph)))  # lower side
-        minidx = numpy.ones((M, 2))
-        minidx[:, 0] = fdx+Ri
-        minidx[:, 1] = minidx[:, 1] * duration*samplerate/2
-        idx = numpy.min(minidx, axis=1).astype(int)
-        S[idx] = S[idx] + numpy.dot(r, numpy.exp(1j*(th+ph)))  # upper side
-        S = S * Am/2
-        S[0] = 0
-        S = S[:duration*samplerate/2]
-        # original stationary spectrum
-        S[fdx] = S[fdx] + r*numpy.exp(1j*th)  # moved here to save computation
-        # time waveform
-        s = numpy.fft.ifft(numpy.concatenate((S, [0], numpy.flipud(
-            S[1:duration*samplerate/2]).conj())))  # make it double side
-        s = s[:int(numpy.round(duration*samplerate))].real  # only real part is good. *2 was ignored
-        return Sound(s, samplerate)
-
-    @staticmethod
     def sequence(*sounds):
         'Joins the sounds in the list `sounds` into a new sound object.'
         samplerate = sounds[0].samplerate
@@ -656,19 +590,6 @@ class Sound(Signal):
             data = scipy.signal.lfilter(b, a, chan.data.flatten())
             data_chans.append(data)  # concatenate channel data
         return Sound(data_chans, self.samplerate)
-
-    def reverb(self, room=4, mic='center', source_distance=1, hrtf=None): # TODO: implement!
-        '''
-        Returns a Binaural sound with added early reflections computed using
-        the image source method and a simple shoe-box room and added late
-        reverberation. This is a convenience wrapper around the pyroomacoustics
-        toolbox.
-        '''
-        # make room
-        # set source and mic
-        # compute image source model
-        # return Binaural sound
-        pass
 
     @staticmethod
     def record(duration=1.0, samplerate=44100):
@@ -968,34 +889,6 @@ class Sound(Signal):
         subbands_noise.level = subbands.level
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
 
-    def pitch_tracking(self, window_dur=0.005): # TODO: implement!
-        fbank = Filter.cos_filterbank(length=self.nsamples, bandwidth=1/10,
-                                      low_cutoff=30, samplerate=self.samplerate)
-        subbands = fbank.apply(self.channel(0))  # apply filterbank
-        envs = subbands.envelope()  # get subband envelopes
-        # X[X < 0] = 0
-        # smooth the results with a moving average filter
-        # autocorrelation in each band and frame
-        # for k in range(0, iNumBands):
-        # 	# get current block
-        # 	if X[k, np.arange(i_start, i_stop + 1)].sum() < 1e-20:
-        # 		continue
-        # 	else:
-        # 		x_tmp[np.arange(0, i_stop - i_start + 1)] = X[k, np.arange(i_start, i_stop + 1)]
-        # 	afCorr = np.correlate(x_tmp, x_tmp, "full") / np.dot(x_tmp, x_tmp)
-        # 	# aggregate bands with simple sum before peak picking
-        # 	afSumCorr += afCorr[np.arange(iBlockLength, afCorr.size)]
-        # if afSumCorr.sum() < 1e-20:
-        # 	continue
-        # # find the highest local maximum
-        # iPeaks = find_peaks(afSumCorr, height=0)
-        # if iPeaks[0].size:
-        # 	eta_min = np.max([eta_min, iPeaks[0][0] - 1])
-        # f[n] = np.argmax(afSumCorr[np.arange(eta_min + 1, afSumCorr.size)]) + 1
-        # # convert to Hz
-        # f[n] = f_s / (f[n] + eta_min + 1)
-        pass
-
     def crest_factor(self):
         '''
         The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
@@ -1021,7 +914,7 @@ class Sound(Signal):
         norm = hist / hist.sum()  # normalize histogram so that it summs to 1
         return numpy.sum(bin_centers * norm)  # compute centroid of histogram
 
-    def time_windows(self, duration=1024): # TODO: pylint error, test!
+    def time_windows(self, duration=1024):
         '''
         Returns overlapping time windows as a generator.
         Use the generator if you need to modify each segment in place like this
@@ -1029,7 +922,7 @@ class Sound(Signal):
 
         >>> sig = Sound.tone()
         >>> windows = sig.time_windows()
-        >>> win = 1 # dummy value to get started
+        >>> win = True # dummy value to get started
         >>> send = None
         >>> while win: # get windows one by one
         >>>		win = windows.send(send) # returns each window as Sound object
