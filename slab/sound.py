@@ -848,7 +848,7 @@ class Sound(Signal):
         else:
             return envs
 
-    def spectrum(self, low=16, high=None, log_power=True, plot=True, axes=None, show=True, **kwargs):
+    def spectrum(self, low=16, high=None, log_power=True, axes=None, show=True, **kwargs):
         '''
         Returns the spectrum of the sound and optionally plots it.
         Arguments:
@@ -880,7 +880,7 @@ class Sound(Signal):
         if log_power:
             Z[Z < 1e-20] = 1e-20  # no zeros because we take logs
             Z = 10 * numpy.log10(Z)
-        if plot:
+        if show or (axes is not None):
             if not have_pyplot:
                 raise ImportError('Plotting spectra requires matplotlib.')
             if axes is None:
@@ -929,7 +929,7 @@ class Sound(Signal):
                 frame_duration = 0.05  # 50ms frames by default
         out_all = []
         for chan in self.channels():
-            freqs, times, power = chan.spectrogram(window_dur=frame_duration, plot=False)
+            freqs, times, power = chan.spectrogram(window_dur=frame_duration, show=False)
             norm = power / power.sum(axis=0, keepdims=True)  # normalize successive frames
             if feature == 'centroid':
                 out = numpy.sum(freqs[:, numpy.newaxis] * norm, axis=0)
@@ -1137,15 +1137,3 @@ def apply_to_path(path='.', method=None, kwargs={}, out_path=None):
                 sig.write(out_path.joinpath(file.name))
         results[str(file.stem)] = res
     return results  # a dictionary of results for each file name
-
-
-if __name__ == '__main__':
-    sig1 = Sound.harmoniccomplex()
-    lev = sig1.level
-    sig1.filter((500, 1000), kind='bp')
-    sig1.log_spectrogram()
-    sig2 = Sound.clicktrain()
-    sig2.level = 60
-    sig3 = Sound.crossfade(sig1, sig2, overlap=0.5)
-    sig3.play()
-    sig3.waveform()
