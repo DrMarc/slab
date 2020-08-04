@@ -199,7 +199,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
     .this_trial: a dictionary giving the parameters of the current trial
     .finished: True/False: have we finished yet?
     .kind: records the kind of sequence ('random_permutation', 'non_repeating', 'infinite')
-    
+
 """
 # TODO: implementation if infinite sequence is a bit of a hack (number of completed trials needs
 # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
@@ -385,53 +385,26 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
     mean of final 6 reversals: 28.982753492378876
     """
 
-    def __init__(self, start_val, n_reversals=None, step_sizes=4, step_up_factor=1, n_pretrials=4, n_up=1,
-                 n_down=2, step_type='lin', min_val=None, max_val=None, name=''):
+    def __init__(self, start_val, n_reversals=None, step_sizes=1, step_up_factor=1, n_pretrials=0, n_up=1,
+                 n_down=2, step_type='lin', min_val=-numpy.Inf, max_val=numpy.Inf, name=''):
         """
-        :Parameters:
-                name:
-                        A text label.
-                start_val:
-                        The initial value for the staircase.
-                n_reversals:
-                        The minimum number of reversals permitted.
-                        If `step_sizes` is a list, but the minimum number of
-                        reversals to perform, `n_reversals`, is less than the
-                        length of this list, PsychoPy will automatically increase
-                        the minimum number of reversals and emit a warning.
-                step_sizes:
-                        The size of steps as a single value or a list (or array).
-                        For a single value the step size is fixed. For an array or
-                        list the step size will progress to the next entry
-                        at each reversal.
-                step_up_factor:
-                        Allows different sizes for up and down steps to implement
-                        a Kaernbach1991 weighted up-down method. step_sizes sets down steps,
-                        which are multiplied by step_up_factor to obtain up step sizes.
-                        The default is 1, i.e. same size for up and down steps.
-                n_pretrials:
-                        The number of pretrials presented as familiarization before
-                        the actual experiment. start_val is used presentation level.
-                n_up:
-                        The number of 'incorrect' (or 0) responses before the
-                        staircase level increases.
-                n_down:
-                        The number of 'correct' (or 1) responses before the
-                        staircase level decreases.
-                step_type: *'lin'*, 'db', 'log'
-                        The type of steps that should be taken each time. 'lin'
-                        will simply add or subtract that amount each step, 'db'
-                        and 'log' will step by a certain number of decibels or
-                        log units (note that this will prevent your value ever
-                        reaching zero or less)
-                min_val: *None*, or a number
-                        The smallest legal value for the staircase, which can be
-                        used to prevent it reaching impossible contrast values,
-                        for instance.
-                max_val: *None*, or a number
-                        The largest legal value for the staircase, which can be
-                        used to prevent it reaching impossible contrast values,
-                        for instance.
+        Parameters
+            name: A text label.
+            start_val: initial stimulus value for the staircase
+            n_reversals: number of reversals needed to terminate the staircase
+            step_sizes: size of steps as a single value or a list/array. For a single value the step size is fixed.
+                For a list/array the step size will progress to the next entry at each reversal.
+                step_up_factor: allows different sizes for up and down steps to implement a Kaernbach1991 weighted
+                up-down method. step_sizes sets down steps, which are multiplied by step_up_factor to obtain up step
+                sizes. The default is 1, i.e. same size for up and down steps.
+            n_pretrials: number of pretrials at start_val presented as familiarization before the actual experiment
+            n_up: number of `incorrect` (or 0) responses before the staircase level increases
+            n_down: number of `correct` (or 1) responses before the staircase level decreases
+            step_type: `'lin', 'db', 'log'`. The type of steps that should be taken each time. 'lin' adds or subtracts
+                that amount each step, 'db' and 'log' will step by a certain number of decibels or log units
+                (prevents the stimulus value from reaching zero).
+            min_val: smallest stimulus value permitted, or -Inf for staircase without lower limit
+            max_val: largest stimulus value permitted, or Inf for staircase without upper limit
         """
         self.name = name
         self.start_val = start_val
@@ -446,7 +419,10 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
         self.step_up_factor = step_up_factor
         self.step_size_current = self.step_sizes[0]
         if n_reversals is None:
-            self.n_reversals = len(self.step_sizes)
+            if len(self.step_sizes) == 1:
+                self.n_reversals = 8 # if Staircase called without parameters, construct a short 8-reversal test
+            else:
+                self.n_reversals = len(self.step_sizes) + 1 # otherwise dependend on number of stepsizes
         elif len(self.step_sizes) > n_reversals:
             print(
                 f'Increasing number of minimum required reversals to the number of step sizes, {len(self.step_sizes)}')
@@ -586,16 +562,15 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
         if (self.min_val is not None) and (self._next_intensity < self.min_val):
             self._next_intensity = self.min_val  # check we haven't gone out of the legal range
 
-    def threshold(self, n=None):
+    def threshold(self, n=0):
         '''Returns the average (arithmetic for step_type == 'lin',
         geometric otherwise) of the last n reversals (default: n_reversals - 1).'''
         if self.finished:
-            if n > self.n_reversals or n is None:
+            if n > self.n_reversals:
                 n = int(self.n_reversals) - 1
             if self.step_type == 'lin':
                 return numpy.mean(self.reversal_intensities[-n:])
-            else:
-                return numpy.exp(numpy.mean(numpy.log(self.reversal_intensities[-n:])))
+            return numpy.exp(numpy.mean(numpy.log(self.reversal_intensities[-n:])))
 
     def print_trial_info(self):
         print(
@@ -604,7 +579,7 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
     def save_csv(self, fileName):
         'Write a text file with the data.'
         if self.this_trial_n < 1:
-            return -1  # no trials to save
+            return  # no trials to save
         with open(fileName, 'w') as f:
             raw_intens = str(self.intensities)
             raw_intens = raw_intens.replace('[', '').replace(']', '')

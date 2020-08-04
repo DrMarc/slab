@@ -3,7 +3,7 @@ Michaela's experiment:
 Interference between room and voice processing
 Use like this:
 >>> from slab.experiments import room_voice_interference
->>> room_voice_interference('subject01')
+>>> room_voice_interference.main_experiment('subject01')
 '''
 
 import time
