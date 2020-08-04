@@ -28,12 +28,13 @@ from slab.signals import Signal
 from slab.filter import Filter
 from slab import DATAPATH
 
-_tmpdir = pathlib.Path(tempfile.gettempdir()) # get a temporary directory for writing intermediate files
+# get a temporary directory for writing intermediate files
+_tmpdir = pathlib.Path(tempfile.gettempdir())
 
 try:  # try getting a previously set calibration intensity from file
     _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
 except FileNotFoundError:
-    _calibration_intensity = 0 #: Difference between rms intensity and measured output intensity in dB
+    _calibration_intensity = 0  # : Difference between rms intensity and measured output intensity in dB
 
 
 class Sound(Signal):
@@ -642,7 +643,7 @@ class Sound(Signal):
         '''
         # n = 2**((self.nsamples-1).bit_length()-1) + 1 # next smaller power of 2, +1 because odd needed
         n = min(1000, self.nsamples)
-        filt = Filter.rectangular_filter(
+        filt = Filter.cutoff_filter(
             frequency=f, kind=kind, samplerate=self.samplerate, length=n)
         self.data = filt.apply(self).data
 
@@ -717,13 +718,13 @@ class Sound(Signal):
 
     @staticmethod
     def play_file(fname):
-        fname = str(fname) # in case it is a pathlib.Path object, get the name string
+        fname = str(fname)  # in case it is a pathlib.Path object, get the name string
         from platform import system
         system = system()
         if system == 'Windows':
             import winsound
             winsound.PlaySound(fname, winsound.SND_FILENAME)
-        elif system == 'Darwin': # MacOS
+        elif system == 'Darwin':  # MacOS
             import subprocess
             subprocess.call(['afplay', fname])
         else:  # Linux
