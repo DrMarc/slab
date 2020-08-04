@@ -357,7 +357,7 @@ class Sound(Signal):
         Arguments:
             vowel: 'a', 'e', 'i', 'o', 'u', 'ae', 'oe', or 'ue' (pre-set format frequencies)
                 or None for random formants in the range of the vowel formants.
-            gender: 'male', 'female'; shortcut for setting glottal_pulse_rate and formant_multiplier
+            gender: 'male', 'female'; shortcut for setting glottal_pulse_time and formant_multiplier
             glottal_pulse_time: distance in milliseconds of glottal pulses (determines vocal trakt length)
             formant_multiplier: multiplier for the predefined formant frequencies (scales the voice pitch)
         '''

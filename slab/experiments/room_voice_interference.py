@@ -161,12 +161,12 @@ def main_experiment(subject=None):
     if not subject:
         subject = input('Enter subject code: ')
     _results_file = slab.Resultsfile(subject=subject)
-    # _ = familiarization() # run the familiarization, the hitrate is saved in the results file
-    #jnd('room', practise=True)  # run the stairs practice for the room condition
+    _ = familiarization() # run the familiarization, the hitrate is saved in the results file
+    jnd('room', practise=True)  # run the stairs practice for the room condition
     jnd_room = jnd('room') # mesure
-    #jnd('voice', practise=True)  # run the stairs practice for the room condition
+    jnd('voice', practise=True)  # run the stairs practice for the room condition
     jnd_voice = jnd('voice')
-    #jnd('itd', practise=True)  # run the stairs practice for the room condition
+    jnd('itd', practise=True)  # run the stairs practice for the room condition
     jnd_itd = jnd('itd')
 
     print('The main part of the experiment starts now (interference task).')
