@@ -11,6 +11,7 @@ Inherits from :class:`slab.Signal`.
 
 .. autoclass:: Sound
    :members:
+   :member-order: bysource
 
 Signal
 ------
@@ -18,6 +19,7 @@ Signal
 
 .. autoclass:: Signal
    :members:
+   :member-order: bysource
 
 Binaural sounds
 ---------------
@@ -25,24 +27,30 @@ Binaural sounds inherit from Sound and provide methods for manipulating interaur
 
 .. autoclass:: Binaural
   :members:
+  :member-order: bysource
 
 Psychoacoustic procedures
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autoclass:: Trialsequence
    :members:
+   :member-order: bysource
 
 .. autoclass:: Staircase
    :members:
+   :member-order: bysource
 
 .. autoclass:: Precomputed
    :members:
+   :member-order: bysource
 
 Filters
 -------
 .. autoclass:: Filter
    :members:
+   :member-order: bysource
 
 HRTFs
 -----
 .. autoclass:: HRTF
    :members:
+   :member-order: bysource
