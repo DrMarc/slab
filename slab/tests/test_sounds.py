@@ -38,7 +38,7 @@ def test_noise():
     sound = slab.Sound.erb_noise()
     sound = slab.Sound.powerlawnoise()
     sound = slab.Sound.irn()
-    sound = slab.Sound.whitenoise(normalize=True)
+    sound = slab.Sound.whitenoise(normalise=True)
     assert max(sound) <= 1
     assert min(sound) >= -1
 
