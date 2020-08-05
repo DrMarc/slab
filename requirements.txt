@@ -3,4 +3,4 @@ scipy
 matplotlib
 cffi
 -e git://github.com/OleBialas/SoundCard.git#egg=SoundCard
--e git://github.com/bastibe/SoundFile.git#egg=SoundFile
+-e git://github.com/OleBialas/SoundFile.git#egg=SoundFile
