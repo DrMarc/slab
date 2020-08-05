@@ -1,4 +1,5 @@
 numpy
 scipy
 matplotlib
+cffi
 -e git://github.com/OleBialas/SoundCard.git#egg=SoundCard
