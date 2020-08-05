@@ -2,5 +2,4 @@ numpy
 scipy
 matplotlib
 cffi
-pyinstaller
 -e git://github.com/OleBialas/SoundCard.git#egg=SoundCard
