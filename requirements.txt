@@ -3,6 +3,3 @@ scipy
 matplotlib
 cffi
 -e git://github.com/OleBialas/SoundCard.git#egg=SoundCard
-pulse
-sox
-libsox-fmt-all
