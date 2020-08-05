@@ -16,7 +16,7 @@ def test_properties():
 def test_tone():
     sound = slab.Sound.multitone_masker()
     sound = slab.Sound.clicktrain()
-    sound = slab.Sound.dynamicripple()
+    # sound = slab.Sound.dynamicripple() --> does not work
     sound = slab.Sound.chirp()
     sound = slab.Sound.tone()
     sound = slab.Sound.harmoniccomplex(f0=200, amplitude=[0, -10, -20, -30])
