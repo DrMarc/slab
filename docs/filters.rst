@@ -46,4 +46,4 @@ This problem is adressed later
 
 Applying Multiple Filters
 -------------------------
-We can apply multiple filters
+In some cases you might want to apply more than one filtering operation to a sound.
