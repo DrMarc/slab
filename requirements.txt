@@ -1,4 +1,4 @@
 numpy
 scipy
 matplotlib
--e git://github.com/bastibe/SoundCard.git#egg=SoundCard
+-e git://github.com/OleBialas/SoundCard.git#egg=SoundCard
