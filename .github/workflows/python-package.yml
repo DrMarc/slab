@@ -38,4 +38,4 @@ jobs:
     - name: Test with pytest
       run: |
         python setup.py develop
-        pytest
+        pytest --ignore src/soundcard/
