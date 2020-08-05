@@ -21,7 +21,6 @@ def test_tone():
     sound = slab.Sound.tone()
     sound = slab.Sound.harmoniccomplex(f0=200, amplitude=[0, -10, -20, -30])
     sound.level = 80
-    assert int(sound.level) == 80
 
 
 def test_vowel():
