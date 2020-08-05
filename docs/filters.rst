@@ -43,3 +43,6 @@ This is because by filtering we remove part of the signal and thus loose power. 
 be to correct this by setting the level of the filtered sound equal to that of the original. However, this
 is not recommended because our perception of loudness is non-linear with respect to frequency.
 This problem is adressed later
+
+Applying Multiple Filters
+-------------------------
