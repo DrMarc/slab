@@ -46,3 +46,4 @@ This problem is adressed later
 
 Applying Multiple Filters
 -------------------------
+We can apply multiple filters
