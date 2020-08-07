@@ -6,15 +6,25 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 import os
 import sys
+import re
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../slab/'))
+
+# extract version
+with open('../_version.py') as f:
+    version_file_content = f.read().strip()
+
+pattern = r"^__version__ = ['\"]([^'\"]*)['\"]"
+mo = re.search(pattern, version_file_content, re.M)
+if mo:
+    version = mo.group(1)
+else:
+    raise RuntimeError('Unable to find version string in _version.py')
 
 # -- Project information -----------------------------------------------------
 project = 'slab'
 copyright = '2020, Marc Schoenwiesner, Ole Bialas'
 author = 'Marc Schoenwiesner, Ole Bialas'
-with open('../VERSION.txt') as f:
-    version = f.read().strip()
 release = version
 
 # -- General configuration ---------------------------------------------------
