@@ -7,4 +7,4 @@ from slab.hrtf import *
 from slab.psychoacoustics import *
 from slab.binaural import *
 from slab.sound import *
-from slab.signals import *
+from slab.signal import *

@@ -24,7 +24,7 @@ try:
 except ImportError:
     have_pyplot = False
 
-from slab.signals import Signal
+from slab.signal import Signal
 from slab.filter import Filter
 from slab import DATAPATH
 
