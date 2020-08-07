@@ -167,16 +167,16 @@ class Sound(Signal):
     @staticmethod
     def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, nchannels=1):
         '''
-        Returns a harmonic complex composed of pure tones at integer multiples
-        of the fundamental frequency `f0`.
+        Returns a harmonic complex composed of pure tones at integer multiples of the fundamental frequency `f0`.
 
         Arguments:
-            amplitude/phase: can be a single value or a sequence. In the former case
-                the value is set for all harmonics, and harmonics up to the sampling frequency
-                are generated. In the latter each harmonic parameter is set separately, and
-                the number of harmonics generated corresponds to the length of the sequence.
-                Amplitudes are relateve to full scale (i.e. 0 corresponds to maximum intensity,
-                -30 would be 30 dB softer).
+            amplitude/phase: can be a single value or a sequence. In the former case the value is set for all harmonics,
+                and harmonics up to 1/5th of the sampling frequency are generated. In the latter case each harmonic
+                parameter is set separately, and the number of harmonics generated corresponds to the length of the
+                sequence. Amplitudes are relateve to full scale (i.e. 0 corresponds to maximum intensity, -30 would be
+                30 dB softer).
+            phase: can have a special non-numerical value, the string 'schroeder', in which case the harmonics are in
+                Schoeder phase, producing a complex tone with minimal peak-to-peak amplitudes (Schroeder 1970).
 
         >>> sig = Sound.harmoniccomplex(f0=200, amplitude=[0,-10,-20,-30])
         >>> _ = sig.spectrum()
@@ -187,19 +187,22 @@ class Sound(Signal):
         if len(phases) > 1 or len(amplitudes) > 1:
             if (len(phases) > 1 and len(amplitudes) > 1) and (len(phases) != len(amplitudes)):
                 raise ValueError('Please specify the same number of phases and amplitudes')
-            Nharmonics = max(len(phases), len(amplitudes))
+            nharmonics = max(len(phases), len(amplitudes))
         else:
-            Nharmonics = int(numpy.floor(samplerate/(2*f0)))
+            nharmonics = int(numpy.floor(samplerate/(5*f0)))
         if len(phases) == 1:
-            phases = numpy.tile(phase, Nharmonics)
+            phases = numpy.tile(phase, nharmonics)
         if len(amplitudes) == 1:
-            amplitudes = numpy.tile(amplitude, Nharmonics)
+            amplitudes = numpy.tile(amplitude, nharmonics)
+        freqs = numpy.linspace(f0, nharmonics * f0, nharmonics, endpoint=True)
+        if isinstance(phase, str) and phase == 'schroeder':
+            n = numpy.linspace(1, nharmonics, nharmonics, endpoint=True)
+            phases = numpy.pi * n * (n + 1) / nharmonics
         out = Sound.tone(f0, duration, phase=phases[0], samplerate=samplerate, nchannels=nchannels)
         lvl = out.level
         out.level += amplitudes[0]
-        for i in range(1, Nharmonics):
-            tmp = Sound.tone(frequency=(i+1)*f0, duration=duration,
-                             phase=phases[i], samplerate=samplerate, nchannels=nchannels)
+        for i in range(1, nharmonics):
+            tmp = Sound.tone(frequency=freqs[i], duration=duration, phase=phases[i], samplerate=samplerate, nchannels=nchannels)
             tmp.level = lvl + amplitudes[i]
             out += tmp
         return out
@@ -896,7 +899,7 @@ class Sound(Signal):
         Numerically identical to the peak-to-average power ratio.
         '''
         jwd = self.data - numpy.mean(self.data)
-        crest = jwd.max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
+        crest = numpy.abs(jwd).max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
         return 20 * numpy.log10(crest)
 
     def onset_slope(self):
