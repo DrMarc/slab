@@ -105,11 +105,11 @@ class Filter(Signal):
                 raise ImportError('Applying FIR filters requires Scipy.')
             if self.nfilters == sig.nchannels:  # filter each channel with corresponding filter
                 for i in range(self.nfilters):
-                    out.data[:, i] = scipy.signal.lfilter(
+                    out.data[:, i] = scipy.signal.filtfilt(
                         self.data[:, i], [1], out.data[:, i], axis=0)
             elif (self.nfilters == 1) and (sig.nchannels > 1):  # filter each channel
                 for i in range(self.nfilters):
-                    out.data[:, i] = scipy.signal.lfilter(
+                    out.data[:, i] = scipy.signal.filtfilt(
                         self.data.flatten(), [1], out.data[:, i], axis=0)
             elif (self.nfilters > 1) and (sig.nchannels == 1):  # apply all filters in bank to signal
                 out.data = numpy.empty((sig.nsamples, self.nfilters))
