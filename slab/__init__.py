@@ -1,8 +1,7 @@
-# install from github:
-# pip install git+git://github.com/DrMarc/soundtools.git
 
 import pathlib
 import os
+from _version import __version__
 DATAPATH = str(pathlib.Path(__file__).parent.resolve() / pathlib.Path('data')) + os.sep
 from slab.hrtf import *
 from slab.psychoacoustics import *

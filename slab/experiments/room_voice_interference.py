@@ -3,7 +3,7 @@ Michaela's experiment:
 Interference between room and voice processing
 Use like this:
 >>> from slab.experiments import room_voice_interference
->>> room_voice_interference('subject01')
+>>> room_voice_interference.main_experiment('subject01')
 '''
 
 import time
@@ -91,15 +91,15 @@ def jnd(condition, practise=False):
             default_stim1 = slab.Sound(stim_folder / word2 / f'{word2}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
             default_stim2 = slab.Sound(stim_folder / word3 / f'{word3}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
             stairs.present_afc_trial(jnd_stim, [default_stim1, default_stim2], isi=ISI_stairs)
-            if 1:#practise:
+            if practise:
                 stairs.plot()
         thresh = stairs.threshold(n=6)
         thresh_condition_value = condition_values[numpy.ceil(thresh).astype('int')]
-        if 1:#practise:
+        if practise:
             stairs.close_plot()
         else:
             print(f'room jnd: {round(thresh, ndigits=1)}')
-            _results_file.write(stairs, tag=f'stairs {condition}')
+            _results_file.write(repr(stairs), tag=f'stairs {condition}')
             _results_file.write(thresh, tag=f'jnd {condition}')
             _results_file.write(thresh_condition_value, tag=f'jnd condition value {condition}')
         repeat = input('Press enter to continue, "r" to repeat this threshold measurement.\n\n')
@@ -161,12 +161,11 @@ def main_experiment(subject=None):
     if not subject:
         subject = input('Enter subject code: ')
     _results_file = slab.Resultsfile(subject=subject)
-    # _ = familiarization() # run the familiarization, the hitrate is saved in the results file
-    #jnd('room', practise=True)  # run the stairs practice for the room condition
+    jnd('room', practise=True)  # run the stairs practice for the room condition
     jnd_room = jnd('room') # mesure
-    #jnd('voice', practise=True)  # run the stairs practice for the room condition
+    jnd('voice', practise=True)  # run the stairs practice for the room condition
     jnd_voice = jnd('voice')
-    #jnd('itd', practise=True)  # run the stairs practice for the room condition
+    jnd('itd', practise=True)  # run the stairs practice for the room condition
     jnd_itd = jnd('itd')
 
     print('The main part of the experiment starts now (interference task).')

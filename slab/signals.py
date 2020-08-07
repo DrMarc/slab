@@ -1,7 +1,5 @@
 '''
 Base class for Signal data (sounds and filters).
-This module uses doctests. Use like so:
-python -m doctest slab.py
 '''
 
 import copy
@@ -24,18 +22,12 @@ class Signal:
     This class is intended to be subclassed. See Sound class for an example.
 
     Arguments:
-
-    data: Can be an array, a function or a sequence (list or tuple).
-        If its an array, it should have shape ``(nsamples, nchannels)``. If its a
-        function, it should be a function f(t). If its a sequence, the items
-        in the sequence can be functions, arrays or Signal objects.
-        The output will be a multi-channel Signal with channels corresponding to
-        Signals for each element of the sequence.
-
-    samplerate: The samplerate, if necessary, will use the default (for an array or
-        function) or the samplerate of the data (for a filename). Default: None
-
-    Examples:
+        data: samples of the signal. If it is an array, it should have shape `(nsamples, nchannels)``. If it is
+            a function, it should be a function f(t). If its a sequence, the items in the sequence can be functions,
+            arrays or Signal objects. The output will be a multi-channel Signal with channels corresponding to Signals
+            for each element of the sequence.
+        samplerate: samplerate of the signal; will use the default (for an array or function) or the samplerate of the
+            data (for a filename)
 
     >>> import slab
     >>> import numpy
@@ -56,27 +48,22 @@ class Signal:
 
     **Slicing**
 
-    Signal implements __getitem__ and __setitem___ and thus supports slicing.
-    Slicing returns numpy.ndarrays or floats, not Signal objects.
-    You can also set values using slicing:
+    Signal implements __getitem__ and __setitem___ and thus supports slicing. Slicing returns numpy.ndarrays or floats,
+    not Signal objects. You can also set values using slicing:
 
     >>> sig[:5] = 0
 
-    will set the first 5 samples to zero.
-    You can also select a subset of channels:
+    will set the first 5 samples to zero. You can also select a subset of channels:
 
     >>> sig[:,1]
     array([0., 0., 0., 0., 0., 1., 1., 1., 1., 1.])
 
-    would be data in the second channel. To extract a channel as a Signal or subclass object
-    use sig.channel(1).
-
+    would be data in the second channel. To extract a channel as a Signal or subclass object use sig.channel(1).
     Signals support arithmatic operations (add, sub, mul, truediv, neg ['-sig' inverts phase]):
 
     >>> sig2 = sig * 2
     >>> sig2[-1,1]
     2.0
-
     '''
 
     # instance properties
@@ -174,7 +161,7 @@ class Signal:
     def in_samples(ctime, samplerate):
         '''Converts time values in seconds to samples.
         This is used to enable input in either samples (integers) or seconds (floating point numbers) in the class.
-        ctime can be of type int, float, numpy.ndarray of numpy.int64 or numpy.float64, list of a mix of ints or floats, or tuple of a mix of ints or floats.
+        `ctime` can be of any numeric type or sequence of numbers.
         '''
         if isinstance(ctime, (int, numpy.int64)):  # single int is treated as samples
             out = ctime
@@ -252,15 +239,13 @@ class Signal:
 
     def envelope(self, envelope=None, times=None, kind='gain'):
         '''
-        If envelope is None, returns the Hilbert envelope of a signal as new Signal.
-        If envelope is a list or numpy array, returns a new object of the same type,
-        with the signal data multiplied by the envelope. The envelope is linearely
-        interpolated to the same length as the signal. The kind parameter ('gain' or
-        'dB') determines the unit of the envelope values. If time points (in seconds,
-        clamped to the the signal duration) for the amplitude values in envelope are
-        supplied, then the interpolation is piecewise linear between pairs of time
-        and envelope valued (must have same length).
-        Example:
+        If `envelope` is None, returns the Hilbert envelope of a signal as new Signal. If envelope is a list or numpy
+        array, returns a new object of the same type, with the signal data multiplied by the envelope. The envelope is
+        linearely interpolated to the same length as the signal. The kind parameter ('gain' or 'dB') determines the unit
+        of the envelope values. If time points (in seconds, clamped to the the signal duration) for the amplitude values
+        in envelope are supplied, then the interpolation is piecewise linear between pairs of time and envelope valued
+        (must have same length).
+
         > sig = Sound.tone()
         > sig.envelope(envelope=[0, 1, 0.2, 0.2, 0])
         > sig.waveform()
@@ -293,16 +278,14 @@ class Signal:
             new.data *= envelope[:, numpy.newaxis]  # multiply
         return new
 
-    def delay(self, duration=1, chan=0, filter_length=2048):
+    def delay(self, duration=1, channel=0, filter_length=2048):
         '''
-        Delays one channel (chan) by duration (in seconds if float, or samples if int).
-        If duration is a vector with self.nsamples entries, then each sample is delayed
-        by the corresponsding number of seconds. This option is used by the itd_ramp
-        method of the Binaural class.
-        filter_length determines the accuracy of the reconstruction when using fractional
-        sample delays and is 2048, or the signal length for shorter signals.
+        Delays one `channel` by `duration` (in seconds if float, or samples if int). If duration is a vector with
+        self.nsamples entries, then each sample is delayed by the corresponsding number of seconds. This option is used
+        by the :meth:`Binaural.itd_ramp`. `filter_length` determines the accuracy of the reconstruction when
+        using fractional sample delays and is 2048, or the signal length for shorter signals.
         '''
-        if chan >= self.nchannels:
+        if channel >= self.nchannels:
             raise ValueError('Channel must be smaller than number of channels in signal!')
         if filter_length % 2:
             raise ValueError('Filter_length must be even!')
@@ -320,14 +303,14 @@ class Signal:
                 tap_weight[centre_tap] = 1
             else:
                 tap_weight = window * numpy.sinc(x-centre_tap)
-            self.data[:, chan] = numpy.convolve(self.data[:, chan], tap_weight, mode='same')
+            self.data[:, channel] = numpy.convolve(self.data[:, channel], tap_weight, mode='same')
         else:  # dynamic delay
             if len(duration) != self.nsamples:
                 ValueError('Duration shorter or longer than signal!')
             duration *= self.samplerate  # assuming vector in seconds, convert to samples
             padding = numpy.zeros(centre_tap)
             # for zero-padded convolution (potential edge artifacts!)
-            sig = numpy.concatenate((padding, self.channel(chan), padding), axis=None)
+            sig = numpy.concatenate((padding, self.channel(channel), padding), axis=None)
             for i, current_delay in enumerate(duration):
                 x = t-current_delay
                 window = 0.54 - 0.46 * numpy.cos(2 * numpy.pi *
@@ -339,4 +322,4 @@ class Signal:
                     tap_weight = window * numpy.sinc(x-centre_tap)
                     sig_portion = sig[i:i+filter_length]
                     # sig_portion and tap_weight have the same length, so the valid part of the convolution is just one sample, which gets written into the signal at the current index
-                    self.data[i, chan] = numpy.convolve(sig_portion, tap_weight, mode='valid')
+                    self.data[i, channel] = numpy.convolve(sig_portion, tap_weight, mode='valid')

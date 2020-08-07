@@ -3,8 +3,17 @@ from setuptools import setup, find_packages
 with open('README.md') as f:
     readme = f.read()
 
-with open('VERSION.txt') as f:
-    version = f.read().strip()
+# extract version
+with open('_version.py') as f:
+    version_file_content = f.read().strip()
+
+pattern = r"^__version__ = ['\"]([^'\"]*)['\"]"
+mo = re.search(pattern, version_file_content, re.M)
+if mo:
+    version = mo.group(1)
+else:
+    raise RuntimeError('Unable to find version string in _version.py')
+
 
 setup(name='soundlab',
       version=version,

@@ -6,15 +6,25 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 import os
 import sys
+import re
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../slab/'))
+
+# extract version
+with open('../_version.py') as f:
+    version_file_content = f.read().strip()
+
+pattern = r"^__version__ = ['\"]([^'\"]*)['\"]"
+mo = re.search(pattern, version_file_content, re.M)
+if mo:
+    version = mo.group(1)
+else:
+    raise RuntimeError('Unable to find version string in _version.py')
 
 # -- Project information -----------------------------------------------------
 project = 'slab'
 copyright = '2020, Marc Schoenwiesner, Ole Bialas'
 author = 'Marc Schoenwiesner, Ole Bialas'
-with open('../VERSION.txt') as f:
-    version = f.read().strip()
 release = version
 
 # -- General configuration ---------------------------------------------------
@@ -24,7 +34,7 @@ napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 master_doc = 'index'
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-autodoc_default_options = {'member-order': 'bysource'}
+#autodoc_default_options = {'member-order': 'bysource'}
 intersphinx_mapping = {'python': ('https://docs.python.org/', None),
                        'matplotlib': ('http://matplotlib.org/', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy/', None),

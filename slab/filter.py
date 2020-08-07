@@ -239,8 +239,9 @@ class Filter(Signal):
         nfilters = int(numpy.round((h - l) / erb_spacing))
         center_freqs, erb_spacing = numpy.linspace(l, h, nfilters, retstep=True)
         if not pass_bands:
-            center_freqs = center_freqs[1:-1] # exclude low and highpass filters
-        bandwidth = numpy.log2(Filter._erb2freq(ref_erb + erb_spacing) / ref_freq) # convert erb_spacing to octaves
+            center_freqs = center_freqs[1:-1]  # exclude low and highpass filters
+        bandwidth = numpy.log2(Filter._erb2freq(ref_erb + erb_spacing) /
+                               ref_freq)  # convert erb_spacing to octaves
         return center_freqs, bandwidth, erb_spacing
 
     @staticmethod
@@ -290,7 +291,8 @@ class Filter(Signal):
             target = target.resample(signal.samplerate)
         else:
             signal = signal.resample(target.samplerate)
-        fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_cutoff=low_cutoff, high_cutoff=high_cutoff, samplerate=target.samplerate)
+        fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth,
+                                      low_cutoff=low_cutoff, high_cutoff=high_cutoff, samplerate=target.samplerate)
         center_freqs, _, _ = Filter._center_freqs(low_cutoff, high_cutoff, bandwidth)
         center_freqs = Filter._erb2freq(center_freqs)
         # level of the target in each of the subbands
