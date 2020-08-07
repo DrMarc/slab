@@ -1,7 +1,7 @@
 name: TestPyPi
 
 on:
-  push:
+  release:
     branches: [ master ]
 
 jobs:
