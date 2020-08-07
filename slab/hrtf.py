@@ -1,5 +1,6 @@
 '''
-Class for reading and manipulating head-related transfer functions.
+Class for reading and manipulating head-related transfer functions. Reads files in .sofa format (started before
+python implementations of the sofa conventions were available -> will be migrated to use pysofaconventions!)
 '''
 
 import warnings
@@ -18,12 +19,7 @@ try:
 except:
     have_mplot3d = False
 try:
-    import scipy.signal
-    have_scipy = True
-except ImportError:
-    have_scipy = False
-try:
-    import h5py
+    #import h5py
     import h5netcdf
     have_h5 = True
 except ImportError:
@@ -34,15 +30,15 @@ from slab.filter import Filter
 
 class HRTF():
     '''
-    Class for reading and manipulating head-related transfer functions. This is essentially
-    a collection of two Filter objects (hrtf.left and hrtf.right) with functions to manage them.
+    Class for reading and manipulating head-related transfer functions. This is essentially a collection of two Filter
+    objects (hrtf.left and hrtf.right) with attributes (`nsources`, `nelevations`) and functions to manage them.
+
     >>> hrtf = HRTF(data='mit_kemar_normal_pinna.sofa') # initialize from sofa file
     >>> print(hrtf)
     <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
     >>> sourceidx = hrtf.cone_sources(20)
     >>> hrtf.plot_sources(sourceidx)
     >>> hrtf.plot_tf(sourceidx,ear='left')
-
     '''
     # instance properties
     nsources = property(fget=lambda self: len(self.sources),
@@ -56,21 +52,20 @@ class HRTF():
                 raise ValueError('Cannot specify samplerate when initialising HRTF from a file.')
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
-            else:  # load from SOFA file
-                try:
-                    f = HRTF._sofa_load(data, verbose)
-                except:
-                    raise ValueError('Unable to read file.')
-                data = HRTF._sofa_get_FIR(f)
-                self.samplerate = HRTF._sofa_get_samplerate(f)
-                self.data = []
-                for idx in range(data.shape[0]):
-                    # ntaps x 2 (left, right) filter
-                    self.data.append(Filter(data[idx, :, :].T, self.samplerate))
-                self.listener = HRTF._sofa_get_listener(f)
-                self.sources = HRTF._sofa_get_sourcepositions(f)
+            try: # load from SOFA file
+                f = HRTF._sofa_load(data, verbose)
+            except:
+                raise ValueError('Unable to read file.')
+            data = HRTF._sofa_get_FIR(f)
+            self.samplerate = HRTF._sofa_get_samplerate(f)
+            self.data = []
+            for idx in range(data.shape[0]):
+                # ntaps x 2 (left, right) filter
+                self.data.append(Filter(data[idx, :, :].T, self.samplerate))
+            self.listener = HRTF._sofa_get_listener(f)
+            self.sources = HRTF._sofa_get_sourcepositions(f)
         elif isinstance(data, Filter):
-            'This is a hacky shortcut for casting a filterbank as HRTF. Avoid unless you know what you are doing.'
+            # This is a hacky shortcut for casting a filterbank as HRTF. Avoid unless you know what you are doing.
             if sources is None:
                 raise ValueError('Must provide source positions when using a Filter object.')
             self.samplerate = data.samplerate
@@ -83,7 +78,6 @@ class HRTF():
             self.sources = sources
             if listener is None:
                 self.listener = [0, 0, 0]
-
         else:
             self.samplerate = samplerate
             self.data = []
@@ -112,24 +106,23 @@ class HRTF():
 
     @staticmethod
     def _sofa_get_samplerate(f):
-        'returns the sampling rate of the recordings'
+        'Returns the sampling rate of the recordings'
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
-        if attr['Units'].decode('UTF-8') == 'hertz':  # extract and decode Units
+        unit = attr['Units'].decode('UTF-8') # extract and decode Units
+        if unit in ('hertz', 'Hz'):
             return float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
-        else:  # Khz?
-            warnings.warn('Unit other than Hz. ' +
-                          attr['Units'].decode('UTF-8') + '. Assuming kHz.')
-            return 1000 * float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
+        warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
+        return 1000 * float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
 
     @staticmethod
     def _sofa_get_sourcepositions(f):
-        'returns an array of positions of all sound sources'
+        'Returns an array of positions of all sound sources'
         # spherical coordinates, (azi,ele,radius), azi 0..360 (0=front, 90=left, 180=back), ele -90..90
         attr = dict(f.variables['SourcePosition'].attrs.items())  # get attributes as dict
         unit = attr['Units'].decode('UTF-8').split(',')[0]  # extract and decode Units
         if unit in ('degree', 'degrees', 'deg'):
             return numpy.array(f.variables['SourcePosition'], dtype='float')
-        elif unit in ('meter', 'meters', 'm'):
+        if unit in ('meter', 'meters', 'metre', 'metres', 'm'):
             # convert to azimuth and elevation
             sources = numpy.array(f.variables['SourcePosition'], dtype='float')
             x, y, z = sources[:, 0], sources[:, 1], sources[:, 2]
@@ -137,15 +130,14 @@ class HRTF():
             azimuth = numpy.rad2deg(numpy.arctan2(y, x))
             elevation = 90 - numpy.rad2deg(numpy.arccos(z / r))
             return numpy.stack((azimuth, elevation, r), axis=1)
-        else:
-            warnings.warn('Unrecognized unit for source positions: ' + unit)
-            # fall back to no conversion
-            return numpy.array(f.variables['SourcePosition'], dtype='float')
+        warnings.warn('Unrecognized unit for source positions: ' + unit)
+        # fall back to no conversion
+        return numpy.array(f.variables['SourcePosition'], dtype='float')
 
     @staticmethod
     def _sofa_get_listener(f):
-        '''Returns dict with listener attributes from a sofa file handle.
-        Keys: pos, view, up, viewvec, upvec. Used for adding a listener vector in plot functions.'''
+        '''Returns dict with listener attributes from a sofa file handle; keys: pos, view, up, viewvec, upvec.
+        Used for adding a listener vector in plot functions.'''
         lis = {}
         lis['pos'] = numpy.array(f.variables['ListenerPosition'], dtype='float')[0]
         lis['view'] = numpy.array(f.variables['ListenerView'], dtype='float')[0]
@@ -164,21 +156,24 @@ class HRTF():
 
     # instance methods
     def elevations(self):
-        'Return the list of sources'
+        '''Return the list of sources.
+        Note: This currently only works as intended for HRTFs recorded in horizontal rings.
+        '''
         return sorted(list(set(numpy.round(self.sources[:, 1]))))
 
     def plot_tf(self, sourceidx, ear='left', plot_limits=(1000, 18000), nbins=None, kind='waterfall', linesep=20, xscale='linear', ax=None):
         '''
-        Plots transfer functions of FIR filters for a given ear
-        ['left', 'right', 'both'] at a list of source indices.
-        Sourceidx should be generated like this: hrtf.cone_sources(cone=0).
-        plot_limits determines the plotted frequency range in Hz.
-        n_bins is passed to Filter.tf and determines freqency resolution (*128*).
-        linesep sets the vertical distance between tfs (*20*).
-        xscale (*'linear'*, 'log') sets x-axis scaling.
-        If a plot axis is supplied, then the figure is drawn in it.
-        Waterfall (as in Wightman and Kistler, 1989) and image plots
-        (as in Hofman 1998) are available by setting 'kind'.
+        Plots transfer functions of FIR filters at a list of source indices.
+
+        Attributes:
+            ear: which ear to plot ('left', 'right', 'both').
+            sourceidx: should typically be generated with `hrtf.cone_sources(cone=0)` for midline sources at all elevations
+            plot_limits: determines the plotted frequency range in Hz
+            n_bins: passed to :meth:`slab.Filter.tf` and determines freqency resolution
+            kind: `waterfall` (as in Wightman and Kistler, 1989) and `image` plots (as in Hofman 1998) are available
+            linesep: sets the vertical distance between transfer functions in the waterfall plot
+            xscale: sets x-axis scaling ('linear', 'log')
+            ax: if a plot axis is supplied, then the figure is drawn into that axis
         '''
         if not have_pyplot:
             raise ImportError('Plotting HRTFs requires matplotlib.')
@@ -249,14 +244,10 @@ class HRTF():
 
     def diffuse_field_avg(self):
         '''
-        Compute the diffuse field average transfer function,
-        i.e. the constant non-spatial portion of a set of HRTFs.
-        The filters for all sources are averaged, which yields
-        an unbiased average only if the sources are uniformely
-        distributed around the head.
-        Returns the diffuse field average as FFR filter object.
-        '''  # TODO: could make the contribution of each HRTF
-        # depend on local density of sources.
+        Compute the diffuse field average transfer function, i.e. the constant non-spatial portion of a set of HRTFs.
+        The filters for all sources are averaged, which yields an unbiased average only if the sources are uniformely
+        distributed around the head. Returns the diffuse field average as FFR filter object.
+        '''  # TODO: could make the contribution of each HRTF depend on local density of sources.
         dfa = []
         for source in range(self.nsources):
             filt = self.data[source]
@@ -268,8 +259,7 @@ class HRTF():
 
     def diffuse_field_equalization(self):
         '''
-        Apply a diffuse field equalization to an HRTF in place.
-        The resulting filters have zero mean and are of type FFR.
+        Apply a diffuse field equalization to an HRTF in place. The resulting filters have zero mean and are of type FFR.
         '''
         dfa = self.diffuse_field_avg()
         # invert the diffuse field average
@@ -283,9 +273,8 @@ class HRTF():
 
     def cone_sources(self, cone=0):
         '''
-        Return indices of sources along a vertical off-axis sphere slice.
-        The default cone = 0 returns sources along the fronal median plane.
-        Note: This currently only works as intended for HRTFs recorded in horizontal rings.
+        Return indices of sources along a vertical off-axis sphere slice (`cone`). The default returns sources along the
+        fronal median plane. Note: This currently only works as intended for HRTFs recorded in horizontal rings.
         '''
         cone = numpy.sin(numpy.deg2rad(cone))
         azimuth = numpy.deg2rad(self.sources[:, 0])
@@ -305,8 +294,8 @@ class HRTF():
 
     def elevation_sources(self, elevation=0):
         '''
-        Return indices of sources along a horizontal sphere slice at the given elevation.
-        The default elevation = 0 returns sources along the fronal horizon.
+        Return indices of sources along a horizontal sphere slice at the given `elevation`.
+        The default returns sources along the fronal horizon.
         '''
         idx = numpy.where((hrtf.sources[:, 1] == elevation) & (
             (hrtf.sources[:, 0] <= 90) | (hrtf.sources[:, 0] >= 270)))
@@ -314,20 +303,18 @@ class HRTF():
 
     def tfs_from_sources(self, source_list, n_bins=96):
         '''
-        Extract transfer functions from a list of source indices (generated for instance,
-        with hrtf.cone_sources) as (n_bins, n_sources) numpy array.
+        Extract transfer functions with `n_bins` from a list of source indices (`source_list`, generated for instance
+        with :meth:`slab.HRTF.cone_sources`) as `(n_bins, n_sources)` numpy array.
         '''
         n_sources = len(source_list)
         tfs = numpy.zeros((n_bins, n_sources))
         for idx, source in enumerate(source_list):
             freqs, jwd = self.data[source].tf(channels=0, nbins=96, plot=False)
             tfs[:, idx] = jwd.flatten()
-        #ele = numpy.round(self.sources[source_list, 1]*2, decimals=-1)/2
-        # return freqs, ele, tfs
         return tfs
 
     def plot_sources(self, idx=False):
-        'Plot source locations in 3D, highlighting a list of sources if indices are provided with argument idx.'
+        'Plot source locations in 3D, highlighting a list of sources if indices are provided with `idx`.'
         if not have_pyplot and not have_mplot3d:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         fig = plt.figure()
