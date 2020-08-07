@@ -131,11 +131,15 @@ The basic functionality of the Signal class and many of the sound generation met
 
 Installation
 ------------
-Install slab directly from github (if you have git) by running:
-```pip git+https://github.com/DrMarc/soundlab.git```
 
-or from the python package index with pip:
+Install the current stable release from the python package index with pip:
 ```pip install soundlab```
+
+or get the latest development version directly from GitHub (if you have [git](https://git-scm.com)) by running:
+```pip install git+https://github.com/DrMarc/soundlab.git```
+
+The releases use [semantic versioning](https://semver.org): major.minor.patch, where major increments for changes that break backwards compatibility, minor increments of added functionality, and patch increases for internal bug fixes.
+```slab.__version__``` prints the installed version.
 
 Documentation
 -------------
