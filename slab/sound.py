@@ -464,10 +464,9 @@ class Sound(Signal):
         return Sound(x, samplerate)
 
     # instance methods
-    def write(self, filename, normalise=False, fmt='WAV'):
+    def write(self, filename, normalise=True, fmt='WAV'):
         '''
-        Save the sound as a WAV.
-        If `normalise` is set to True, the amplitude of the sound is normalised to 1.
+        Save the sound as a WAV. If `normalise` is set to True, the maximal amplitude of the sound is normalised to 1.
         '''
         if not have_soundfile:
             raise ImportError(
@@ -475,7 +474,7 @@ class Sound(Signal):
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
         if normalise:
-            self.data /= numpy.amax(self.data)
+            self.data /= numpy.amax(numpy.abs(self.data))
         soundfile.write(filename, self.data, self.samplerate, format=fmt)
 
     def ramp(self, when='both', duration=0.01, envelope=None):
@@ -595,7 +594,7 @@ class Sound(Signal):
         return Sound(data_chans, self.samplerate)
 
     @staticmethod
-    def record(duration=1.0, samplerate=44100):
+    def record(duration=1.0, samplerate=None):
         '''Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.
         Uses SoundCard module if installed [recommended], otherwise uses SoX (duration must be in sec in this case).
         '''
@@ -658,17 +657,19 @@ class Sound(Signal):
         if end is None:
             end = self.nsamples
         end = self.in_samples(end, self.samplerate)
-        for i in range(self.nchannels):
-            if i == 0:
-                plt.plot(self.times[start:end], self.channel(i)[start:end], label='left')
-            elif i == 1:
-                plt.plot(self.times[start:end], self.channel(i)[start:end], label='right')
-            else:
-                plt.plot(self.times[start:end], self.channel(i)[start:end])
+        if self.nchannels == 1:
+            plt.plot(self.times[start:end], self.channel(0)[start:end])
+        elif self.nchannels == 2:
+            plt.plot(self.times[start:end], self.channel(0)[start:end], label='left')
+            plt.plot(self.times[start:end], self.channel(1)[start:end], label='right')
+            plt.legend()
+        else:
+            for i in range(self.nchannels):
+                plt.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}')
+            plt.legend()
         plt.title('Waveform')
         plt.xlabel('Time [sec]')
         plt.ylabel('Amplitude')
-        plt.legend()
         plt.show()
 
     ## features ##
