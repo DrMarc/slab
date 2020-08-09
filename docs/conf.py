@@ -7,6 +7,7 @@
 import os
 import sys
 import re
+import matplotlib
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../slab/'))
 
@@ -29,7 +30,16 @@ release = version
 
 # -- General configuration ---------------------------------------------------
 needs_sphinx = '1.8'
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.napoleon', 'sphinx.ext.mathjax']
+extensions = [
+    'sphinx_matlabdoc_builder',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.autodoc',
+    'matplotlib.sphinxext.mathmpl',
+    'matplotlib.sphinxext.plot_directive',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.doctest']
+
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 master_doc = 'index'
