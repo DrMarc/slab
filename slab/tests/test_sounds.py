@@ -44,7 +44,7 @@ def test_noise():
 
 def test_manipulations():
     sound1 = slab.Sound.pinknoise()
-    sound2 = slab.Sound.brownnoise()
+    sound2 = slab.Sound.pinknoise()
     sound1.pulse()
     sound2.aweight()
     sound = slab.Sound.crossfade(sound1, sound2, overlap=0.01)
