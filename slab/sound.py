@@ -420,7 +420,7 @@ class Sound(Signal):
         duration = Sound.in_samples(duration, samplerate)
         # get centre_freqs
         freqs, _, _ = Filter._center_freqs(
-            low_cutoff=f_lower, high_cutoff=f_upper, bandwidth=bandwidth)
+            low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth)
         rand_phases = numpy.random.rand(len(freqs)) * 2 * numpy.pi
         sig = Sound.tone(frequency=freqs, duration=duration,
                          phase=rand_phases, samplerate=samplerate)
