@@ -696,7 +696,7 @@ class Sound(Signal):
         if show:
             plt.show()
 
-    def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, show=True, axis=None, **kwargs):
+    def spectrogram(self, window_dur=0.005, dyn_range=120, upper_frequency=None, other=None, show=True, axis=None, **kwargs):
         '''
         Plots a spectrogram of the sound.
 
@@ -739,11 +739,11 @@ class Sound(Signal):
             dB_max = power.max()
             vmin = dB_max-dyn_range
             cmap = matplotlib.cm.get_cmap('Greys')
-            extent = (times.min(), times.max(), freqs.min(), freqs.max())
+            extent = (times.min(), times.max(), freqs.min(), upper_frequency or freqs.max())
             if axis is None:
                 axis = plt.subplot()
             axis.imshow(power, origin='lower', aspect='auto',
-                        cmap=cmap, extent=extent, vmin=vmin, vmax=None)
+                        cmap=cmap, extent=extent, vmin=vmin, vmax=None, **kwargs)
             axis.set(title='Spectrogram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
         if show:
             plt.show()

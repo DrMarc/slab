@@ -98,7 +98,7 @@ You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or 
                     nrows=2, ncols=2, constrained_layout=True)
     signal.waveform(axis=ax1)
     signal.waveform(end=0.05, axis=ax2) # first 50ms
-    signal.spectrogram(axis=ax3)
+    signal.spectrogram(upper_frequency=5000, axis=ax3)
     signal.spectrum(axis=ax4)
 
 Instead of plotting, :meth:`.spectrum` and :meth:`.spectrogram` will return the time frequency bins and spectral power values for further analysis if you set the ``show`` argument to False. All plotting functions can draw into an existing matplotlib.pyplot axis supplied with the ``axis`` argument.
@@ -173,7 +173,7 @@ ITD and ILD manipulation leads to the percept of *lateralization*, that is, a so
 
 Signals
 -------
-Sounds inherit from the :class:`Signal` class, which provides a generic signal object with properties duration, number of samples, sample times, number of channels. The actual samples are kept as numpy array in the ``data`` property and can be accessed, if necessary as for instance ``signal.data``. Signals support slicing, arithmetic operations, and conversion between sample points and time points directly, without having to access the ``data`` property. The methods :meth:`.resample`, :meth:`.envelope`, and :meth:`.delay` are also implemented in Signal and passed to the child classes Sound, Binaural, and Filter. You do not normally need to use the Signal class directly. ::
+Sounds inherit from the :class:`Signal` class, which provides a generic signal object with properties duration, number of samples, sample times, number of channels. The actual samples are kept as numpy array in the ``data`` property and can be accessed, if necessary as for instance ``signal.data``. Signals support slicing, arithmetic operations, and conversion between sample points and time points directly, without having to access the ``data`` property. The methods :meth:`.resample`, :meth:`.envelope`, and :meth:`.delay` are also implemented in Signal and passed to the child classes :class:`Sound`, :class:`Binaural`, and :class:`Filter`. You do not normally need to use the Signal class directly. ::
 
     sig = slab.Sound.pinknoise(nchannels=3)
     sig.duration
