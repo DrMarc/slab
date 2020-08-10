@@ -23,7 +23,7 @@
 
 # slab build
 /build/
-slab/_build/
+_build/
 
 
 # extra HRTF databases
