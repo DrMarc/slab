@@ -7,19 +7,19 @@ Generating sounds
 The **Sound** class provides methods for generating, manipulating, displaying, and analysing sound stimuli.
 You can generate typical experimental stimuli with this class, including tones, noises, and click trains, and also more specialized stimuli, like equally-masking noises, Schroeder-phase harmonics, iterated ripple noise and synthetic vowels. For instance, let's make a 500ms long 500 Hz pure tone signal with a band-limited (one octave below and above the tone) pink noise background with a 10 dB signal-to-noise ratio: ::
 
-    import slab
-    tone = slab.Sound.tone(frequency=500, duration=0.5)
-    tone.level = 80 # setting the intensity to 80 dB
-    noise = slab.Sound.pinknoise(duration=0.5)
-    noise.filter(frequency=(250, 1000), kind='bp') # bandpass .25 to 1 kHz
-    noise.level = 70 # 10 dB lower than the tone
-    stimulus = tone + noise # combine the two signals
-    stimulus.ramp() # apply on- and offset ramps to avoid clicks
-    stimulus.play()
+  import slab
+  tone = slab.Sound.tone(frequency=500, duration=0.5)
+  tone.level = 80 # setting the intensity to 80 dB
+  noise = slab.Sound.pinknoise(duration=0.5)
+  noise.filter(frequency=(250, 1000), kind='bp') # bandpass .25 to 1 kHz
+  noise.level = 70 # 10 dB lower than the tone
+  stimulus = tone + noise # combine the two signals
+  stimulus.ramp() # apply on- and offset ramps to avoid clicks
+  stimulus.play()
 
 :class:`slab.Sound` objects have many useful methods for manipulating (like :meth:`.ramp`, :meth:`.filter`, and :meth:`.pulse`) or inspecting them (like :meth:`.waveform`, :meth:`.spectrum`, and :meth:`.spectral_feature`). A complete list is in the :ref:`Reference` section, and the majority is also discussed here. If you use IPython, you can tap the `tab` key after typing ``slab.Sound.``, or the name of any Sound object followed by a full stop, to get an interactive list of the possibilities.
 
-Sounds can also be created by recording them with :meth:`slab.Sound.record`. For instance ``recording = slab.Sound.record(duration=1.0, samplerate=44100)`` will record a 1-second sound at 44100 Hz from the default audio input (usually the microphone). The ``record`` method uses `SoundCard<https://github.com/bastibe/SoundCard>`_ if installed, or `SoX<http://sox.sourceforge.net>`_ (via a temporary file) otherwise. Both are cross-platform and easy to install. If neither tool is installed, you won't be able to record sounds.
+Sounds can also be created by recording them with :meth:`slab.Sound.record`. For instance ``recording = slab.Sound.record(duration=1.0, samplerate=44100)`` will record a 1-second sound at 44100 Hz from the default audio input (usually the microphone). The ``record`` method uses `SoundCard <https://github.com/bastibe/SoundCard>`_ if installed, or `SoX <http://sox.sourceforge.net>`_ (via a temporary file) otherwise. Both are cross-platform and easy to install. If neither tool is installed, you won't be able to record sounds.
 
 Specifying durations
 ^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ Another method to put sounds together is :meth:`.crossfade`, which applies a cro
 
 Calibrating the output
 ^^^^^^^^^^^^^^^^^^^^^^
-Setting the **level** property of a stimulus changes the root-mean-square of the waveform and relative changes are correct (reducing the level attribute by 10 dB will reduce the sound output by the same amount), but the *absolute* intensity is only correct if you calibrate your output. The recommended procedure it to set your system volume to maximum, connect the listening hardware (headphone or loudspeaker) and set up a sound level meter. Then call :meth:`slab.calibrate`. The ``calibrate`` method will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The difference between the tone's level attribute and the recorded level is saved in the class variable ``_calibration_intensity``. It is applied to all level calculations so that a sound's level attribute now roughly corresponds to the actual output intensity in dB SPL---'roughly' because your output hardware may not have a flat frequency transfer function (some frequencies play louder than others). See :ref:`Filters` for methods to equalize transfer functions. Experiments sometimes require you to play different stimuli at comparable loudness. Loudness is the perception of sound intensity and it is difficult to calculate. You can use the :meth:`.aweight` method of a sound to filter it so that frequencies are weighted according to the typical human hearing thresholds. This will increase the correspondence between the rms intensity measure returned by the ``level`` attribute and the perceived loudness. However, in most cases, controlling relative intensities is sufficient. If you do not have a sound level meter, then you can present in dB HL (hearing level). For that, measure the hearing threshold of the listener at the frequency or frequencies that are presented in your experiment and play you stimuli at a set level above that threshold. You can measure the hearing threshold at one frequency (or for any broadband sound, in fact) with the few lines of code shown at the start of the :ref:`introduction<audiogram>`.
+Setting the **level** property of a stimulus changes the root-mean-square of the waveform and relative changes are correct (reducing the level attribute by 10 dB will reduce the sound output by the same amount), but the *absolute* intensity is only correct if you calibrate your output. The recommended procedure it to set your system volume to maximum, connect the listening hardware (headphone or loudspeaker) and set up a sound level meter. Then call :meth:`slab.calibrate`. The ``calibrate`` method will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The difference between the tone's level attribute and the recorded level is saved in the class variable ``_calibration_intensity``. It is applied to all level calculations so that a sound's level attribute now roughly corresponds to the actual output intensity in dB SPL---'roughly' because your output hardware may not have a flat frequency transfer function (some frequencies play louder than others). See :ref:`Filter` for methods to equalize transfer functions. Experiments sometimes require you to play different stimuli at comparable loudness. Loudness is the perception of sound intensity and it is difficult to calculate. You can use the :meth:`slab.Sound.aweight` method of a sound to filter it so that frequencies are weighted according to the typical human hearing thresholds. This will increase the correspondence between the rms intensity measure returned by the ``level`` attribute and the perceived loudness. However, in most cases, controlling relative intensities is sufficient. If you do not have a sound level meter, then you can present in dB HL (hearing level). For that, measure the hearing threshold of the listener at the frequency or frequencies that are presented in your experiment and play you stimuli at a set level above that threshold. You can measure the hearing threshold at one frequency (or for any broadband sound, in fact) with the few lines of code shown at the start of the :ref:`introduction<audiogram>`.
 
 Plotting and analysis
 ^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +138,7 @@ The easiest manipulation of a binaural parameter may be to change the interaural
     noise.level
     out: array([75., 85.])
 
-The :meth:`.ild` makes this easier and keeps the overall level constant: ``noise.ild(10)`` adds a 10dB level difference (positive dB values attenuate the left channel (virtual sound source moves to the right). The pink noise in the example is a broadband signal, and the ILD is frequency dependent and should not be the same for all frequencies. A frequency-dependent level difference can be computed and applied with :meth:`.interaural_level_spectrum`. The level spectrum is computed from a head-related transfer function (HRTF) and can be customised for individual listeners. See :ref:`HRTF` for how to handle these functions. The default level spectrum is computed form the HRTF of the KEMAR binaural recording mannequin (as measured by `Gardener and Martin (1994) <https://sound.media.mit.edu/resources/KEMAR.html>`_ at the MIT Media Lab).
+The :meth:`.ild` makes this easier and keeps the overall level constant: ``noise.ild(10)`` adds a 10dB level difference (positive dB values attenuate the left channel (virtual sound source moves to the right). The pink noise in the example is a broadband signal, and the ILD is frequency dependent and should not be the same for all frequencies. A frequency-dependent level difference can be computed and applied with :meth:`.interaural_level_spectrum`. The level spectrum is computed from a head-related transfer function (HRTF) and can be customised for individual listeners. See :ref:`slab.hrtf.HRTF` for how to handle these functions. The default level spectrum is computed form the HRTF of the KEMAR binaural recording mannequin (as measured by `Gardener and Martin (1994) <https://sound.media.mit.edu/resources/KEMAR.html>`_ at the MIT Media Lab).
 
 
 ::
