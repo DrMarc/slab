@@ -106,12 +106,12 @@ class Sound(Signal):
         self.data *= gain
 
     level = property(fget=_get_level, fset=_set_level, doc='''
-		Can be used to get or set the rms level of a sound, which should be in dB.
-		For single channel sounds a value in dB is used, for multiple channel
-		sounds a value in dB can be used for setting the level (all channels
-		will be set to the same level), or a list/tuple/array of levels. Use
-		:meth:`slab.Sound.calibrate` to make the computed level reflect output intensity.
-		''')
+    Can be used to get or set the rms level of a sound, which should be in dB.
+    For single channel sounds a value in dB is used, for multiple channel
+    sounds a value in dB can be used for setting the level (all channels
+    will be set to the same level), or a list/tuple/array of levels. Use
+    :meth:`slab.Sound.calibrate` to make the computed level reflect output intensity.
+    ''')
 
     def __init__(self, data, samplerate=None):
         if isinstance(data, pathlib.Path):  # Sound initialization from a file name (pathlib object)
@@ -704,10 +704,7 @@ class Sound(Signal):
         plt.xlabel('Time [sec]')
         plt.ylabel('Amplitude')
         plt.show()
-<<<<<<< HEAD
     ## features ##
-=======
->>>>>>> 52c07bb4bba15a5121b0b4a69ca176d820feb496
 
     def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, show=True, axes=None, **kwargs):
         '''
@@ -987,11 +984,7 @@ class Sound(Signal):
         norm = hist / hist.sum()  # normalize histogram so that it summs to 1
         return numpy.sum(bin_centers * norm)  # compute centroid of histogram
 
-<<<<<<< HEAD
-    def time_windows(self, duration=1024):  # TODO: pylint error, test!
-=======
     def frames(self, duration=1024):
->>>>>>> 52c07bb4bba15a5121b0b4a69ca176d820feb496
         '''
         Returns a generator that steps through the sound in overlapping, windowed frames.
         Get the frame center times by calling `frametimes`.
