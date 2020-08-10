@@ -24,6 +24,7 @@
 # slab build
 /build/
 /_build/
+/_cache/
 
 
 # extra HRTF databases
