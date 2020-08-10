@@ -31,7 +31,6 @@ release = version
 # -- General configuration ---------------------------------------------------
 needs_sphinx = '1.8'
 extensions = [
-    'sphinx_matlabdoc_builder',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.autodoc',
