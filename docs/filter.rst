@@ -33,4 +33,12 @@ This problem will be addressed later
 Applying Multiple Filters
 -------------------------
 Slab features multi-channel filtering - you can easily apply multiple filters to one signal,
-one filer to multiple signals or a bunch of filters to a bunch of signals! The apply
+one filer to multiple signals or a bunch of filters to a bunch of signals! The **apply** method will
+choose what to do depending on the number of channels in the filter and signal. If signal and filter
+have the same number of channels each channel of the filter is applied to the corresponding signal.
+If a multi-channel filter is applied to a one-channel signal, each filter channel is applied
+to a copy of the signal so the resulting filtered signal has the same number of channels as the filter.
+This can be used, for example, to create a set of filtered noise with different spectra
+
+.. plot:: pyplots/filter3.py
+  :include-source:
