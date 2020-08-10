@@ -1,6 +1,3 @@
 numpy
 scipy
 matplotlib
-cffi
--e git://github.com/bastibe/SoundCard.git#egg=SoundCard
--e git://github.com/bastibe/SoundFile.git#egg=SoundFile
