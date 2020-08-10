@@ -501,7 +501,7 @@ class Sound(Signal):
         '''
         when = when.lower().strip()
         if envelope is None:
-            def envelope(t): return numpy.sin(numpy.pi * t / 2) ** 2  # squared sine window
+            envelope = lambda t: numpy.sin(numpy.pi * t / 2) ** 2  # squared sine window
         sz = Sound.in_samples(duration, self.samplerate)
         multiplier = envelope(numpy.reshape(numpy.linspace(0.0, 1.0, sz), (sz, 1)))
         if when in ('onset', 'both'):
@@ -763,7 +763,7 @@ class Sound(Signal):
         envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         envs = envs.data ** (1/3)  # apply non-linearity (cube-root compression)
-        if show or (axes is not None):
+        if show or (axis is not None):
             if not have_pyplot:
                 raise ImportError('Plotting cochleagrams requires matplotlib.')
             cmap = matplotlib.cm.get_cmap('Greys')
@@ -813,7 +813,7 @@ class Sound(Signal):
         if log_power:
             Z[Z < 1e-20] = 1e-20  # no zeros because we take logs
             Z = 10 * numpy.log10(Z)
-        if show or (axes is not None):
+        if show or (axis is not None):
             if not have_pyplot:
                 raise ImportError('Plotting spectra requires matplotlib.')
             if axis is None:
