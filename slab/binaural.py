@@ -25,7 +25,6 @@ class Binaural(Sound):
     >>> all(sig.left - sig.right)
     False
     '''
-
     # instance properties
     def _set_left(self, other):
         if isinstance(other, Sound):
@@ -59,6 +58,10 @@ class Binaural(Sound):
                 super().__init__((data[0].data[:, 0], data[1].data[:, 0]), data[0].samplerate)
             else:
                 super().__init__(data, samplerate)
+        elif isinstance(data, str):
+            super().__init__(data, samplerate)
+            if self.nchannels != 2:
+                self.copychannel(2) # duplicate channel if monaural file
         else:
             super().__init__(data, samplerate)
             if self.nchannels != 2: # last check that it is a 2-channel sound
@@ -287,12 +290,9 @@ class Binaural(Sound):
 
         >>> noise = Binaural.whitenoise(kind='diotic')
         '''
-        if kind == 'dichotic':
-            out = Binaural(Sound.whitenoise(duration=duration, nchannels=2,
+        out = Binaural(Sound.whitenoise(duration=duration, nchannels=2,
                                             samplerate=samplerate, normalise=normalise))
-        elif kind == 'diotic':
-            out = Binaural(Sound.whitenoise(duration=duration, nchannels=2,
-                                            samplerate=samplerate, normalise=normalise))
+        if kind == 'diotic':
             out.left = out.right
         return out
 
@@ -304,16 +304,64 @@ class Binaural(Sound):
 
         >>> noise = Binaural.pinknoise(kind='diotic')
         '''
+        return Binaural.powerlawnoise(
+                duration=duration, alpha=1.0, samplerate=samplerate, normalise=normalise)
+
+    @staticmethod
+    def powerlawnoise(duration=1.0, alpha=1, kind='diotic', samplerate=None, normalise=True):
         if kind == 'dichotic':
             out = Binaural(Sound.powerlawnoise(
-                duration, 1.0, samplerate=samplerate, nchannels=2, normalise=normalise))
+                duration=duration, alpha=alpha, samplerate=samplerate, nchannels=2, normalise=normalise))
             out.left = Sound.powerlawnoise(
-                duration, 1.0, samplerate=samplerate, normalise=normalise)
+                duration=duration, alpha=alpha, samplerate=samplerate, nchannels=1, normalise=normalise)
         elif kind == 'diotic':
             out = Binaural(Sound.powerlawnoise(
-                duration, 1.0, samplerate=samplerate, nchannels=2, normalise=normalise))
+                duration=duration, alpha=alpha, samplerate=samplerate, nchannels=2, normalise=normalise))
             out.left = out.right
         return out
+
+    @staticmethod
+    def tone(frequency=500, duration=1., phase=0, samplerate=None):
+        return Binaural(Sound.tone(frequency=frequency, duration=duration, phase=phase, samplerate=samplerate, nchannels=2))
+
+    @staticmethod
+    def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None):
+        return Binaural(Sound.harmoniccomplex(f0=f0, duration=duration, amplitude=amplitude, phase=phase, samplerate=samplerate, nchannels=2))
+
+    @staticmethod
+    def irn(frequency=100, gain=1, niter=4, duration=1.0, samplerate=None):
+        return Binaural(Sound.irn(frequency=frequency, gain=gain, niter=niter, duration=duration, samplerate=samplerate))
+
+    @staticmethod
+    def click(duration=0.0001, samplerate=None):
+        return Binaural(Sound.click(duration=duration, samplerate=samplerate, nchannels=2))
+
+    @staticmethod
+    def clicktrain(duration=1.0, frequency=500, clickduration=1, samplerate=None):
+        return Binaural(Sound.clicktrain(duration=duration, frequency=frequency, clickduration=clickduration, samplerate=samplerate))
+
+    @staticmethod
+    def chirp(duration=1.0, from_frequency=100, to_frequency=None, samplerate=None, kind='quadratic'):
+        return Binaural(Sound.chirp(duration=duration, from_frequency=from_frequency, to_frequency=to_frequency, samplerate=samplerate, kind=kind))
+
+    @staticmethod
+    def silence(duration=1.0, samplerate=None):
+        return Binaural(Sound.silence(duration=duration, samplerate=samplerate, nchannels=2))
+
+    @staticmethod
+    def vowel(vowel='a', gender=None, glottal_pulse_time=12, formant_multiplier=1, duration=1., samplerate=None):
+        return Binaural(Sound.vowel(vowel=vowel, gender=gender, glottal_pulse_time=glottal_pulse_time, formant_multiplier=formant_multiplier, duration=duration, samplerate=samplerate, nchannels=2))
+
+    @staticmethod
+    def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1/3, samplerate=None):
+        return Binaural(Sound.multitone_masker(duration=duration, low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth, samplerate=samplerate))
+
+    @staticmethod
+    def erb_noise(**kwargs):
+        return Binaural(Sound.erb_noise(**kwargs))
+
+    def aweight(self):
+        return Binaural(Sound.aweight(self))
 
 
 if __name__ == '__main__':
