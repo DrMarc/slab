@@ -205,16 +205,20 @@ class Binaural(Sound):
         evoke the impression of an external sound source without adding directional information.
         See Kulkarni & Colburn (1998) for why that works.
         '''
-        from slab import DATAPATH
         if not hrtf:
+            from slab import DATAPATH
             hrtf = HRTF(DATAPATH+'mit_kemar_normal_pinna.sofa')  # load the hrtf file
-        idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) and (hrtf.sources[:, 0] == 0))[
+        idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[
             0][0]  # get HRTF for [0,0] direction
-        _, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, plot=False)  # get low-res spectrum
-        # samplerate shoulf be hrtf.data[0].samplerate, hack to avoid having to resample, ok for externalization if rates are similar
-        filt = Filter(10**(h/20), fir=False, samplerate=self.samplerate)
-        out = filt.apply(copy.deepcopy(self))
-        return out
+        if not idx_frontal.size: # idx_frontal is empty
+            raise ValueError('No frontal direction [0,0] found in HRTF.')
+        _, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, show=False)  # get low-res spectrum
+        resampled_signal = copy.deepcopy(self)
+        resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate) # resample to fit hrtf rate
+        filt = Filter(10**(h/20), fir=False, samplerate=hrtf.data[0].samplerate)
+        filtered_signal = filt.apply(resampled_signal)
+        filtered_signal = filtered_signal.resample(self.samplerate)
+        self.data = filtered_signal.data # copy the filtered data over
 
     @staticmethod
     def _make_level_spectrum_filter(hrtf=None):
@@ -266,7 +270,7 @@ class Binaural(Sound):
         >>> noise.interaural_level_spectrum(azimuth=-45).play()
         '''
         if not level_spectrum_filter:
-            ils = Binaural._make_level_spectrum_filter()  # TODO: should cache this as a file in /data or global
+            ils = Binaural._make_level_spectrum_filter()
         ils = ils[:, 1:]  # remove the frequency values (not necessary here)
         azis = ils[0, :]  # get vector of azimuths in ils filter bank
         ils = ils[1:, :]  # the rest is the filter
@@ -329,20 +333,20 @@ class Binaural(Sound):
         return Binaural(Sound.harmoniccomplex(f0=f0, duration=duration, amplitude=amplitude, phase=phase, samplerate=samplerate, nchannels=2))
 
     @staticmethod
-    def irn(frequency=100, gain=1, niter=4, duration=1.0, samplerate=None):
-        return Binaural(Sound.irn(frequency=frequency, gain=gain, niter=niter, duration=duration, samplerate=samplerate))
+    def irn(**kwargs):
+        return Binaural(Sound.irn(**kwargs))
 
     @staticmethod
     def click(duration=0.0001, samplerate=None):
         return Binaural(Sound.click(duration=duration, samplerate=samplerate, nchannels=2))
 
     @staticmethod
-    def clicktrain(duration=1.0, frequency=500, clickduration=1, samplerate=None):
-        return Binaural(Sound.clicktrain(duration=duration, frequency=frequency, clickduration=clickduration, samplerate=samplerate))
+    def clicktrain(**kwargs):
+        return Binaural(Sound.clicktrain(**kwargs))
 
     @staticmethod
-    def chirp(duration=1.0, from_frequency=100, to_frequency=None, samplerate=None, kind='quadratic'):
-        return Binaural(Sound.chirp(duration=duration, from_frequency=from_frequency, to_frequency=to_frequency, samplerate=samplerate, kind=kind))
+    def chirp(**kwargs):
+        return Binaural(Sound.chirp(**kwargs))
 
     @staticmethod
     def silence(duration=1.0, samplerate=None):
@@ -353,8 +357,8 @@ class Binaural(Sound):
         return Binaural(Sound.vowel(vowel=vowel, gender=gender, glottal_pulse_time=glottal_pulse_time, formant_multiplier=formant_multiplier, duration=duration, samplerate=samplerate, nchannels=2))
 
     @staticmethod
-    def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1/3, samplerate=None):
-        return Binaural(Sound.multitone_masker(duration=duration, low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth, samplerate=samplerate))
+    def multitone_masker(**kwargs):
+        return Binaural(Sound.multitone_masker(**kwargs))
 
     @staticmethod
     def erb_noise(**kwargs):
