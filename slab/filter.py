@@ -47,7 +47,7 @@ class Filter(Signal):
             return f'{type(self)}, filters {self.nfilters}, FFT: freqs {self.nfrequencies}, samplerate {self.samplerate}'
 
     @staticmethod
-    def rectangular_filter(frequency=100, kind='hp', samplerate=None, length=1000, fir=False):
+    def cutoff_filter(frequency=100, kind='hp', samplerate=None, length=1000, fir=True):
         '''
         Generates a rectangular filter and returns it as new Filter object.
         frequency: edge frequency in Hz (*1*) or tuple of frequencies for bp and bs.
@@ -88,7 +88,7 @@ class Filter(Signal):
                 filt[round(frequency[1]/df):] = 1
         return Filter(data=filt, samplerate=samplerate, fir=fir)
 
-    def apply(self, sig, compensate_shift=False):
+    def apply(self, sig):
         '''
         Apply the filter to signal sig. If signal and filter have the same number of channels,
         each filter channel will be applied to the corresponding channel in the signal.
@@ -96,41 +96,29 @@ class Filter(Signal):
         In that case the filtered signal wil contain the same number of channels as the filter with every
         channel being a copy of the original signal with one filter channel applied. If the filter has only
         one channel and the signal has multiple channels, the same filter is applied to each signal channel.
-        When applying a FIR filter one can set compensate_shift = True. This will padd the output signal
-        With zeros equal to half of the filter length and then later remove the same number of samples
-        at the end of the signal.
         '''
         if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
             raise ValueError('Filter and signal have different sampling rates.')
         out = copy.deepcopy(sig)
-        if compensate_shift:
-            if not self.fir:
-                raise ValueError('Delay compensation only implemented for FIR filters!')
-            else:
-                n_shift = int(self.nsamples/2-1)
-                pad = numpy.zeros([n_shift, out.nchannels])
-                out.data = numpy.concatenate([out, pad])
         if self.fir:
             if not have_scipy:
                 raise ImportError('Applying FIR filters requires Scipy.')
             if self.nfilters == sig.nchannels:  # filter each channel with corresponding filter
                 for i in range(self.nfilters):
-                    out.data[:, i] = scipy.signal.lfilter(
+                    out.data[:, i] = scipy.signal.filtfilt(
                         self.data[:, i], [1], out.data[:, i], axis=0)
             elif (self.nfilters == 1) and (sig.nchannels > 1):  # filter each channel
                 for i in range(self.nfilters):
-                    out.data[:, i] = scipy.signal.lfilter(
+                    out.data[:, i] = scipy.signal.filtfilt(
                         self.data.flatten(), [1], out.data[:, i], axis=0)
             elif (self.nfilters > 1) and (sig.nchannels == 1):  # apply all filters in bank to signal
                 out.data = numpy.empty((sig.nsamples, self.nfilters))
                 for filt in range(self.nfilters):
-                    out.data[:, filt] = scipy.signal.lfilter(
+                    out.data[:, filt] = scipy.signal.filtfilt(
                         self[:, filt], [1], sig.data, axis=0).flatten()
             else:
                 raise ValueError(
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
-            if compensate_shift:
-                out.data = out.data[n_shift:, :]
         else:  # FFT filter
             sig_rfft = numpy.fft.rfft(sig.data, axis=0)
             sig_freq_bins = numpy.fft.rfftfreq(sig.nsamples, d=1/sig.samplerate)
@@ -154,7 +142,7 @@ class Filter(Signal):
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
         return out
 
-    def tf(self, channels='all', nbins=None, plot=True, axes=None, **kwargs):
+    def tf(self, channels='all', nbins=None, show=True, axes=None, **kwargs):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
         Return transfer functions of filter at index 'channels' (int or list) or,
@@ -187,16 +175,15 @@ class Filter(Signal):
                     h_interp[:, idx] = numpy.interp(w_interp, w, h[:, idx])
                 h = h_interp
                 w = w_interp
-        if plot:
+        if show or (axes is not None):
             if not have_pyplot:
                 raise ImportError('Plotting transfer functions requires matplotlib.')
             if axes is None:
                 axes = plt.subplot(111)
             axes.plot(w, h, **kwargs)
-            axes.set_xlabel('Frequency [Hz]')
-            axes.set_ylabel('Amplitude [dB]')
-            axes.set_title('Frequency Response')
+            axes.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
             axes.grid(True)
+        if show:
             plt.show()
         else:
             return w, h
@@ -252,8 +239,9 @@ class Filter(Signal):
         nfilters = int(numpy.round((h - l) / erb_spacing))
         center_freqs, erb_spacing = numpy.linspace(l, h, nfilters, retstep=True)
         if not pass_bands:
-            center_freqs = center_freqs[1:-1] # exclude low and highpass filters
-        bandwidth = numpy.log2(Filter._erb2freq(ref_erb + erb_spacing) / ref_freq) # convert erb_spacing to octaves
+            center_freqs = center_freqs[1:-1]  # exclude low and highpass filters
+        bandwidth = numpy.log2(Filter._erb2freq(ref_erb + erb_spacing) /
+                               ref_freq)  # convert erb_spacing to octaves
         return center_freqs, bandwidth, erb_spacing
 
     @staticmethod
@@ -303,7 +291,8 @@ class Filter(Signal):
             target = target.resample(signal.samplerate)
         else:
             signal = signal.resample(target.samplerate)
-        fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_cutoff=low_cutoff, high_cutoff=high_cutoff, samplerate=target.samplerate)
+        fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth,
+                                      low_cutoff=low_cutoff, high_cutoff=high_cutoff, samplerate=target.samplerate)
         center_freqs, _, _ = Filter._center_freqs(low_cutoff, high_cutoff, bandwidth)
         center_freqs = Filter._erb2freq(center_freqs)
         # level of the target in each of the subbands
@@ -327,8 +316,7 @@ class Filter(Signal):
         filt = numpy.zeros((length, signal.nchannels))  # filter data
         # create the filter for each channel of the signal:
         for idx in range(signal.nchannels):
-            # gain must be 0 at 0 Hz and nyquist frequency
-            gain = numpy.concatenate(([0], amp_diffs[:, idx], [0]))
+            gain = numpy.concatenate(([1.0], amp_diffs[:, idx], [0]))  # gain must be 0 at nyquist
             filt[:, idx] = scipy.signal.firwin2(
                 length, freq=freqs, gain=gain, fs=target.samplerate)
         return Filter(data=filt, samplerate=target.samplerate, fir=True)
@@ -367,7 +355,7 @@ class Filter(Signal):
 
 
 if __name__ == '__main__':
-    filt = Filter.rectangular_filter(frequency=15000, kind='hp', samplerate=44100)
+    filt = Filter.cutoff_filter(frequency=15000, kind='hp', samplerate=44100)
     sig_filt = filt.apply(filt)
     f, Pxx = scipy.signal.welch(sig_filt.data, sig_filt.samplerate, axis=0)
     plt.semilogy(f, Pxx)

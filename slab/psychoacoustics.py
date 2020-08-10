@@ -24,7 +24,7 @@ except ImportError:
 import slab
 
 results_folder = 'Results'
-input_method = 'keyboard' # or 'buttonbox'
+input_method = 'keyboard'  # or 'buttonbox'
 
 class _buttonbox:
     '''Class to allow easy switching between input from the keyboard via curses
@@ -32,7 +32,7 @@ class _buttonbox:
     followed by a return keystroke when pressing a button on the arduino).'''
     @staticmethod
     def getch():
-        return int(input()) # buttonbox adapter has to return the keycode of intended keys!
+        return int(input())  # buttonbox adapter has to return the keycode of intended keys!
 
 @contextmanager
 def Key():
@@ -226,6 +226,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                     self.trials = Trialsequence._create_simple_sequence(len(self.conditions), 1)
             else:
                 raise ValueError(f'Unknown kind parameter: {kind}!')
+        else:
+            self.trials = trials
         self.n_trials = len(self.trials)
         self.n_remaining = self.n_trials
         self.kind = kind
@@ -334,6 +336,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         n_trials: number of trials to return
         deviant_freq: frequency of deviants (*0.12*, max. 0.25)
         '''
+        # TODO: check number of trials
         n_partials = int(numpy.ceil((2 / deviant_freq) - 7))
         reps = int(numpy.ceil(n_trials/n_partials))
         partials = []

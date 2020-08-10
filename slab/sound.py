@@ -28,12 +28,13 @@ from slab.signal import Signal
 from slab.filter import Filter
 from slab import DATAPATH
 
-_tmpdir = pathlib.Path(tempfile.gettempdir()) # get a temporary directory for writing intermediate files
+# get a temporary directory for writing intermediate files
+_tmpdir = pathlib.Path(tempfile.gettempdir())
 
 try:  # try getting a previously set calibration intensity from file
     _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
 except FileNotFoundError:
-    _calibration_intensity = 0 #: Difference between rms intensity and measured output intensity in dB
+    _calibration_intensity = 0  # : Difference between rms intensity and measured output intensity in dB
 
 
 class Sound(Signal):
@@ -202,7 +203,8 @@ class Sound(Signal):
         lvl = out.level
         out.level += amplitudes[0]
         for i in range(1, nharmonics):
-            tmp = Sound.tone(frequency=freqs[i], duration=duration, phase=phases[i], samplerate=samplerate, nchannels=nchannels)
+            tmp = Sound.tone(frequency=freqs[i], duration=duration,
+                             phase=phases[i], samplerate=samplerate, nchannels=nchannels)
             tmp.level = lvl + amplitudes[i]
             out += tmp
         return out
@@ -342,7 +344,8 @@ class Sound(Signal):
         t.shape = (t.size, 1)  # ensures C-order
         if not to_frequency:
             to_frequency = samplerate / 2
-        chirp = scipy.signal.chirp(t, from_frequency, t[-1], to_frequency, method=kind, vertex_zero=True)
+        chirp = scipy.signal.chirp(
+            t, from_frequency, t[-1], to_frequency, method=kind, vertex_zero=True)
         return Sound(chirp, samplerate=samplerate)
 
     @staticmethod
@@ -366,9 +369,9 @@ class Sound(Signal):
         '''
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
-        formant_freqs = {'a':(0.73, 1.09, 2.44), 'e':(0.36, 2.25, 3.0), 'i':(0.27, 2.29, 3.01),
-            'o':(0.35, 0.5, 2.6), 'u':(0.3, 0.87, 2.24), 'ae':(0.86, 2.05, 2.85), 'oe':(0.4, 1.66, 1.96),
-            'ue':(0.25, 1.67, 2.05)}
+        formant_freqs = {'a': (0.73, 1.09, 2.44), 'e': (0.36, 2.25, 3.0), 'i': (0.27, 2.29, 3.01),
+                         'o': (0.35, 0.5, 2.6), 'u': (0.3, 0.87, 2.24), 'ae': (0.86, 2.05, 2.85), 'oe': (0.4, 1.66, 1.96),
+                         'ue': (0.25, 1.67, 2.05)}
         if vowel is None:
             BW = 0.3
             formants = (0.22/(1-BW)+(0.86/(1+BW)-0.22/(1-BW))*numpy.random.rand(),
@@ -382,11 +385,11 @@ class Sound(Signal):
             glottal_pulse_time = 12
         elif gender == 'female':
             glottal_pulse_time = 6
-            formant_multiplier = 1.2 # raise formant frequencies by 20%
-        formants = [formant_multiplier * f for f in formants] # scale each formant
+            formant_multiplier = 1.2  # raise formant frequencies by 20%
+        formants = [formant_multiplier * f for f in formants]  # scale each formant
         ST = 1000/samplerate
         times = ST * numpy.arange(duration)
-        T05 = 2.5 # decay half-time for glottal pulses
+        T05 = 2.5  # decay half-time for glottal pulses
         env = numpy.exp(-numpy.log(2)/T05 * numpy.mod(times, glottal_pulse_time))
         env = numpy.mod(times, glottal_pulse_time)**0.25 * env
         min_env = numpy.min(env[(times >= glottal_pulse_time/2) & (times <= glottal_pulse_time-ST)])
@@ -394,7 +397,8 @@ class Sound(Signal):
         out = numpy.zeros(len(times))
         for f in formants:
             A = numpy.min((0, -6*numpy.log2(f)))
-            out = out + 10**(A/20) * env * numpy.sin(2 * numpy.pi * f * numpy.mod(times, glottal_pulse_time))
+            out = out + 10**(A/20) * env * numpy.sin(2 * numpy.pi *
+                                                     f * numpy.mod(times, glottal_pulse_time))
         if nchannels > 1:
             out = numpy.tile(out, (nchannels, 1))
         vowel = Sound(data=out, samplerate=samplerate)
@@ -415,7 +419,8 @@ class Sound(Signal):
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
         # get centre_freqs
-        freqs, _, _ = Filter._center_freqs(low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth)
+        freqs, _, _ = Filter._center_freqs(
+            low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth)
         rand_phases = numpy.random.rand(len(freqs)) * 2 * numpy.pi
         sig = Sound.tone(frequency=freqs, duration=duration,
                          phase=rand_phases, samplerate=samplerate)
@@ -470,9 +475,14 @@ class Sound(Signal):
         '''
         if not have_soundfile:
             raise ImportError(
-                'Writing wav files requires SoundFile (pip install git+https://github.com/bastibe/SoundFile.git')
+                'Writing wav files requires SoundFile (pip install SoundFile.')
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
+        if self.samplerate % 1:
+            self = self.resample(int(self.samplerate))
+            print("Sampling rate must be an integer when writing to .wav!"
+                  "\n Resamling from %s to %s" % (self.samplerate, int(self.samplerate)))
+
         if normalise:
             self.data /= numpy.amax(numpy.abs(self.data))
         soundfile.write(filename, self.data, self.samplerate, format=fmt)
@@ -491,7 +501,7 @@ class Sound(Signal):
         '''
         when = when.lower().strip()
         if envelope is None:
-            envelope = lambda t: numpy.sin(numpy.pi * t / 2) ** 2 # squared sine window
+            def envelope(t): return numpy.sin(numpy.pi * t / 2) ** 2  # squared sine window
         sz = Sound.in_samples(duration, self.samplerate)
         multiplier = envelope(numpy.reshape(numpy.linspace(0.0, 1.0, sz), (sz, 1)))
         if when in ('onset', 'both'):
@@ -565,7 +575,7 @@ class Sound(Signal):
         >>> _ = sig.spectrum()
         '''
         n = min(1000, self.nsamples)
-        filt = Filter.rectangular_filter(
+        filt = Filter.cutoff_filter(
             frequency=frequency, kind=kind, samplerate=self.samplerate, length=n)
         self.data = filt.apply(self).data
 
@@ -627,13 +637,13 @@ class Sound(Signal):
 
     @staticmethod
     def play_file(fname):
-        fname = str(fname) # in case it is a pathlib.Path object, get the name string
+        fname = str(fname)  # in case it is a pathlib.Path object, get the name string
         from platform import system
         system = system()
         if system == 'Windows':
             import winsound
             winsound.PlaySound(fname, winsound.SND_FILENAME)
-        elif system == 'Darwin': # MacOS
+        elif system == 'Darwin':  # MacOS
             import subprocess
             subprocess.call(['afplay', fname])
         else:  # Linux
@@ -644,7 +654,7 @@ class Sound(Signal):
                 raise NotImplementedError(
                     'Playing from files on Linux without SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all')
 
-    def waveform(self, start=0, end=None):
+    def waveform(self, start=0, end=None, show=True, axes=None, **kwargs):
         '''
         Plots the waveform of the sound.
 
@@ -657,12 +667,22 @@ class Sound(Signal):
         if end is None:
             end = self.nsamples
         end = self.in_samples(end, self.samplerate)
+        if axes is None:
+            axes = plt.subplot(111)
         if self.nchannels == 1:
-            plt.plot(self.times[start:end], self.channel(0)[start:end])
+            axes.plot(self.times[start:end], self.channel(0)[start:end])
         elif self.nchannels == 2:
-            plt.plot(self.times[start:end], self.channel(0)[start:end], label='left')
-            plt.plot(self.times[start:end], self.channel(1)[start:end], label='right')
-            plt.legend()
+            axes.plot(self.times[start:end], self.channel(0)[start:end], label='left')
+            axes.plot(self.times[start:end], self.channel(1)[start:end], label='right')
+            axes.legend()
+        else:
+            for i in range(self.nchannels):
+                axes.plot(self.times[start:end], self.channel(i)[start:end], **kwargs)
+        axes.set(title='Waveform', xlabel='Time [sec]', ylabel='Amplitude')
+        axes.legend()
+        if show:
+            plt.show()
+
         else:
             for i in range(self.nchannels):
                 plt.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}')
@@ -672,8 +692,7 @@ class Sound(Signal):
         plt.ylabel('Amplitude')
         plt.show()
 
-    ## features ##
-    def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, plot=True):
+    def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, show=True, axes=None, **kwargs):
         '''
         Plots a spectrogram of the sound.
 
@@ -707,7 +726,7 @@ class Sound(Signal):
         # compute the power spectral density
         freqs, times, power = scipy.signal.spectrogram(
             x, mode='psd', fs=self.samplerate, scaling='density', noverlap=noverlap, window=window, nperseg=window_nsamp)
-        if plot:
+        if show or (axes is not None):
             if not have_pyplot:
                 raise ImportError('Ploting spectrograms requires matplotlib.')
             p_ref = 2e-5  # 20 μPa, the standard reference pressure for sound in air
@@ -715,19 +734,19 @@ class Sound(Signal):
             # set lower bound of colormap (vmin) from dynamic range.
             dB_max = power.max()
             vmin = dB_max-dyn_range
-            _, ax = plt.subplots()
             cmap = matplotlib.cm.get_cmap('Greys')
             extent = (times.min(), times.max(), freqs.min(), freqs.max())
-            ax.imshow(power, origin='lower', aspect='auto',
-                      cmap=cmap, extent=extent, vmin=vmin, vmax=None)
-            plt.title('Spectrogram')
-            plt.xlabel('Time [sec]')
-            plt.ylabel('Frequency [Hz]')
+            if axes is None:
+                axes = plt.subplot(111)
+            axes.imshow(power, origin='lower', aspect='auto',
+                        cmap=cmap, extent=extent, vmin=vmin, vmax=None)
+            axes.set(title='Spectrogram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
+        if show:
             plt.show()
         else:
             return freqs, times, power
 
-    def cochleagram(self, bandwidth=1/5, plot=True):
+    def cochleagram(self, bandwidth=1/5, show=True, axes=None, **kwargs):
         '''
         Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
         (*1/5* th octave) and applying a cube-root compression to the resulting envelopes.
@@ -740,24 +759,24 @@ class Sound(Signal):
         envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         envs = envs.data ** (1/3)  # apply non-linearity (cube-root compression)
-        if plot:
+        if show or (axes is not None):
             if not have_pyplot:
                 raise ImportError('Plotting cochleagrams requires matplotlib.')
             cmap = matplotlib.cm.get_cmap('Greys')
-            _, ax = plt.subplots()
-            ax.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
+            if axes is None:
+                axes = plt.subplot(111)
+            axes.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
             labels = list(freqs.astype(int))
-            ax.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
+            axes.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
                 labels))  # centre frequencies as ticks
-            ax.set_xlim([0, self.duration])
-            plt.title('Cochleagram')
-            plt.xlabel('Time [sec]')
-            plt.ylabel('Frequency [Hz]')
-            plt.show()
+            axes.set_xlim([0, self.duration])
+            axes.set(title='Cochleagram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
+            if show:
+                plt.show()
         else:
             return envs
 
-    def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, plot=True, axes=None, show=True, **kwargs):
+    def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, axes=None, show=True, **kwargs):
         '''
         Returns the spectrum of the sound and optionally plots it.
 
@@ -790,7 +809,7 @@ class Sound(Signal):
         if log_power:
             Z[Z < 1e-20] = 1e-20  # no zeros because we take logs
             Z = 10 * numpy.log10(Z)
-        if plot:
+        if show or (axes is not None):
             if not have_pyplot:
                 raise ImportError('Plotting spectra requires matplotlib.')
             if axes is None:
@@ -838,7 +857,7 @@ class Sound(Signal):
                 frame_duration = 0.05  # 50ms frames by default
         out_all = []
         for chan in self.channels():
-            freqs, times, power = chan.spectrogram(window_dur=frame_duration, plot=False)
+            freqs, times, power = chan.spectrogram(window_dur=frame_duration, show=False)
             norm = power / power.sum(axis=0, keepdims=True)  # normalize successive frames
             if feature == 'centroid':
                 out = numpy.sum(freqs[:, numpy.newaxis] * norm, axis=0)
@@ -887,9 +906,10 @@ class Sound(Signal):
         subbands = fbank.apply(self.channel(0))
         envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
-        noise = Sound.whitenoise(duration=self.nsamples, samplerate=self.samplerate) # make white noise
-        subbands_noise = fbank.apply(noise) # divide into same subbands as signal
-        subbands_noise *= envs # apply envelopes
+        noise = Sound.whitenoise(duration=self.nsamples,
+                                 samplerate=self.samplerate)  # make white noise
+        subbands_noise = fbank.apply(noise)  # divide into same subbands as signal
+        subbands_noise *= envs  # apply envelopes
         subbands_noise.level = subbands.level
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
 
@@ -1010,15 +1030,3 @@ def apply_to_path(path='.', method=None, kwargs={}, out_path=None):
                 sig.write(out_path.joinpath(file.name))
         results[str(file.stem)] = res
     return results  # a dictionary of results for each file name
-
-
-if __name__ == '__main__':
-    sig1 = Sound.harmoniccomplex()
-    lev = sig1.level
-    sig1.filter((500, 1000), kind='bp')
-    sig1.log_spectrogram()
-    sig2 = Sound.clicktrain()
-    sig2.level = 60
-    sig3 = Sound.crossfade(sig1, sig2, overlap=0.5)
-    sig3.play()
-    sig3.waveform()

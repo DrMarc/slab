@@ -1,3 +1,6 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
 name: Python package
 
 on:
@@ -22,10 +25,17 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        sudo apt-get clean
+        sudo apt-get update
+        sudo apt-get install pulseaudio
         python -m pip install --upgrade pip
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=*/soundfile/*,*/soundcard/*
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=*/soundfile/*,*/soundcard/*
+    - name: Test with pytest
+      run: |
+        python setup.py develop
+        pytest --ignore src/soundcard/ --ignore src/soundfile/
