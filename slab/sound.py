@@ -318,7 +318,7 @@ class Sound(Signal):
         return Sound(numpy.ones((duration, nchannels)), samplerate)
 
     @staticmethod
-    def clicktrain(duration=1.0, frequency=500, clickduration=1, samplerate=None):
+    def clicktrain(duration=1.0, frequency=500, clickduration=0.0001, samplerate=None):
         'Returns a series of n clicks (see :func:`click`) at a frequency of freq.'
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
@@ -475,7 +475,7 @@ class Sound(Signal):
         '''
         if not have_soundfile:
             raise ImportError(
-                'Writing wav files requires SoundFile (pip install git+https://github.com/bastibe/SoundFile.git')
+                'Writing wav files requires SoundFile (pip install SoundFile.')
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
         if self.samplerate % 1:
@@ -630,10 +630,10 @@ class Sound(Signal):
         else:  # use sox
             import subprocess
             try:
-                subprocess.call(f'sox -d -r {samplerate} tmp.wav trim 0 {duration}')
+                subprocess.call(['sox', '-d', '-r', str(samplerate), str(_tmpdir / 'tmp.wav'), 'trim', '0', str(duration)])
             except:
                 raise ImportError(
-                    'Recording whithout SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all OR pip install git+https://github.com/bastibe/SoundCard.git.')
+                    'Recording whithout SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all OR pip install SoundCard.')
             time.sleep(duration)
             out = Sound('tmp.wav')
         return out
@@ -704,7 +704,10 @@ class Sound(Signal):
         plt.xlabel('Time [sec]')
         plt.ylabel('Amplitude')
         plt.show()
+<<<<<<< HEAD
     ## features ##
+=======
+>>>>>>> 52c07bb4bba15a5121b0b4a69ca176d820feb496
 
     def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, show=True, axes=None, **kwargs):
         '''
@@ -962,8 +965,10 @@ class Sound(Signal):
         Numerically identical to the peak-to-average power ratio.
         '''
         jwd = self.data - numpy.mean(self.data)
-        crest = numpy.abs(jwd).max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
-        return 20 * numpy.log10(crest)
+        if numpy.any(jwd): # if not all elements are zero
+            crest = numpy.abs(jwd).max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
+            return 20 * numpy.log10(crest)
+        return numpy.nan
 
     def onset_slope(self):
         '''
@@ -974,80 +979,77 @@ class Sound(Signal):
         env = self.envelope(kind='dB')  # get envelope
         diffs = numpy.diff(env.data, axis=0) * self.samplerate  # compute db change per sec
         diffs[diffs < 0] = 0  # keep positive changes (onsets)
+        if diffs.max() == 0:
+            return 0
         # compute histogram of differences
         hist, bins = numpy.histogram(diffs, range=(1, diffs.max()), bins=1000)
         bin_centers = (bins[:-1] + bins[1:]) / 2
         norm = hist / hist.sum()  # normalize histogram so that it summs to 1
         return numpy.sum(bin_centers * norm)  # compute centroid of histogram
 
+<<<<<<< HEAD
     def time_windows(self, duration=1024):  # TODO: pylint error, test!
+=======
+    def frames(self, duration=1024):
+>>>>>>> 52c07bb4bba15a5121b0b4a69ca176d820feb496
         '''
-        Returns overlapping time windows as a generator.
-        Use the generator if you need to modify each segment in place like this
-        (saves you the trouble of crossfading the segments correcly afterwards):
+        Returns a generator that steps through the sound in overlapping, windowed frames.
+        Get the frame center times by calling `frametimes`.
 
-        >>> sig = Sound.tone()
-        >>> windows = sig.time_windows()
-        >>> win = True # dummy value to get started
-        >>> send = None
-        >>> while win: # get windows one by one
-        >>>		win = windows.send(send) # returns each window as Sound object
-        >>>		win.ramp() # modify the windowed signal
-        >>>		send = win # modified window will be passed back into the generator during next iteration
+        Arguments:
+            duration: half-length of the returned frames in samples or seconds
 
-        If you don't need to write back into the sound
-
-        >>> windows = sig.time_windows()
+        >>> windows = sig.frames()
         >>> for w in windows:
-        >>>		process(w) # process windowed portion here
-
+        >>>		process(w) # process windowed frame here
         '''
         if not have_scipy:
             raise ImportError('Need scipy for time window processing.')
         window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
         # step_dur optimal for Gaussian windows
         step_nsamp = numpy.floor(window_nsamp/numpy.sqrt(numpy.pi)/8).astype(int)
-        # make the window. A Gaussian filter needs a minimum of 6σ - 1 samples.
+        # make the window, Gaussian filter needs a minimum of 6σ - 1 samples.
         window_sigma = numpy.ceil((window_nsamp+1)/6)
         window = numpy.tile(scipy.signal.windows.gaussian(
             window_nsamp, window_sigma), (self.nchannels, 1)).T
-        # loop through windows, yield each one
-        modified_segment = None
-        modified = numpy.zeros_like(self.data)
         idx = 0
-        while idx < self.nsamples:
-            segment = Sound(self.data[idx:min(self.nsamples, idx +
+        while idx + window_nsamp/2 < self.nsamples: # loop through windows, yield each one
+            frame = Sound(self.data[idx:min(self.nsamples, idx +
                                               window_nsamp), :], samplerate=self.samplerate)
-            segment.resize(window_nsamp)  # in case the last window is too short
-            segment *= window
-            modified_segment = yield segment  # return a new sound object
-            if modified_segment:
-                assert modified_segment.data.shape == segment.data.shape
-                end_idx = min(modified.shape[0], idx+window_nsamp)
-                modified[idx:end_idx, :] += modified_segment.data[:end_idx-idx, :]
+            frame.resize(window_nsamp)  # in case the last window is too short
+            frame *= window
+            yield frame  # return a new sound object
             idx += step_nsamp
-        if numpy.any(modified):
-            self.data = modified
 
-    @staticmethod
-    def calibrate(intensity=None, make_permanent=False):
-        '''
-        Calibrate the presentation intensity of a setup. Enter the calibration intensity, if you know it.
-        If None, plays a 1kHz tone. Please measure actual intensity with a sound level meter and appropriate
-        coupler. Set make_permanent to True to save a calibration file in slab.DATAPATH that is loaded on import.
-        '''
-        global _calibration_intensity
-        if intensity is None:
-            tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
-            print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
-            tone.play()  # play it
-            intensity = input('Enter measured intensity in dB: ')  # ask for measured intesnity
-            intensity = intensity - tone.level  # subtract measured from rms intensity
-        # set and save
-        _calibration_intensity = intensity
-        if make_permanent:
-            numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
+    def frametimes(self, duration=1024):
+        'Returns the time points at the frame centers constructed by the `frames` method.'
+        window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
+        step_nsamp = numpy.floor(window_nsamp/numpy.sqrt(numpy.pi)/8).astype(int)
+        samplepoints = []
+        idx = 0
+        while idx + window_nsamp/2 < self.nsamples:
+            samplepoints.append(min(idx + window_nsamp/2, self.nsamples))
+            idx += step_nsamp
+        return numpy.array(samplepoints) / self.samplerate # convert to array of time points
 
+
+def calibrate(intensity=None, make_permanent=False):
+    '''
+    Calibrate the presentation intensity of a setup. Enter the calibration intensity, if you know it.
+    If None, plays a 1kHz tone. Please measure actual intensity with a sound level meter and appropriate
+    coupler. Set make_permanent to True to save a calibration file in slab.DATAPATH that is loaded on import.
+    '''
+    global _calibration_intensity
+    if intensity is None:
+        tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
+        print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
+        tone.play()  # play it
+        intensity = input('Enter measured intensity in dB: ')  # ask for measured intesnity
+        intensity = intensity - tone.level  # subtract measured from rms intensity
+    # set and save
+    _calibration_intensity = intensity
+    if make_permanent:
+        numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
 
 def apply_to_path(path='.', method=None, kwargs={}, out_path=None):
     '''
