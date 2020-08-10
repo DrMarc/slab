@@ -364,7 +364,6 @@ class Binaural(Sound):
         return Binaural(Sound.aweight(self))
 
 
-
 if __name__ == '__main__':
     sig = Binaural.pinknoise(duration=0.5, samplerate=44100)
     sig.filter(kind='bp', f=[100, 6000])
