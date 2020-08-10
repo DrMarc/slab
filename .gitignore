@@ -1,5 +1,6 @@
 # Compiled python modules.
 *.pyc
+*/__pycache__/*
 
 # Setuptools distribution folder.
 /dist/
@@ -22,12 +23,17 @@
 
 # slab build
 /build/
+/_build/
+
 
 # extra HRTF databases
 /slab/data/aachen/
 /slab/data/ari/
 /slab/data/cipic/
 /slab/data/.DS_Store
+
+# loudness calibration
+/slab/data/calibration_intensity.npy
 
 # slab experiments
 /slab/experiments/.DS_Store

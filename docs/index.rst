@@ -41,7 +41,7 @@ The releases use `semantic versioning <https://semver.org>`_: ``major.minor.patc
   introduction
   sounds
   psychoacoustics
-  filters
+  filter
   hrtf
   Worked examples <examples>
   Reference documentation <reference>
