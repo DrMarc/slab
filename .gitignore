@@ -23,8 +23,8 @@
 
 # slab build
 /build/
-_build/**
-_build
+/_build/
+
 
 # extra HRTF databases
 /slab/data/aachen/
