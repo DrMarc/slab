@@ -140,12 +140,6 @@ The easiest manipulation of a binaural parameter may be to change the interaural
 
 The :meth:`.ild` makes this easier and keeps the overall level constant: ``noise.ild(10)`` adds a 10dB level difference (positive dB values attenuate the left channel (virtual sound source moves to the right). The pink noise in the example is a broadband signal, and the ILD is frequency dependent and should not be the same for all frequencies. A frequency-dependent level difference can be computed and applied with :meth:`.interaural_level_spectrum`. The level spectrum is computed from a head-related transfer function (HRTF) and can be customised for individual listeners. See :ref:`HRTF` for how to handle these functions. The default level spectrum is computed form the HRTF of the KEMAR binaural recording mannequin (as measured by `Gardener and Martin (1994) <https://sound.media.mit.edu/resources/KEMAR.html>`_ at the MIT Media Lab).
 
-.. plot::
-    :include-source:
-
-    signal = slab.Binaural.pinknoise(kind='dichotic')
-    signal.waveform()
-
 
 ::
 
