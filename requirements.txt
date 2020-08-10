@@ -1,6 +1,5 @@
 numpy
 scipy
-sphinx-matlabdoc-builder
 matplotlib
 cffi
 -e git://github.com/bastibe/SoundCard.git#egg=SoundCard
