@@ -117,14 +117,32 @@ For experiments in spatial hearing, or any other situation that requires differe
 
 Generating binaural sounds
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-Binaural sounds support all sound generating functions with a ``nchannels`` attribute of the :class:`Sound` class, but automatically set ``nchannels`` to 2. Noises support an additional ``kind`` argument, which can be set to 'diotic' (identical noise in both channels) or 'dichotic' (uncorrelated noise).
+Binaural sounds support all sound generating functions with a ``nchannels`` attribute of the :class:`Sound` class, but automatically set ``nchannels`` to 2. Noises support an additional ``kind`` argument, which can be set to 'diotic' (identical noise in both channels) or 'dichotic' (uncorrelated noise). Other methods just return 2-channel versions of the stimuli. You can recast any Sound object as Binaural sound, which duplicates the first channel if ``nchannels`` is 1 or greater than 2: ::
 
-Binaural sounds have left and a right channel properties: ::
-
-    sig = slab.Binaural.pinknoise()
-	sig.pulse() # make a 2-channel pulsed pink noise
-    sig.nchannels
+    monaural = slab.Sound.tone()
+    monaural.nchannels
+    out: 1
+    binaural = slab.Binaural(monaural)
+    binaural.nchannels
     out: 2
+    binaural.left # access to the left channel
+    binaural.right # access to the right channel
+
+Loading a wav file with ``slab.Binaural('file.wav')`` returns a Binaural sound object with two channels (even if the wav file contains only one channel).
+
+The easiest manipulation of a binaural parameter may be to change the interaural level difference (ILD). This can be achieved by setting the ``level`` attributes of both channels: ::
+
+    noise = slab.Binaural.pinknoise()
+    noise.left.level = 75
+    noise.right.level = 85
+    noise.level
+    out: array([75., 85.])
+
+The :meth:`.ild` makes this easier and keeps the overall level constant: ``noise.ild(10)`` adds a 10dB level difference (positive dB values attenuate the left channel (virtual sound source moves to the right). The pink noise in the example is a broadband signal, and the ILD is frequency dependent and should not be the same for all frequencies. A frequency-dependent level difference can be computed and applied with :meth:`.interaural_level_spectrum`. The level spectrum is computed from a head-related transfer function (HRTF) and can be customised for individual listeners. See :ref:`HRTF` for how to handle these functions. The default level spectrum is computed form the HRTF of the KEMAR binaural recording mannequin (as measured by `Gardener and Martin (1994) <https://sound.media.mit.edu/resources/KEMAR.html>`_ at the MIT Media Lab).
+
+
+::
+
     right_lateralized = sig.itd(duration=600e-6) # add an interaural time difference of 600 microsec, right channel leading
     # apply a linearly increasing or decreasing interaural time difference.
     # This is achieved by sinc interpolation of one channel with a dynamic delay:
