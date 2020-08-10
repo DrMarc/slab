@@ -6,7 +6,7 @@ import copy
 import numpy
 
 from slab.sound import Sound
-from slab.signals import Signal
+from slab.signal import Signal
 from slab.filter import Filter
 from slab.hrtf import HRTF
 

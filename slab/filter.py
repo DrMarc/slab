@@ -16,7 +16,7 @@ try:
 except ImportError:
     have_scipy = False
 
-from slab.signals import Signal  # getting the base class
+from slab.signal import Signal  # getting the base class
 
 
 class Filter(Signal):

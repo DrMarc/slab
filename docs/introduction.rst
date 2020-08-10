@@ -44,7 +44,7 @@ To describe a function:
    Return an iterator that yields tuples of an index and an item of the
    *sequence*. (And so on.)
 
-This also works for ``.. class::`` and ``..method::``
+This also works for ``.. class::`` and ``.. method::``
 
 You can then refer to these definitions elsewhere in the text: The :func:`enumerate` function can be used for ...
 Thanks to intersphinx you can also refer to external functions in numpy, scipy and matplotlib: :func:`scipy.signal.spectrogram`

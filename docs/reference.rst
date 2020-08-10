@@ -1,5 +1,7 @@
 .. currentmodule:: slab
 
+.. _Reference:
+
 Reference documentation
 =======================
 

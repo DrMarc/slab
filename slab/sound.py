@@ -24,7 +24,7 @@ try:
 except ImportError:
     have_pyplot = False
 
-from slab.signals import Signal
+from slab.signal import Signal
 from slab.filter import Filter
 from slab import DATAPATH
 
@@ -469,10 +469,9 @@ class Sound(Signal):
         return Sound(x, samplerate)
 
     # instance methods
-    def write(self, filename, normalise=False, fmt='WAV'):
+    def write(self, filename, normalise=True, fmt='WAV'):
         '''
-        Save the sound as a WAV.
-        If `normalise` is set to True, the amplitude of the sound is normalised to 1.
+        Save the sound as a WAV. If `normalise` is set to True, the maximal amplitude of the sound is normalised to 1.
         '''
         if not have_soundfile:
             raise ImportError(
@@ -485,7 +484,7 @@ class Sound(Signal):
                   "\n Resamling from %s to %s" % (self.samplerate, int(self.samplerate)))
 
         if normalise:
-            self.data /= numpy.amax(self.data)
+            self.data /= numpy.amax(numpy.abs(self.data))
         soundfile.write(filename, self.data, self.samplerate, format=fmt)
 
     def ramp(self, when='both', duration=0.01, envelope=None):
@@ -618,7 +617,7 @@ class Sound(Signal):
         pass
 
     @staticmethod
-    def record(duration=1.0, samplerate=44100):
+    def record(duration=1.0, samplerate=None):
         '''Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.
         Uses SoundCard module if installed [recommended], otherwise uses SoX (duration must be in sec in this case).
         '''
@@ -683,20 +682,30 @@ class Sound(Signal):
         end = self.in_samples(end, self.samplerate)
         if axes is None:
             axes = plt.subplot(111)
-        for i in range(self.nchannels):
-            if i == 0:
-                axes.plot(self.times[start:end], self.channel(i)[start:end], label='left', **kwargs)
-            elif i == 1:
-                axes.plot(self.times[start:end], self.channel(i)
-                          [start:end], label='right', **kwargs)
-            else:
+        if self.nchannels == 1:
+            axes.plot(self.times[start:end], self.channel(0)[start:end])
+        elif self.nchannels == 2:
+            axes.plot(self.times[start:end], self.channel(0)[start:end], label='left')
+            axes.plot(self.times[start:end], self.channel(1)[start:end], label='right')
+            axes.legend()
+        else:
+            for i in range(self.nchannels):
                 axes.plot(self.times[start:end], self.channel(i)[start:end], **kwargs)
         axes.set(title='Waveform', xlabel='Time [sec]', ylabel='Amplitude')
         axes.legend()
         if show:
             plt.show()
 
+        else:
+            for i in range(self.nchannels):
+                plt.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}')
+            plt.legend()
+        plt.title('Waveform')
+        plt.xlabel('Time [sec]')
+        plt.ylabel('Amplitude')
+        plt.show()
     ## features ##
+
     def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, show=True, axes=None, **kwargs):
         '''
         Plots a spectrogram of the sound.
