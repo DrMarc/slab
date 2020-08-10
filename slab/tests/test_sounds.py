@@ -52,7 +52,6 @@ def test_manipulations():
         sound.spectral_feature(feature=feat)
     sound.crest_factor()
     sound.onset_slope()
-    sound.time_windows()
 
 
 def test_recnplay():
