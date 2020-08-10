@@ -11,7 +11,7 @@ You can generate typical experimental stimuli with this class, including tones, 
     tone = slab.Sound.tone(frequency=500, duration=0.5)
     tone.level = 80 # setting the intensity to 80 dB
     noise = slab.Sound.pinknoise(duration=0.5)
-    noise.filter(frequency=(250, 1000), kind='bp') # bandpass filter between 250 Hz and 1 kHz
+    noise.filter(frequency=(250, 1000), kind='bp') # bandpass .25 to 1 kHz
     noise.level = 70 # 10 dB lower than the tone
     stimulus = tone + noise # combine the two signals
     stimulus.ramp() # apply on- and offset ramps to avoid clicks
@@ -37,14 +37,14 @@ Combining sounds
 ^^^^^^^^^^^^^^^^
 Several functions allow you to string stimuli together. For instance, in a forward masking experiment [#f1]_ we need a masking noise followed by a target sound after a brief silent interval. An example implementation of a complete experiment is discussed in the :ref:`Psychoacoustics` section, but here, we will construct the stimulus: ::
 
-    masker = slab.Sound.tone(frequency=550, duration=0.5) # a half-second 550 Hz tone
+    masker = slab.Sound.tone(frequency=550, duration=0.5) # a 0.5s 550 Hz tone
     masker.level = 80 # at 80 dB
-    masker.ramp() # always apply ramps (here the default 10 ms raised cosine ramps)
+    masker.ramp() # default 10 ms raised cosine ramps
     silence = slab.Sound.silence(duration=0.01) # 10 ms silence
-    signal = slab.Sound.tone(duration=0.05) # 50 ms tone, using the default 500 Hz frequency
-    signal.level = 80 # let's start at the same intensity as the maker
-    signal.ramp(duration=0.005) # the signal is only 50 ms long, we'll use short 5 ms ramps
-    stimulus = slab.Sound.sequence(masker, silence, signal) # returns a new sound
+    signal = slab.Sound.tone(duration=0.05) # using the default 500 Hz
+    signal.level = 80 # let's start at the same intensity as the masker
+    signal.ramp(duration=0.005) # short signal, we'll use 5 ms ramps
+    stimulus = slab.Sound.sequence(masker, silence, signal)
     stimulus.play()
 
 We can make a classic non-interactive demonstration of forward masking by playing these stimuli with decreasing signal level in a loop, once without the masker, and once with the masker. Count for how many steps you can hear the signal tone: ::
@@ -68,7 +68,7 @@ Another method to put sounds together is :meth:`.crossfade`, which applies a cro
     slab.Sound.set_default_samplerate(16000) # we need a higher sample rate
     adapter = slab.Sound.whitenoise(duration=2.0)
     adapter.level = 80
-    irn = slab.Sound.irn(frequency=125, niter=2, duration=1.0) # the pitched sound
+    irn = slab.Sound.irn(frequency=125, niter=2, duration=1.0) # pitched sound
     irn.level = 80 # set to the same level
     stimulus = slab.Sound.crossfade(adapter, irn, overlap=0.005) # crossfade
     stimulus.filter(frequency=[800, 3200], kind='bp') # filter
@@ -80,7 +80,7 @@ Another method to put sounds together is :meth:`.crossfade`, which applies a cro
 
 Calibrating the output
 ^^^^^^^^^^^^^^^^^^^^^^
-Setting the **level** property of a stimulus changes the root-mean-square of the waveform and relative changes are correct (reducing the level attribute by 10 dB will reduce the sound output by the same amount), but the *absolute* intensity is only correct if you calibrate your output. The recommended procedure it to set your system volume to maximum, connect the listening hardware (headphone or loudspeaker) and set up a sound level meter. Then call :meth:`slab.Sound.calibrate`. The ``calibrate`` method will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The difference between the tone's level attribute and the recorded level is saved in the class variable ``_calibration_intensity``. It is applied to all level calculations so that a sound's level attribute now roughly corresponds to the actual output intensity in dB SPL---'roughly' because your output hardware may not have a flat frequency transfer function (some frequencies play louder than others). See :ref:`Filters` for methods to equalize transfer functions. Experiments sometimes require you to play different stimuli at comparable loudness. Loudness is the perception of sound intensity and it is difficult to calculate. You can use the :meth:`.aweight` method of a sound to filter it so that frequencies are weighted according to the typical human hearing thresholds. This will increase the correspondence between the rms intensity measure returned by the ``level`` attribute and the perceived loudness. However, in most cases, controlling relative intensities is sufficient. If you do not have a sound level meter, then you can present in dB HL (hearing level). For that, measure the hearing threshold of the listener at the frequency or frequencies that are presented in your experiment and play you stimuli at a set level above that threshold. You can measure the hearing threshold at one frequency (or for any broadband sound, in fact) with the few lines of code shown at the start of the :ref:`introduction<audiogram>`.
+Setting the **level** property of a stimulus changes the root-mean-square of the waveform and relative changes are correct (reducing the level attribute by 10 dB will reduce the sound output by the same amount), but the *absolute* intensity is only correct if you calibrate your output. The recommended procedure it to set your system volume to maximum, connect the listening hardware (headphone or loudspeaker) and set up a sound level meter. Then call :meth:`slab.calibrate`. The ``calibrate`` method will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The difference between the tone's level attribute and the recorded level is saved in the class variable ``_calibration_intensity``. It is applied to all level calculations so that a sound's level attribute now roughly corresponds to the actual output intensity in dB SPL---'roughly' because your output hardware may not have a flat frequency transfer function (some frequencies play louder than others). See :ref:`Filters` for methods to equalize transfer functions. Experiments sometimes require you to play different stimuli at comparable loudness. Loudness is the perception of sound intensity and it is difficult to calculate. You can use the :meth:`.aweight` method of a sound to filter it so that frequencies are weighted according to the typical human hearing thresholds. This will increase the correspondence between the rms intensity measure returned by the ``level`` attribute and the perceived loudness. However, in most cases, controlling relative intensities is sufficient. If you do not have a sound level meter, then you can present in dB HL (hearing level). For that, measure the hearing threshold of the listener at the frequency or frequencies that are presented in your experiment and play you stimuli at a set level above that threshold. You can measure the hearing threshold at one frequency (or for any broadband sound, in fact) with the few lines of code shown at the start of the :ref:`introduction<audiogram>`.
 
 Plotting and analysis
 ^^^^^^^^^^^^^^^^^^^^^
@@ -97,36 +97,29 @@ You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or 
 
 Instead of plotting, :meth:`.spectrum` and :meth:`.spectrogram` will return the time frequency bins and spectral power values for further analysis if you set the ``plot`` argument to False.
 
+You can also extract common features from sounds, such as the :meth:`.crest_factor` (a measure of how 'peaky' the waveform is), or the average :meth:`.onset_slope` (a measure of how fast the on-ramps in the sound are---important for sound localization). Features of the spectral content are bundled in the :meth:`.spectral_feature` method. It can compute spectral centroid, flux, flattness, and roll-off. When working with environmental sounds or other recorded stimuli, one often needs to compute relevant features for collections of recordings in different experimental conditions. The slab module contains a function :func:`slab.apply_to_path`, which applies a function to all wav files in a given folder and returns a dictionary of file names and computed features. In fact, you can also use that function to modify (for instance ramp and filter) all files in a folder.
 
+For other time-frequency processing, the :meth:`.frames` provides an easy way to step through the signal in short windowed frames and compute some values from it. For instance, you could detect on- and offsets in the signal by computing the crest factor in each frame: ::
 
-::
-
-    vowel = slab.Sound.vowel(vowel='a', duration=.5) # make a 0.5-second synthetic vowel sound
-    vowel.ramp() # apply default raised-cosine onset and offset ramps
-    vowel.filter(kind='bp', f=[50, 3000]) # apply bandpass filter between 50 and 3000 Hz
-    vowel.spectrogram() # plot the spectrogram
-    vowel.spectrum(low=100, high=4000, log_power=True) # plot a band-limited spectrum
-    vowel.waveform(start=0, end=.1) # plot the waveform
-	vowel.write('vowel.wav') # save the sound to a WAV file
-	vocoded_vowel = vowel.vocode() # run a vocoding algorithm
-	vowel.spectral_feature(feature='centroid') # compute the spectral centroid of the sound in Hz
-
-Signals
--------
-Sounds inherit from the **Signal** class, which provides a generic signal object with properties duration, number of samples, sample times, number of channels. Keeps the data in a 'data' property and implements slicing, arithmetic operations, and conversion between sample points and time points.::
-
-    sig = slab.Sound.pinknoise(nchannels=2) # make a pink noise
-    sig.duration
-	out: 1.0
-	sig.nsamples
-	out: 8000
-	sig2 = sig.resample(samplerate=4000) # resample to 4 kHz
-	env = sig2.envelope() # returns a new signal containing the lowpass Hilbert envelopes of both channels
-	sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
+    signal.pulse() # apply a 4 Hz pulse to the 3 vowels from above
+    signal.waveform() # note the pulses
+    crest = [] # the short-term crest factor will show on- and offsets
+    frames = signal.frames(duration=64)
+    for f in frames:
+        crest.append(f.crest_factor())
+    times = signal.frametimes(duration=64) # frame center times
+    import matplotlib.pyplot as plt
+    plt.plot(times, crest) # peaks in the crest factor mark intensity ramps
 
 Binaural sounds
 ---------------
-**Binaural**: Inherits from Sound and provides methods for generating and manipulating binaural sounds, including advanced interaural time and intensity manipulation. Binaural sounds have left and a right channel properties.::
+For experiments in spatial hearing, or any other situation that requires differential manipulation of the left and right channel of a sound, you can use the :class:`Binaural` class. It inherits all methods from :class:`Sound` and provides additional methods for generating and manipulating binaural sounds, including advanced interaural time and intensity manipulation.
+
+Generating binaural sounds
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+Binaural sounds support all sound generating functions with a ``nchannels`` attribute of the :class:`Sound` class, but automatically set ``nchannels`` to 2. Noises support an additional ``kind`` argument, which can be set to 'diotic' (identical noise in both channels) or 'dichotic' (uncorrelated noise).
+
+Binaural sounds have left and a right channel properties: ::
 
     sig = slab.Binaural.pinknoise()
 	sig.pulse() # make a 2-channel pulsed pink noise
@@ -138,6 +131,20 @@ Binaural sounds
     moving = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
     lateralized = sig.at_azimuth(azimuth=-45) # add frequency- and headsize-dependent ITD and ILD corresponding to a sound at 45 deg
 	external = lateralized.externalize() # add a low resolution HRTF filter that results in the percept of an externalized source (i.e. outside of the head), defaults to the KEMAR HRTF recordings, but any HRTF can be supplied
+
+
+    Signals
+    -------
+    Sounds inherit from the **Signal** class, which provides a generic signal object with properties duration, number of samples, sample times, number of channels. Keeps the data in a 'data' property and implements slicing, arithmetic operations, and conversion between sample points and time points.::
+
+        sig = slab.Sound.pinknoise(nchannels=2) # make a pink noise
+        sig.duration
+    	out: 1.0
+    	sig.nsamples
+    	out: 8000
+    	sig2 = sig.resample(samplerate=4000) # resample to 4 kHz
+    	env = sig2.envelope() # returns a new signal containing the lowpass Hilbert envelopes of both channels
+    	sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
 
 
 .. rubric:: Footnotes
