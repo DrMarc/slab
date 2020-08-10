@@ -3,7 +3,7 @@ import numpy
 
 
 def test_properties():
-    slab.Sound.calibrate(intensity=80, make_permanent=False)
+    slab.calibrate(intensity=80, make_permanent=False)
     sound = slab.Sound(numpy.ones([10, 2]), samplerate=10)
     sound.repeat(n=5)
     sound.copychannel(n=10)
