@@ -31,17 +31,13 @@ release = version
 # -- General configuration ---------------------------------------------------
 needs_sphinx = '1.8'
 extensions = [
-    'sphinx_matlabdoc_builder',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.autodoc',
-    'matplotlib.sphinxext.mathmpl',
     'matplotlib.sphinxext.plot_directive',
-    'sphinx.ext.autodoc',
     'sphinx.ext.doctest']
 
-napoleon_google_docstring = False
-napoleon_numpy_docstring = True
+plot_pre_code = 'import slab'
 master_doc = 'index'
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #autodoc_default_options = {'member-order': 'bysource'}
@@ -49,4 +45,3 @@ intersphinx_mapping = {'python': ('https://docs.python.org/', None),
                        'matplotlib': ('http://matplotlib.org/', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy/', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None)}
-html_theme = 'sphinx_rtd_theme'
