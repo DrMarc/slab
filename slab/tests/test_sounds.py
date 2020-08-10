@@ -3,7 +3,7 @@ import numpy
 
 
 def test_properties():
-    slab.Sound.calibrate(intensity=80, make_permanent=False)
+    slab.calibrate(intensity=80, make_permanent=False)
     sound = slab.Sound(numpy.ones([10, 2]), samplerate=10)
     sound.repeat(n=5)
     sound.copychannel(n=10)
@@ -52,7 +52,6 @@ def test_manipulations():
         sound.spectral_feature(feature=feat)
     sound.crest_factor()
     sound.onset_slope()
-    sound.time_windows()
 
 
 def test_recnplay():

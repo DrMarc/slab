@@ -106,12 +106,12 @@ class Sound(Signal):
         self.data *= gain
 
     level = property(fget=_get_level, fset=_set_level, doc='''
-		Can be used to get or set the rms level of a sound, which should be in dB.
-		For single channel sounds a value in dB is used, for multiple channel
-		sounds a value in dB can be used for setting the level (all channels
-		will be set to the same level), or a list/tuple/array of levels. Use
-		:meth:`slab.Sound.calibrate` to make the computed level reflect output intensity.
-		''')
+    Can be used to get or set the rms level of a sound, which should be in dB.
+    For single channel sounds a value in dB is used, for multiple channel
+    sounds a value in dB can be used for setting the level (all channels
+    will be set to the same level), or a list/tuple/array of levels. Use
+    :meth:`slab.Sound.calibrate` to make the computed level reflect output intensity.
+    ''')
 
     def __init__(self, data, samplerate=None):
         if isinstance(data, pathlib.Path):  # Sound initialization from a file name (pathlib object)
@@ -603,6 +603,19 @@ class Sound(Signal):
             data_chans.append(data)  # concatenate channel data
         return Sound(data_chans, self.samplerate)
 
+    def reverb(self, room=4, mic='center', source_distance=1, hrtf=None):  # TODO: implement!
+        '''
+        Returns a Binaural sound with added early reflections computed using
+        the image source method and a simple shoe-box room and added late
+        reverberation. This is a convenience wrapper around the pyroomacoustics
+        toolbox.
+        '''
+        # make room
+        # set source and mic
+        # compute image source model
+        # return Binaural sound
+        pass
+
     @staticmethod
     def record(duration=1.0, samplerate=None):
         '''Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.
@@ -691,6 +704,7 @@ class Sound(Signal):
         plt.xlabel('Time [sec]')
         plt.ylabel('Amplitude')
         plt.show()
+    ## features ##
 
     def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, show=True, axes=None, **kwargs):
         '''
@@ -912,6 +926,34 @@ class Sound(Signal):
         subbands_noise *= envs  # apply envelopes
         subbands_noise.level = subbands.level
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
+
+    def pitch_tracking(self, window_dur=0.005):  # TODO: implement!
+        fbank = Filter.cos_filterbank(length=self.nsamples, bandwidth=1/10,
+                                      low_cutoff=30, samplerate=self.samplerate)
+        subbands = fbank.apply(self.channel(0))  # apply filterbank
+        envs = subbands.envelope()  # get subband envelopes
+        # X[X < 0] = 0
+        # smooth the results with a moving average filter
+        # autocorrelation in each band and frame
+        # for k in range(0, iNumBands):
+        # 	# get current block
+        # 	if X[k, np.arange(i_start, i_stop + 1)].sum() < 1e-20:
+        # 		continue
+        # 	else:
+        # 		x_tmp[np.arange(0, i_stop - i_start + 1)] = X[k, np.arange(i_start, i_stop + 1)]
+        # 	afCorr = np.correlate(x_tmp, x_tmp, "full") / np.dot(x_tmp, x_tmp)
+        # 	# aggregate bands with simple sum before peak picking
+        # 	afSumCorr += afCorr[np.arange(iBlockLength, afCorr.size)]
+        # if afSumCorr.sum() < 1e-20:
+        # 	continue
+        # # find the highest local maximum
+        # iPeaks = find_peaks(afSumCorr, height=0)
+        # if iPeaks[0].size:
+        # 	eta_min = np.max([eta_min, iPeaks[0][0] - 1])
+        # f[n] = np.argmax(afSumCorr[np.arange(eta_min + 1, afSumCorr.size)]) + 1
+        # # convert to Hz
+        # f[n] = f_s / (f[n] + eta_min + 1)
+        pass
 
     def crest_factor(self):
         '''
