@@ -62,30 +62,50 @@ Applying Multiple Filters
 -------------------------
 Slab features multi-channel filtering - you can easily apply multiple filters to one signal,
 one filer to multiple signals or a bunch of filters to a bunch of signals! The **apply** method will
-choose what to do depending on the number of channels in the filter and signal. If signal and filter
-have the same number of channels each channel of the filter is applied to the corresponding signal.
+choose what to do depending on the number of channels in the filter and signal.
 If a multi-channel filter is applied to a one-channel signal, each filter channel is applied
 to a copy of the signal so the resulting filtered signal has the same number of channels as the filter.
 This can be used, for example, to create a set of filtered noise with different spectra
 
 .. plot::
-from slab import Signal, Sound, Filter
-from matplotlib import pyplot as plt
-import numpy
-Signal.set_default_samplerate(44100)
+  from slab import Signal, Sound, Filter
+  from matplotlib import pyplot as plt
+  import numpy
+  Signal.set_default_samplerate(44100)
 
-sound = Sound.whitenoise()
-# make filter bank with 16 bandpass-filters of width 100 Hz
-start, stop, n = 500, 2000, 16
-low_cutoff = numpy.linspace(start, stop, n)
-high_cutoff = numpy.linspace(start, stop, n)+100
-filters = []
-for i in range(n):
-    filters.append(Filter.cutoff_filter(
-        frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
-fbank = Filter(filters)  # put the list into a single filter object
-sound_filt = fbank.apply(sound)
-_, ax = plt.subplots(1)
-sound_filt.spectrum(axes=ax, show=False)
-ax.set_xlim(100, 5000)
-plt.show()
+  sound = Sound.whitenoise()
+  # make filter bank with 16 bandpass-filters of width 100 Hz
+  start, stop, n = 500, 2000, 16
+  low_cutoff = numpy.linspace(start, stop, n)
+  high_cutoff = numpy.linspace(start, stop, n)+100
+  filters = []
+  for i in range(n):
+      filters.append(Filter.cutoff_filter(
+          frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
+  fbank = Filter(filters)  # put the list into a single filter object
+  sound_filt = fbank.apply(sound)  # apply each filter to a copy of sound
+  # plot the spectra, each color represents one channel of the filtered sound
+  _, ax = plt.subplots(1)
+  sound_filt.spectrum(axes=ax, show=False)
+  ax.set_xlim(100, 5000)
+  plt.show()
+
+If the a one-channel filter is applied to a multi-channel signal, the filter will be applied to each
+channel individually. This can be used, for example, to easily pre-process a set of recordings (where
+every recording is represented by a channel in the :class:`slab.Sound` object). If a multi-channel filter
+is applied to a multi-channel signal with the same number of channels each filter channel is applied to
+the corresponding signal channel. This is useful for e.g. equalization of a set of loudspeakers
+
+Applying Multiple Filters
+-------------------------
+
+In Psychoacoustic experiments, we are often interested in the effect of a specific feature. One could,
+for example, take the bandpass filtered sounds from the example above and investigate how well listeners
+can discriminate them from a noisy background - a typical cocktail-party task. However, if the transfer
+function of the loudspeakers or headphones used in the experiment is not flat, the finding will be biased.
+Imagine that the headphones used were bad at transmitting frequencies below 1000 Hz. This would make a sound
+with center frequency of 550 Hz harder to detect than one with a center frequency of 1550 Hz. We can prevent
+this by inverting the headphones transfer function and using that as a filter. The inverse transfer function
+filter and the actual transfer function will cancel each other out and the result will be an equalized sound.
+
+.. plot::
