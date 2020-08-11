@@ -15,14 +15,42 @@ The aim of a Cut-Off filter is to suppress certain parts of a signals power spec
 don't want our sound to contain power above 12 kHz (maybe our speakers can't go higher), we can generate
 the sound and then apply a 12 kHz lowpass Filter.
 
-.. plot:: pyplots/filter1.py
-  :include-source:
+.. plot::
+  from slab import Signal, Sound, Filter
+  from matplotlib import pyplot as plt
+  Signal.set_default_samplerate(44100)
+  # generate sound and filter it
+  sound = Sound.whitenoise()
+  filt = Filter.cutoff_filter(frequency=12000, kind='lp')
+  sound_filt = filt.apply(sound)
+  # plot the result
+  _, ax = plt.subplots(2, sharex=True, sharey=True)
+  sound.spectrum(show=False, axis=ax[0], color="blue", label="unfiltered")
+  sound_filt.spectrum(show=False, axis=ax[1], color="red", label="after lowpass")
+  ax[1].axvline(12000, color="black", linestyle="--")
+  ax[0].legend()
+  ax[1].legend()
+  ax[1].set(title=None, xlabel="Frequency [Hz]")
+  plt.show()
+
 
 After filtering the sound does not carry any power above 12 kHz. Since filtering can cause artifacts
 in the time domain, it is good practice to always plot and inspect the filtered signal
 
-.. plot:: pyplots/filter2.py
-  :include-source:
+.. plot::
+  from slab import Signal, Sound, Filter
+  from matplotlib import pyplot as plt
+  Signal.set_default_samplerate(44100)
+  sound = Sound.whitenoise()
+  filt = Filter.cutoff_filter(frequency=12000, kind='lp')
+  sound_filt = filt.apply(sound)
+  _, ax = plt.subplots(2, sharex=True, sharey=True)
+  ax[0].plot(sound.times, sound.data, color="blue", label="unfiltered")
+  ax[1].plot(sound_filt.times, sound_filt.data, color="red", label="after lowpass")
+  [a.set(xlabel="Time in Seconds", ylabel="Amplitude") for a in ax]
+  [a.legend() for a in ax]
+  plt.show()
+
 
 While filtering did not cause any visible artifacts, it reduced the amplitude of the signal.
 This is to be expected because by filtering we remove part of the signal and thus loose power. A naive approach would
@@ -40,5 +68,16 @@ If a multi-channel filter is applied to a one-channel signal, each filter channe
 to a copy of the signal so the resulting filtered signal has the same number of channels as the filter.
 This can be used, for example, to create a set of filtered noise with different spectra
 
-.. plot:: pyplots/filter3.py
-  :include-source:
+.. plot::
+  from slab import Signal, Sound, Filter
+  from matplotlib import pyplot as plt
+  Signal.set_default_samplerate(44100)
+  sound = Sound.whitenoise()
+  filt = Filter.cutoff_filter(frequency=12000, kind='lp')
+  sound_filt = filt.apply(sound)
+  _, ax = plt.subplots(2, sharex=True, sharey=True)
+  ax[0].plot(sound.times, sound.data, color="blue", label="unfiltered")
+  ax[1].plot(sound_filt.times, sound_filt.data, color="red", label="after lowpass")
+  [a.set(xlabel="Time in Seconds", ylabel="Amplitude") for a in ax]
+  [a.legend() for a in ax]
+  plt.show()
