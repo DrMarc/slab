@@ -52,12 +52,3 @@ def test_manipulations():
         sound.spectral_feature(feature=feat)
     sound.crest_factor()
     sound.onset_slope()
-
-
-def test_recnplay():
-    for i in range(10):
-        sound = slab.Sound.record(duration=0.1)
-        sound.write('/tmp/sound%s.wav' % (i))
-    slab.apply_to_path('/tmp/', slab.Sound.ramp)
-    sound = slab.Sound('/tmp/sound%s.wav' % (i))
-    sound.play()

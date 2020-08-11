@@ -501,7 +501,7 @@ class Sound(Signal):
         '''
         when = when.lower().strip()
         if envelope is None:
-            def envelope(t): return numpy.sin(numpy.pi * t / 2) ** 2  # squared sine window
+            envelope = lambda t: numpy.sin(numpy.pi * t / 2) ** 2  # squared sine window
         sz = Sound.in_samples(duration, self.samplerate)
         multiplier = envelope(numpy.reshape(numpy.linspace(0.0, 1.0, sz), (sz, 1)))
         if when in ('onset', 'both'):
@@ -667,7 +667,7 @@ class Sound(Signal):
                 raise NotImplementedError(
                     'Playing from files on Linux without SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all')
 
-    def waveform(self, start=0, end=None, show=True, axes=None, **kwargs):
+    def waveform(self, start=0, end=None, show=True, axis=None, **kwargs):
         '''
         Plots the waveform of the sound.
 
@@ -680,33 +680,23 @@ class Sound(Signal):
         if end is None:
             end = self.nsamples
         end = self.in_samples(end, self.samplerate)
-        if axes is None:
-            axes = plt.subplot(111)
+        if axis is None:
+            axis = plt.subplot()
         if self.nchannels == 1:
-            axes.plot(self.times[start:end], self.channel(0)[start:end])
+            axis.plot(self.times[start:end], self.channel(0)[start:end], **kwargs)
         elif self.nchannels == 2:
-            axes.plot(self.times[start:end], self.channel(0)[start:end], label='left')
-            axes.plot(self.times[start:end], self.channel(1)[start:end], label='right')
-            axes.legend()
+            axis.plot(self.times[start:end], self.channel(0)[start:end], label='left', **kwargs)
+            axis.plot(self.times[start:end], self.channel(1)[start:end], label='right', **kwargs)
+            axis.legend()
         else:
             for i in range(self.nchannels):
-                axes.plot(self.times[start:end], self.channel(i)[start:end], **kwargs)
-        axes.set(title='Waveform', xlabel='Time [sec]', ylabel='Amplitude')
-        axes.legend()
+                plt.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}', **kwargs)
+            plt.legend()
+        axis.set(title='Waveform', xlabel='Time [sec]', ylabel='Amplitude')
         if show:
             plt.show()
 
-        else:
-            for i in range(self.nchannels):
-                plt.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}')
-            plt.legend()
-        plt.title('Waveform')
-        plt.xlabel('Time [sec]')
-        plt.ylabel('Amplitude')
-        plt.show()
-    ## features ##
-
-    def spectrogram(self, window_dur=0.005, dyn_range=120, other=None, show=True, axes=None, **kwargs):
+    def spectrogram(self, window_dur=0.005, dyn_range=120, upper_frequency=None, other=None, show=True, axis=None, **kwargs):
         '''
         Plots a spectrogram of the sound.
 
@@ -740,7 +730,7 @@ class Sound(Signal):
         # compute the power spectral density
         freqs, times, power = scipy.signal.spectrogram(
             x, mode='psd', fs=self.samplerate, scaling='density', noverlap=noverlap, window=window, nperseg=window_nsamp)
-        if show or (axes is not None):
+        if show or (axis is not None):
             if not have_pyplot:
                 raise ImportError('Ploting spectrograms requires matplotlib.')
             p_ref = 2e-5  # 20 μPa, the standard reference pressure for sound in air
@@ -749,22 +739,22 @@ class Sound(Signal):
             dB_max = power.max()
             vmin = dB_max-dyn_range
             cmap = matplotlib.cm.get_cmap('Greys')
-            extent = (times.min(), times.max(), freqs.min(), freqs.max())
-            if axes is None:
-                axes = plt.subplot(111)
-            axes.imshow(power, origin='lower', aspect='auto',
-                        cmap=cmap, extent=extent, vmin=vmin, vmax=None)
-            axes.set(title='Spectrogram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
+            extent = (times.min(), times.max(), freqs.min(), upper_frequency or freqs.max())
+            if axis is None:
+                axis = plt.subplot()
+            axis.imshow(power, origin='lower', aspect='auto',
+                        cmap=cmap, extent=extent, vmin=vmin, vmax=None, **kwargs)
+            axis.set(title='Spectrogram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
         if show:
             plt.show()
         else:
             return freqs, times, power
 
-    def cochleagram(self, bandwidth=1/5, show=True, axes=None, **kwargs):
+    def cochleagram(self, bandwidth=1/5, show=True, axis=None, **kwargs):
         '''
         Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
         (*1/5* th octave) and applying a cube-root compression to the resulting envelopes.
-        If plot is False, returns the envelopes.
+        If show is False, returns the envelopes.
         '''
         fbank = Filter.cos_filterbank(bandwidth=bandwidth, low_cutoff=20,
                                       high_cutoff=None, samplerate=self.samplerate)
@@ -773,24 +763,24 @@ class Sound(Signal):
         envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         envs = envs.data ** (1/3)  # apply non-linearity (cube-root compression)
-        if show or (axes is not None):
+        if show or (axis is not None):
             if not have_pyplot:
                 raise ImportError('Plotting cochleagrams requires matplotlib.')
             cmap = matplotlib.cm.get_cmap('Greys')
-            if axes is None:
-                axes = plt.subplot(111)
-            axes.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
+            if axis is None:
+                axis = plt.subplot(111)
+            axis.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
             labels = list(freqs.astype(int))
-            axes.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
+            axis.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
                 labels))  # centre frequencies as ticks
-            axes.set_xlim([0, self.duration])
-            axes.set(title='Cochleagram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
+            axis.set_xlim([0, self.duration])
+            axis.set(title='Cochleagram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
             if show:
                 plt.show()
         else:
             return envs
 
-    def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, axes=None, show=True, **kwargs):
+    def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, axis=None, show=True, **kwargs):
         '''
         Returns the spectrum of the sound and optionally plots it.
 
@@ -798,8 +788,8 @@ class Sound(Signal):
             low_cutoff/high_cutoff: If these are left unspecified, it shows the full spectrum, otherwise it shows
                 only between `low` and `high` in Hz.
             log_power: If True it returns the log of the power.
-            plot: Whether to plot the output.
-                If plot=False, returns `Z, freqs`, where `Z` is a 1D array of powers
+            show: Whether to plot the output.
+                If show=False, returns `Z, freqs`, where `Z` is a 1D array of powers
                 and `freqs` are the corresponding frequencies.
         '''
         freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
@@ -823,20 +813,20 @@ class Sound(Signal):
         if log_power:
             Z[Z < 1e-20] = 1e-20  # no zeros because we take logs
             Z = 10 * numpy.log10(Z)
-        if show or (axes is not None):
+        if show or (axis is not None):
             if not have_pyplot:
                 raise ImportError('Plotting spectra requires matplotlib.')
-            if axes is None:
-                axes = plt.subplot(111)
-            axes.semilogx(freqs, Z, **kwargs)
+            if axis is None:
+                axis = plt.subplot()
+            axis.semilogx(freqs, Z, **kwargs)
             ticks_freqs = numpy.round(32000 * 2 **
                                       (numpy.arange(12, dtype=float)*-1))
-            axes.set_xticks(ticks_freqs)
-            axes.set_xticklabels(map(str, ticks_freqs.astype(int)))
-            axes.grid()
-            axes.set_xlim((freqs[1], freqs[-1]))
-            axes.set_ylabel('Power [dB/Hz]') if log_power else plt.ylabel('Power')
-            axes.set_title('Spectrum')
+            axis.set_xticks(ticks_freqs)
+            axis.set_xticklabels(map(str, ticks_freqs.astype(int)))
+            axis.grid()
+            axis.set_xlim((freqs[1], freqs[-1]))
+            axis.set_ylabel('Power [dB/Hz]') if log_power else plt.ylabel('Power')
+            axis.set_title('Spectrum')
             if show:
                 plt.show()
         else:
