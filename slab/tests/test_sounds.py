@@ -54,6 +54,6 @@ def test_manipulations():
     sound.onset_slope()
 
 
-def recplay():
+def test_recplay():
     rec = slab.Sound.record()
     rec.play()
