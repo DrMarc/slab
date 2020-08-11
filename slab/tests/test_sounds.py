@@ -56,3 +56,4 @@ def test_manipulations():
 
 def recplay():
     rec = slab.Sound.record()
+    rec.play()
