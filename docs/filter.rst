@@ -16,39 +16,41 @@ don't want our sound to contain power above 12 kHz (maybe our speakers can't go 
 the sound and then apply a 12 kHz lowpass Filter.
 
 .. plot::
-  from slab import Signal, Sound, Filter
-  from matplotlib import pyplot as plt
-  Signal.set_default_samplerate(44100)
-  # generate sound and filter it
-  sound = Sound.whitenoise()
-  filt = Filter.cutoff_filter(frequency=12000, kind='lp')
-  sound_filt = filt.apply(sound)
-  # plot the result
-  _, ax = plt.subplots(2, sharex=True, sharey=True)
-  sound.spectrum(show=False, axis=ax[0], color="blue", label="unfiltered")
-  sound_filt.spectrum(show=False, axis=ax[1], color="red", label="after lowpass")
-  ax[1].axvline(12000, color="black", linestyle="--")
-  [axis.legend() for axis in ax]
-  ax[1].set(title=None, xlabel="Frequency [Hz]")
-  plt.show()
+    :include-source:
+    from slab import Signal, Sound, Filter
+    from matplotlib import pyplot as plt
+    Signal.set_default_samplerate(44100)
+    # generate sound and filter it
+    sound = Sound.whitenoise()
+    filt = Filter.cutoff_filter(frequency=12000, kind='lp')
+    sound_filt = filt.apply(sound)
+    # plot the result
+    _, ax = plt.subplots(2, sharex=True, sharey=True)
+    sound.spectrum(show=False, axis=ax[0], color="blue", label="unfiltered")
+    sound_filt.spectrum(show=False, axis=ax[1], color="red", label="after lowpass")
+    ax[1].axvline(12000, color="black", linestyle="--")
+    [axis.legend() for axis in ax]
+    ax[1].set(title=None, xlabel="Frequency [Hz]")
+    plt.show()
 
 
 After filtering the sound does not carry any power above 12 kHz. Since filtering can cause artifacts
 in the time domain, it is good practice to always plot and inspect the filtered signal
 
 .. plot::
-  from slab import Signal, Sound, Filter
-  from matplotlib import pyplot as plt
-  Signal.set_default_samplerate(44100)
-  sound = Sound.whitenoise()
-  filt = Filter.cutoff_filter(frequency=12000, kind='lp')
-  sound_filt = filt.apply(sound)
-  _, ax = plt.subplots(2, sharex=True, sharey=True)
-  ax[0].plot(sound.times, sound.data, color="blue", label="unfiltered")
-  ax[1].plot(sound_filt.times, sound_filt.data, color="red", label="after lowpass")
-  [a.set(xlabel="Time in Seconds", ylabel="Amplitude") for a in ax]
-  [a.legend() for a in ax]
-  plt.show()
+    :include-source:
+    from slab import Signal, Sound, Filter
+    from matplotlib import pyplot as plt
+    Signal.set_default_samplerate(44100)
+    sound = Sound.whitenoise()
+    filt = Filter.cutoff_filter(frequency=12000, kind='lp')
+    sound_filt = filt.apply(sound)
+    _, ax = plt.subplots(2, sharex=True, sharey=True)
+    ax[0].plot(sound.times, sound.data, color="blue", label="unfiltered")
+    ax[1].plot(sound_filt.times, sound_filt.data, color="red", label="after lowpass")
+    [a.set(xlabel="Time in Seconds", ylabel="Amplitude") for a in ax]
+    [a.legend() for a in ax]
+    plt.show()
 
 
 While filtering did not cause any visible artifacts, it reduced the amplitude of the signal.
@@ -67,27 +69,28 @@ to a copy of the signal so the resulting filtered signal has the same number of 
 This can be used, for example, to create a set of filtered noise with different spectra
 
 .. plot::
-  from slab import Signal, Sound, Filter
-  from matplotlib import pyplot as plt
-  import numpy
-  Signal.set_default_samplerate(44100)
+    :include-source:
+    from slab import Signal, Sound, Filter
+    from matplotlib import pyplot as plt
+    import numpy
+    Signal.set_default_samplerate(44100)
 
-  sound = Sound.whitenoise()
-  # make filter bank with 16 bandpass-filters of width 100 Hz
-  start, stop, n = 500, 2000, 16
-  low_cutoff = numpy.linspace(start, stop, n)
-  high_cutoff = numpy.linspace(start, stop, n)+100
-  filters = []
-  for i in range(n):
-      filters.append(Filter.cutoff_filter(
-          frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
-  fbank = Filter(filters)  # put the list into a single filter object
-  sound_filt = fbank.apply(sound)  # apply each filter to a copy of sound
-  # plot the spectra, each color represents one channel of the filtered sound
-  _, ax = plt.subplots(1)
-  sound_filt.spectrum(axes=ax, show=False)
-  ax.set_xlim(100, 5000)
-  plt.show()
+    sound = Sound.whitenoise()
+    # make filter bank with 16 bandpass-filters of width 100 Hz
+    start, stop, n = 500, 2000, 16
+    low_cutoff = numpy.linspace(start, stop, n)
+    high_cutoff = numpy.linspace(start, stop, n)+100
+    filters = []
+    for i in range(n):
+        filters.append(Filter.cutoff_filter(
+            frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
+    fbank = Filter(filters)  # put the list into a single filter object
+    sound_filt = fbank.apply(sound)  # apply each filter to a copy of sound
+    # plot the spectra, each color represents one channel of the filtered sound
+    _, ax = plt.subplots(1)
+    sound_filt.spectrum(axes=ax, show=False)
+    ax.set_xlim(100, 5000)
+    plt.show()
 
 If the a one-channel filter is applied to a multi-channel signal, the filter will be applied to each
 channel individually. This can be used, for example, to easily pre-process a set of recordingss (where
@@ -108,35 +111,35 @@ this by inverting the headphones transfer function and using that as a filter. T
 filter and the actual transfer function will cancel each other out and the result will be an equalized sound.
 
 .. plot::
-  from slab import Signal, Sound, Filter
-  from scipy.signal import firwin2
-  from matplotlib import pyplot as plt
-  import numpy
-  Signal.set_default_samplerate(44100)
+    :include-source:
+    from slab import Signal, Sound, Filter
+    from scipy.signal import firwin2
+    from matplotlib import pyplot as plt
+    import numpy
+    Signal.set_default_samplerate(44100)
 
-  # For demonstration purpose, we can simulate to dissimilar headphones by applying filters with randomized gain.
-  # In reality we would obtain the recordings from playing the sound and putting a microphone next to the headphones
-  sound = Sound.whitenoise()
-  n_freqs = 11
-  freqs = numpy.append(numpy.linspace(0, 10000, n_freqs), sound.samplerate/2)
-  gain1 = numpy.append(numpy.random.uniform(low=0.3, high=2.0, size=n_freqs), 0)
-  gain2 = numpy.append(numpy.random.uniform(low=0.3, high=2.0, size=n_freqs), 0)
-  tf1 = Filter(firwin2(numtaps=1000, freq=freqs, gain=gain1, fs=sound.samplerate))
-  tf2 = Filter(firwin2(numtaps=1000, freq=freqs, gain=gain2, fs=sound.samplerate))
-  recordings = Sound([tf1.apply(sound), tf2.apply(sound)])
-  fig, ax = plt.subplots(2)
-  recordings.channel(0).spectrum(axis=ax[0], show=False, label="channel0")
-  recordings.channel(1).spectrum(axis=ax[1], show=False, label="channel1")
-  [axis.legend() for axis in ax]
-  plt.show()
+    # For demonstration purpose, we can simulate to dissimilar headphones by applying filters with randomized gain.
+    # In reality we would obtain the recordings from playing the sound and putting a microphone next to the headphones
+    sound = Sound.whitenoise()
+    n_freqs = 11
+    freqs = numpy.append(numpy.linspace(0, 10000, n_freqs), sound.samplerate/2)
+    gain1 = numpy.append(numpy.random.uniform(low=0.3, high=2.0, size=n_freqs), 0)
+    gain2 = numpy.append(numpy.random.uniform(low=0.3, high=2.0, size=n_freqs), 0)
+    tf1 = Filter(firwin2(numtaps=1000, freq=freqs, gain=gain1, fs=sound.samplerate))
+    tf2 = Filter(firwin2(numtaps=1000, freq=freqs, gain=gain2, fs=sound.samplerate))
+    recordings = Sound([tf1.apply(sound), tf2.apply(sound)])
+    fig, ax = plt.subplots(2)
+    recordings.channel(0).spectrum(axis=ax[0], show=False, label="channel0")
+    recordings.channel(1).spectrum(axis=ax[1], show=False, label="channel1")
+    [axis.legend() for axis in ax]
 
-  # With the original sound and the recordings we can compute a filter that equalizes the two
-  fbank = Filter.equalizing_filterbank(target=sound, signal=recordings, alpha=0.8)
-  equalized = fbank.apply(recordings)
+    # With the original sound and the recordings we can compute a filter that equalizes the two
+    fbank = Filter.equalizing_filterbank(target=sound, signal=recordings, alpha=0.8)
+    equalized = fbank.apply(recordings)
 
-  fig, ax = plt.subplots(3, sharex=True, sharey=True)
-  sound.spectrum(axis=ax[0], show=False, label="original")
-  equalized.channel(0).spectrum(axis=ax[1], show=False, label="channel0")
-  equalized.channel(1).spectrum(axis=ax[2], show=False, label="channel1")
-  [axis.legend() for axis in ax]
-  plt.show()
+    fig, ax = plt.subplots(3, sharex=True, sharey=True)
+    sound.spectrum(axis=ax[0], show=False, label="original")
+    equalized.channel(0).spectrum(axis=ax[1], show=False, label="channel0")
+    equalized.channel(1).spectrum(axis=ax[2], show=False, label="channel1")
+    [axis.legend() for axis in ax]
+    plt.show()
