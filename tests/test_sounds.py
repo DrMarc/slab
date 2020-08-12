@@ -52,8 +52,3 @@ def test_manipulations():
         sound.spectral_feature(feature=feat)
     sound.crest_factor()
     sound.onset_slope()
-
-
-def test_recplay():
-    rec = slab.Sound.record()
-    rec.play()
