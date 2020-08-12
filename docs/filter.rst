@@ -88,7 +88,7 @@ This can be used, for example, to create a set of filtered noise with different 
     sound_filt = fbank.apply(sound)  # apply each filter to a copy of sound
     # plot the spectra, each color represents one channel of the filtered sound
     _, ax = plt.subplots(1)
-    sound_filt.spectrum(axes=ax, show=False)
+    sound_filt.spectrum(axis=ax, show=False)
     ax.set_xlim(100, 5000)
     plt.show()
 
