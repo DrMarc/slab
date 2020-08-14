@@ -17,6 +17,7 @@ the sound and then apply a 12 kHz lowpass Filter.
 
 .. plot::
     :include-source:
+
     from slab import Signal, Sound, Filter
     from matplotlib import pyplot as plt
     Signal.set_default_samplerate(44100)
@@ -39,6 +40,7 @@ in the time domain, it is good practice to always plot and inspect the filtered 
 
 .. plot::
     :include-source:
+
     from slab import Signal, Sound, Filter
     from matplotlib import pyplot as plt
     Signal.set_default_samplerate(44100)
@@ -70,6 +72,7 @@ This can be used, for example, to create a set of filtered noise with different 
 
 .. plot::
     :include-source:
+
     from slab import Signal, Sound, Filter
     from matplotlib import pyplot as plt
     import numpy
@@ -112,6 +115,7 @@ filter and the actual transfer function will cancel each other out and the resul
 
 .. plot::
     :include-source:
+    
     from slab import Signal, Sound, Filter
     from scipy.signal import firwin2
     from matplotlib import pyplot as plt
