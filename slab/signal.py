@@ -3,6 +3,7 @@ Base class for Signal data (sounds and filters).
 '''
 
 import copy
+import warnings
 import numpy
 try:
     import scipy.signal
@@ -92,6 +93,8 @@ class Signal:
         elif hasattr(data, 'data') and hasattr(data, 'samplerate'):
             self.data = data.data
             self.samplerate = data.samplerate
+            if samplerate is not None:
+                warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
         else:
             raise TypeError('Cannot initialise Signal with data of class ' + str(data.__class__))
         if len(self.data.shape) == 1:

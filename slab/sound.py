@@ -34,7 +34,7 @@ _tmpdir = pathlib.Path(tempfile.gettempdir())
 try:  # try getting a previously set calibration intensity from file
     _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
 except FileNotFoundError:
-    _calibration_intensity = 0  # : Difference between rms intensity and measured output intensity in dB
+    _calibration_intensity = 0  #: Difference between rms intensity and measured output intensity in dB
 
 
 class Sound(Signal):
@@ -480,12 +480,11 @@ class Sound(Signal):
             filename = str(filename)
         if self.samplerate % 1:
             self = self.resample(int(self.samplerate))
-            print("Sampling rate must be an integer when writing to .wav!"
-                  "\n Resamling from %s to %s" % (self.samplerate, int(self.samplerate)))
-
+            print('Sampling rate rounded to nearest integer for writing!')
         if normalise:
-            self.data /= numpy.amax(numpy.abs(self.data))
-        soundfile.write(filename, self.data, self.samplerate, format=fmt)
+            soundfile.write(filename, self.data / numpy.amax(numpy.abs(self.data)), self.samplerate, format=fmt)
+        else:
+            soundfile.write(filename, self.data, self.samplerate, format=fmt)
 
     def ramp(self, when='both', duration=0.01, envelope=None):
         '''
@@ -514,7 +513,7 @@ class Sound(Signal):
         self.data = numpy.vstack((self.data,)*int(n))
 
     def copychannel(self, n):
-        '''Copies a single-channel sound inplace to make an n-channel sound.
+        '''Copies a single-channel sound in place to make an n-channel sound.
         If a multi-channel sound is supplied, all channels except the first are silently dropped.'''
         self.data = numpy.repeat(self.channel(0), n, axis=1)
 
@@ -603,19 +602,6 @@ class Sound(Signal):
             data_chans.append(data)  # concatenate channel data
         return Sound(data_chans, self.samplerate)
 
-    def reverb(self, room=4, mic='center', source_distance=1, hrtf=None):  # TODO: implement!
-        '''
-        Returns a Binaural sound with added early reflections computed using
-        the image source method and a simple shoe-box room and added late
-        reverberation. This is a convenience wrapper around the pyroomacoustics
-        toolbox.
-        '''
-        # make room
-        # set source and mic
-        # compute image source model
-        # return Binaural sound
-        pass
-
     @staticmethod
     def record(duration=1.0, samplerate=None):
         '''Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.
@@ -643,7 +629,7 @@ class Sound(Signal):
         if have_soundcard:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
-            self.write(_tmpdir / 'tmp.wav')
+            self.write(_tmpdir / 'tmp.wav', normalise=False)
             Sound.play_file(_tmpdir / 'tmp.wav')
         if sleep:  # all current play methods are blocking, there is no reason to sleep!
             time.sleep(self.duration)
@@ -665,7 +651,7 @@ class Sound(Signal):
                 subprocess.call(['sox', fname, '-d'])
             except:
                 raise NotImplementedError(
-                    'Playing from files on Linux without SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all')
+                    'Playing from files on Linux without SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all or pip install SoundCard')
 
     def waveform(self, start=0, end=None, show=True, axis=None, **kwargs):
         '''
@@ -690,7 +676,7 @@ class Sound(Signal):
             axis.legend()
         else:
             for i in range(self.nchannels):
-                plt.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}', **kwargs)
+                axis.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}', **kwargs)
             plt.legend()
         axis.set(title='Waveform', xlabel='Time [sec]', ylabel='Amplitude')
         if show:
@@ -917,34 +903,6 @@ class Sound(Signal):
         subbands_noise.level = subbands.level
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
 
-    def pitch_tracking(self, window_dur=0.005):  # TODO: implement!
-        fbank = Filter.cos_filterbank(length=self.nsamples, bandwidth=1/10,
-                                      low_cutoff=30, samplerate=self.samplerate)
-        subbands = fbank.apply(self.channel(0))  # apply filterbank
-        envs = subbands.envelope()  # get subband envelopes
-        # X[X < 0] = 0
-        # smooth the results with a moving average filter
-        # autocorrelation in each band and frame
-        # for k in range(0, iNumBands):
-        # 	# get current block
-        # 	if X[k, np.arange(i_start, i_stop + 1)].sum() < 1e-20:
-        # 		continue
-        # 	else:
-        # 		x_tmp[np.arange(0, i_stop - i_start + 1)] = X[k, np.arange(i_start, i_stop + 1)]
-        # 	afCorr = np.correlate(x_tmp, x_tmp, "full") / np.dot(x_tmp, x_tmp)
-        # 	# aggregate bands with simple sum before peak picking
-        # 	afSumCorr += afCorr[np.arange(iBlockLength, afCorr.size)]
-        # if afSumCorr.sum() < 1e-20:
-        # 	continue
-        # # find the highest local maximum
-        # iPeaks = find_peaks(afSumCorr, height=0)
-        # if iPeaks[0].size:
-        # 	eta_min = np.max([eta_min, iPeaks[0][0] - 1])
-        # f[n] = np.argmax(afSumCorr[np.arange(eta_min + 1, afSumCorr.size)]) + 1
-        # # convert to Hz
-        # f[n] = f_s / (f[n] + eta_min + 1)
-        pass
-
     def crest_factor(self):
         '''
         The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
@@ -1036,13 +994,17 @@ def calibrate(intensity=None, make_permanent=False):
 
 def apply_to_path(path='.', method=None, kwargs={}, out_path=None):
     '''
-    Apply a function (`method`) to all wav files in a given directory (`path`, default is current directory).
-    Arguments to the function are passed as dictionary of keyword arguments and values.
-    If `out_path` is supplied, then the sounds are saved with their original file name in the new directory.
+    Apply a function to all wav files in a given directory.
 
-    >> slab.apply_to_path('.', slab.Sound.spectral_feature, {'feature':'fwhm'})
-    >> slab.apply_to_path('.', slab.Sound.ramp, out_path='./modified')
-    >> slab.apply_to_path('.', slab.Sound.ramp, kwargs={'duration':0.3}, out_path='./test')
+    Arguments:
+        path: input path (str or pathlib.Path) from which wav files are collected for processing
+        method: callable function to be applied to each file
+        kwargs: dictionary of keyword arguments and values passed to the function.
+        out_path: if is supplied, sounds are saved with their original file name in this directory
+
+    >>> slab.apply_to_path('.', slab.Sound.spectral_feature, {'feature':'fwhm'})
+    >>> slab.apply_to_path('.', slab.Sound.ramp, out_path='./modified')
+    >>> slab.apply_to_path('.', slab.Sound.ramp, kwargs={'duration':0.3}, out_path='./test')
     '''
     if not callable(method):
         raise ValueError('Method must be callable.')
