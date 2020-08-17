@@ -356,7 +356,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             raise ImportError('Plotting requires matplotlib!')
         if axis is None:
             axis = plt.subplot()
-        axis.scatter(range(trials.n_trials),trials.trials, **kwargs)
+        axis.scatter(range(self.n_trials), self.trials, **kwargs)
         axis.set(title='Trial sequence', xlabel='Trials', ylabel='Condition index')
         plt.show()
 
@@ -865,11 +865,11 @@ def load_config(config_file):
 
 if __name__ == '__main__':
     # Demonstration
-    tr = Trialsequence(conditions=5, n_reps=2, name='test')
+    tr = Trialsequence(conditions=5, n_reps=2, label='test')
     stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=[8, 4, 4, 2, 2, 1],
                        min_val=20, max_val=60, n_up=1, n_down=1, n_pretrials=4)
     for trial in stairs:
-        response = stairs.simulate_response(thresh=30, transition_width=10)
+        response = stairs.simulate_response(threshold=30, transition_width=10)
         stairs.add_response(response)
         stairs.print_trial_info()
         stairs.plot()
