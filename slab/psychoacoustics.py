@@ -834,7 +834,7 @@ class Precomputed(list):
 
 def load_config(config_file):
     '''
-    Reads a text file with python varable assignments and returns a namedtuple with the variable names and values.
+    Reads a text file with python variable assignments and returns a namedtuple with the variable names and values.
 
     Contents of example.txt:
 
