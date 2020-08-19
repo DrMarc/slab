@@ -161,7 +161,7 @@ class HRTF():
         '''
         return sorted(list(set(numpy.round(self.sources[:, 1]))))
 
-    def plot_tf(self, sourceidx, ear='left', plot_limits=(1000, 18000), nbins=None, kind='waterfall', linesep=20, xscale='linear', ax=None):
+    def plot_tf(self, sourceidx, ear='left', plot_limits=(1000, 18000), nbins=None, kind='waterfall', linesep=20, xscale='linear', axis=None):
         '''
         Plots transfer functions of FIR filters at a list of source indices.
 
@@ -173,7 +173,7 @@ class HRTF():
             kind: `waterfall` (as in Wightman and Kistler, 1989) and `image` plots (as in Hofman 1998) are available
             linesep: sets the vertical distance between transfer functions in the waterfall plot
             xscale: sets x-axis scaling ('linear', 'log')
-            ax: if a plot axis is supplied, then the figure is drawn into that axis
+            axis: if a plot axis is supplied, then the figure is drawn into that axis
         '''
         if not have_pyplot:
             raise ImportError('Plotting HRTFs requires matplotlib.')
@@ -191,28 +191,28 @@ class HRTF():
                 return fig1, fig2
         else:
             raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
-        fig = None  # if ax is provided, return None
-        if not ax:
-            fig, ax = plt.subplots()
+        fig = None  # if axis is provided, return None
+        if not axis:
+            fig, axis = plt.subplots()
         if kind == 'waterfall':
             vertical_line_positions = numpy.arange(0, len(sourceidx)) * linesep
             for idx, s in enumerate(sourceidx):
                 filt = self.data[s]
-                freqs, h = filt.tf(channels=chan, nbins=nbins, plot=False)
-                ax.plot(freqs, h + vertical_line_positions[idx],
+                freqs, h = filt.tf(channels=chan, nbins=nbins, show=False)
+                axis.plot(freqs, h + vertical_line_positions[idx],
                         linewidth=0.75, color='0.0', alpha=0.7)
             ticks = vertical_line_positions[::3]  # plot every third elevation
             labels = numpy.round(self.sources[sourceidx, 1]*2, decimals=-1)/2
             # plot every third elevation label, ommit comma to save space
             labels = labels[::3].astype(int)
-            ax.set_yticks(ticks=vertical_line_positions, minor=True)
-            ax.tick_params(axis='y', which='minor', size=0)
-            ax.set_yticks(ticks=ticks)
-            ax.set_yticklabels(labels=labels)
-            ax.grid(b=True, axis='y', which='both', linewidth=0.25)
-            ax.plot([plot_limits[0]+500, plot_limits[0]+500], [vertical_line_positions[-1]+10,
+            axis.set_yticks(ticks=vertical_line_positions, minor=True)
+            axis.tick_params(axis='y', which='minor', size=0)
+            axis.set_yticks(ticks=ticks)
+            axis.set_yticklabels(labels=labels)
+            axis.grid(b=True, axis='y', which='both', linewidth=0.25)
+            axis.plot([plot_limits[0]+500, plot_limits[0]+500], [vertical_line_positions[-1]+10,
                                                                vertical_line_positions[-1]+10+linesep], linewidth=1, color='0.0', alpha=0.9)
-            ax.text(x=plot_limits[0]+600, y=vertical_line_positions[-1]+10+linesep/2,
+            axis.text(x=plot_limits[0]+600, y=vertical_line_positions[-1]+10+linesep/2,
                     s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
         elif kind == 'image':
             if not nbins:
@@ -222,23 +222,21 @@ class HRTF():
             elevations = self.sources[sourceidx, 1]
             for idx, source in enumerate(sourceidx):
                 filt = self.data[source]
-                freqs, h = filt.tf(channels=chan, nbins=nbins, plot=False)
+                freqs, h = filt.tf(channels=chan, nbins=nbins, show=False)
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
-            fig = plt.figure()
             plt.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
             plt.colorbar()
-            plt.ylabel('Elevation [˚]')
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
-        ax.set_xlabel('Frequency [kHz]')
-        ax.set_ylabel('Elevation [˚]')
-        ax.autoscale(tight=True)
-        ax.set_xlim(plot_limits)
-        ax.set_xscale(xscale)
-        ax.xaxis.set_major_formatter(
+        axis.set_xlabel('Frequency [kHz]')
+        axis.set_ylabel('Elevation [˚]')
+        axis.autoscale(tight=True)
+        axis.set_xlim(plot_limits)
+        axis.set_xscale(xscale)
+        axis.xaxis.set_major_formatter(
             matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x/1000))))
-        ax.tick_params('both', length=2, pad=2)
+        axis.tick_params('both', length=2, pad=2)
         plt.show()
         return fig
 
@@ -252,7 +250,7 @@ class HRTF():
         for source in range(self.nsources):
             filt = self.data[source]
             for chan in range(filt.nchannels):
-                _, h = filt.tf(channels=chan, plot=False)
+                _, h = filt.tf(channels=chan, show=False)
                 dfa.append(h)
         dfa = 10 ** (numpy.mean(dfa, axis=0)/20)  # average and convert from dB to gain
         return Filter(dfa, fir=False, samplerate=self.samplerate)
@@ -267,7 +265,7 @@ class HRTF():
         # apply the inverted filter to the HRTFs
         for source in range(self.nsources):
             filt = self.data[source]
-            _, h = filt.tf(plot=False)
+            _, h = filt.tf(show=False)
             h = 10 ** (h / 20) * dfa
             self.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
 

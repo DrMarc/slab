@@ -5,7 +5,7 @@
 Reference documentation
 =======================
 
-.. warning:: This reference documentation is auto-generated from the doc strings in the module. For a tutorial-like overview of the functionality of slab, please see the previous sections.
+.. note:: This reference documentation is auto-generated from the doc strings in the module. For a tutorial-like overview of the functionality of slab, please see the previous sections.
 
 Sounds
 ^^^^^^
@@ -14,6 +14,8 @@ Inherits from :class:`slab.Signal`.
 .. autoclass:: Sound
    :members:
    :member-order: bysource
+
+.. automethod:: slab.sound.apply_to_path
 
 Signal
 ------
@@ -35,15 +37,26 @@ Psychoacoustic procedures
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autoclass:: Trialsequence
    :members:
+   :inherited-members:
    :member-order: bysource
 
 .. autoclass:: Staircase
    :members:
+   :inherited-members:
    :member-order: bysource
 
 .. autoclass:: Precomputed
    :members:
    :member-order: bysource
+
+.. autoclass:: Resultsfile
+   :members:
+   :member-order: bysource
+
+.. automethod:: slab.psychoacoustics.Key
+
+.. automethod:: slab.psychoacoustics.load_config
+
 
 Filters
 -------

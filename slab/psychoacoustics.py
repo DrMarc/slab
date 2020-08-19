@@ -9,6 +9,7 @@ import datetime
 import json
 import zipfile
 from contextlib import contextmanager
+from collections import Counter
 try:
     import curses
     have_curses = True
@@ -24,12 +25,11 @@ except ImportError:
 import slab
 
 results_folder = 'Results'
-input_method = 'keyboard'  # or 'buttonbox'
+input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard 'or 'buttonbox'
 
 class _buttonbox:
-    '''Class to allow easy switching between input from the keyboard via curses
-    and from the custom buttonbox adapter (arduino device that sends a keystroke
-    followed by a return keystroke when pressing a button on the arduino).'''
+    '''Class to allow easy switching between input from the keyboard via curses and from the custom buttonbox adapter
+    (arduino device that sends a keystroke followed by a return keystroke when pressing a button on the arduino).'''
     @staticmethod
     def getch():
         return int(input())  # buttonbox adapter has to return the keycode of intended keys!
@@ -37,10 +37,11 @@ class _buttonbox:
 @contextmanager
 def Key():
     '''
-    Wrapper for curses module to simplify getting a single keypress from the terminal.
-    Use like this:
-    with slab.Key() as key:
-            response = key.getch()
+    Wrapper for curses module to simplify getting a single keypress from the terminal (default) or a buttonbox.
+    Set slab.psychoacoustics.input_method = 'buttonbox' to use a custom USB buttonbox.
+
+    >>> with slab.Key() as key:
+    >>>    response = key.getch()
     '''
     if input_method == 'keyboard':
         if not have_curses:
@@ -62,11 +63,10 @@ class LoadSaveJson_mixin:
 
     def save_json(self, file_name=None):
         """
-        Serialize the object to the JSON format.
+        Save the object as JSON file.
 
         Arguments:
-            fileName: string, or None; the name of the file to create or append. If `None`, will not write to a file,
-                but return an in-memory JSON object.
+            file_name: name of the file to create or append. If `None`, returns an in-memory JSON object.
         """
         # self_copy = copy.deepcopy(self) use if reading the json file sometimes fails
         def default(i): return int(i) if isinstance(i, numpy.int64) else i
@@ -84,7 +84,7 @@ class LoadSaveJson_mixin:
         Read JSON file and deserialize the object into self.__dict__.
 
         Attributes:
-            file_name: string, the name of the file to read.
+            file_name: name of the file to read.
         """
         with open(file_name, 'r') as f:
             self.__dict__ = json.load(f)
@@ -96,18 +96,13 @@ class TrialPresentationOptions_mixin:
 
     def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
         '''
-        Present the target (slab sound object) in random order together
-        with the distractor sound object (or list of several sounds) with
-        isi pause (in seconds) in between, then aquire a response keypress
-        via Key(), compare the response to the target interval and record
-        the response via add_response. If key_codes for buttons are given
-        (get with: ord('1') for instance -> ascii code of key 1 is 49),
-        then these keys will be used as answer keys. Default are codes for
-        buttons '1' to '9'.
-        This is a convenience function for implementing alternative forced
-        choice trials. In each trial, generate the target stimulus and
-        distractors, then call present_afc_trial to play them and record
-        the response. Optionally call print_trial_info afterwards.
+        Present the target sound in random order together with the distractor sound object (or list of
+        several sounds) with isi pause (in seconds) in between, then aquire a response keypress via Key(), compare the
+        response to the target interval and record the response via add_response. If key_codes for buttons are given
+        (get with: ord('1') for instance -> ascii code of key 1 is 49), then these keys will be used as answer keys.
+        Default are codes for buttons '1' to '9'. This is a convenience function for implementing alternative forced
+        choice trials. In each trial, generate the target stimulus and distractors, then call present_afc_trial to play
+        them and record the response. Optionally call print_trial_info afterwards.
         '''
         if isinstance(distractors, list):
             stims = [target] + distractors # assuming sound object and list of sounds
@@ -129,6 +124,16 @@ class TrialPresentationOptions_mixin:
             self.print_trial_info()
 
     def present_tone_trial(self, stimulus, correct_key_idx=0, key_codes=(range(49, 58)), print_info=True):
+        '''
+        Present a stimulus and aquire a response. The response is compared with ``correct_key_idx`` (the index of the
+        correct key in the ``key_codes`` argument) and a match is logged as True (correct response) or False (incorrect response).
+
+        Arguments:
+            stimulus: sound to present (object with play method)
+            correct_key_idx: index of correct response key in ``key_codes``
+            key_codes: list of response key codes (the default enables the number keys 1 to 9)
+            print_info: if True, call print_trial_info
+        '''
         stimulus.play()
         with slab.Key() as key:
             response = key.getch()
@@ -137,15 +142,17 @@ class TrialPresentationOptions_mixin:
         if print_info:
             self.print_trial_info()
 
-    def simulate_response(self, thresh, transition_width=2, intervals=1, hitrates=None):
-        '''Return a simulated response to the current condition index value by calculating the hitrate
-        from a psychometric (logistic) function. This is only sensible for 'method of constant stimuli'
-        trials (self.trials has to be numeric and an interval scale representing a continuous stimulus value.
-        thresh ... midpoint/threshhold
-        transition_width ... range of stimulus intensities over which the hitrate increases from 0.25 to 0.75 (*2*)
-        intervals ... use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
-        hitrates ... list of hitrates for the different conditions, to allow custom rates instead of simulation.
-                     If given, thresh and transition_width are not used.
+    def simulate_response(self, threshold, transition_width=2, intervals=1, hitrates=None):
+        '''Return a simulated response to the current condition index value by calculating the hitrate from a
+        psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
+        a continuous stimulus value.
+
+        Arguments:
+            thresh: midpoint/threshhold
+            transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75 (*2*)
+            intervals: use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
+            hitrates: list of hitrates for the different conditions, to allow custom rates instead of simulation.
+                      If given, thresh and transition_width are not used.
         '''
         slope = 0.5 / transition_width
         if self.__class__.__name__ == 'Trialsequence': # check which class the mixin is in
@@ -153,7 +160,7 @@ class TrialPresentationOptions_mixin:
         else:
             current_condition = self._next_intensity
         if hitrates is None:
-            hitrate = 1 / (1 + numpy.exp(4 * slope  * (thresh - current_condition))) # scale/4  = slope at midpoint
+            hitrate = 1 / (1 + numpy.exp(4 * slope  * (threshold - current_condition))) # scale/4  = slope at midpoint
         else:
             hitrate = hitrates[current_condition]
         hit = numpy.random.rand() < hitrate # True with probability hitrate
@@ -162,7 +169,7 @@ class TrialPresentationOptions_mixin:
         return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
 
 
-class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):  # TODO: correct string conditions!
+class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):
     """Non-adaptive trial sequences.
 
     Parameters:
@@ -180,7 +187,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             `random_permutation` (conditions are permuted randomly without control over transition probabilities,
             (default if `n_conds` <= 2), or `infinite` (`non_repeating` if n_conds <= 2 or `random_permutation` trial
             sequence that reset when reaching the end to generate an infinite number of trials).
-        name: a text label for the sequence.
+        label: a text label for the sequence.
 
     Attributes:
         .n_trials: the total number of trials that will be run
@@ -192,8 +199,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         .finished: True/False: have we finished yet?
         .kind: records the kind of sequence (`random_permutation`, `non_repeating`, `infinite`)
 """
-    def __init__(self, conditions=2, n_reps=1, trials=None, kind=None, name=''):
-        self.name = name
+    def __init__(self, conditions=2, n_reps=1, trials=None, kind=None, label=''):
+        self.label = label
         self.n_reps = int(n_reps)
         self.conditions = conditions
         if isinstance(conditions, str) and os.path.isfile(conditions):
@@ -218,7 +225,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             elif kind == 'random_permutation':
                 self.trials = Trialsequence._create_random_permutation(len(self.conditions), self.n_reps)
             elif kind == 'infinite':
-                # TODO: implementation if infinite sequence is a bit of a hack (number of completed trials needs
+                # implementation if infinite sequence is a bit of a hack (number of completed trials needs
                 # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
                 if self.n_conds <= 2:
                     self.trials = Trialsequence._create_random_permutation(len(self.conditions), 5)
@@ -239,11 +246,12 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         return f'Trialsequence, trials {"inf" if self.kind=="infinite" else self.n_trials}, remaining {"inf" if self.kind=="infinite" else self.n_remaining}, current condition {self.this_trial}'
 
     def __next__(self):
-        """Advances to next trial and returns it.
-        Updates attributes; this_trial, this_trial_n
+        """Advances to next trial and returns it. Updates attributes this_trial and this_trial_n.
         If the trials have ended this method will raise a StopIteration error.
-        trials = Trialsequence(.......)
-                for eachTrial in trials:  # automatically stops when done
+
+        >>> trials = Trialsequence(.......)
+        >>> for eachTrial in trials:  # automatically stops when done
+        >>>     trials.print_trial_info()
         """
         self.this_trial_n += 1
         self.this_n += 1
@@ -272,7 +280,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
 
     def print_trial_info(self):
         'Convenience method for printing current trial information.'
-        print(f'trial # {self.this_n} of {"inf" if self.kind=="infinite" else self.n_trials} ({"inf" if self.kind=="infinite" else self.n_remaining} remaining): condition {self.this_trial}, last response: {self.data[-1] if self.data else None}')
+        print(f'{self.label} | trial # {self.this_n} of {"inf" if self.kind=="infinite" else self.n_trials} ({"inf" if self.kind=="infinite" else self.n_remaining} remaining): condition {self.this_trial}, last response: {self.data[-1] if self.data else None}')
 
     @staticmethod
     def _create_simple_sequence(n_conditions, n_reps, previous=1):
@@ -304,14 +312,14 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         return self.conditions[self.trials[self.this_n + n]]
 
     def transitions(self):
-        'Return array (n_conds x n_conds) of transition probabilities.'
+        'Return array (n_conds x n_conds) of transitions.'
         transitions = numpy.zeros((self.n_conds, self.n_conds))
         for i, j in zip(self.trials, self.trials[1:]):
             transitions[i, j] += 1
         return transitions
 
     def condition_probabilities(self):
-        'Return list of frequencies of conditions in the order listed in .conditions'
+        'Returns list of frequencies of conditions in the order listed in .conditions'
         probs = []
         for i in range(self.n_conds):
             num = self.trials.count(i)
@@ -319,40 +327,62 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             probs.append(num)
         return probs
 
-    def plot(self):
+    def response_summary(self):
+        '''Returns a tally of responses as list of lists for a finished Trialsequence.
+        The indices of the outer list are the indices of the conditions in the sequence; each inner list contains the
+        number of responses per response key, with the response keys sorted in ascending order. For example, 3 conditions
+        with 10 repetitions each, and two response keys (Yes/No experiment) returns a structure like this:
+        [[0, 10], [2, 8], [9, 1]], indicating that the person responded 10 out of 10 times No in the first condition,
+        2 out of 10 Yes (and 8 out of 10 No) in the second, and 9 out of 10 Yes in the third condition. These values can
+        be used to construct hit rates and psychometric functions.
+        '''
+        if not self.finished:
+            return None
+        response_keys = list(set(self.data)) # list of used response key codes
+        response_keys.sort()
+        responses = []
+        for condition in range(self.n_conds):
+            idx = [i for i, cond in enumerate(self.trials) if cond == condition] # indices of condition in sequence
+            count = Counter([self.data[i] for i in idx])
+            resp_1cond = []
+            for r in response_keys:
+                resp_1cond.append(count[r])
+            responses.append(resp_1cond)
+        return responses
+
+    def plot(self, axis=None, **kwargs):
         'Plot the trial sequence as scatter plot.'
         if not have_pyplot:
             raise ImportError('Plotting requires matplotlib!')
-        plt.plot(self.trials)
-        plt.xlabel('Trials')
-        plt.ylabel('Condition index')
+        if axis is None:
+            axis = plt.subplot()
+        axis.scatter(range(self.n_trials), self.trials, **kwargs)
+        axis.set(title='Trial sequence', xlabel='Trials', ylabel='Condition index')
         plt.show()
 
     @staticmethod
     def mmn_sequence(n_trials, deviant_freq=0.12):
-    # TODO: integrate in main constructor
-        '''Returns a  MMN experiment: 2 different stimuli (conditions),
-        between two deviants at least 3 standards
-        n_trials: number of trials to return
-        deviant_freq: frequency of deviants (*0.12*, max. 0.25)
+        '''Returns a  MMN experiment: 2 different stimuli (conditions), between two deviants at least 3 standards.
+
+        Arguments:
+            n_trials: number of trials to return
+            deviant_freq: frequency of deviants (should not exceed 0.25)
         '''
-        # TODO: check number of trials
         n_partials = int(numpy.ceil((2 / deviant_freq) - 7))
         reps = int(numpy.ceil(n_trials/n_partials))
         partials = []
         for i in range(n_partials):
             partials.append([0] * (3+i) + [1])
         idx = list(range(n_partials)) * reps
-        numpy.random.shuffle(idx)  # randomize order
-        trials = []  # make the trial sequence by putting possibilities together
-        for i in idx:
+        numpy.random.shuffle(idx)
+        trials = []
+        for i in idx: # make the trial sequence by putting possibilities together
             trials.extend(partials[i])
-        trials = trials[:n_trials]  # cut the list to the requested numner of trials
+        trials = trials[:n_trials]  # cut the list to the requested number of trials
         return Trialsequence(conditions=2, n_reps=1, trials=trials)
 
 
 class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):
-    # TODO: add QUEST or Bayesian estimation?
     """Class to handle smoothly the selection of the next trial
     and report current values etc.
     Calls to next() will fetch the next object given to this
@@ -365,7 +395,7 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
     Lewitt (1971) gives the up-down values for different threshold points
     on the psychometric function: 1-1 (0.5), 1-2 (0.707), 1-3 (0.794),
     1-4 (0.841), 1-5 (0.891).
-    Example:
+
     >>> stairs = Staircase(start_val=50, n_reversals=10, step_type='lin',\
                     step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1, n_trials=10)
     >>> print(stairs)
@@ -377,13 +407,22 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
     reversals: [26, 30, 28, 30, 28, 30, 28, 30, 28, 30]
     >>> print(f'mean of final 6 reversals: {stairs.threshold()}')
     mean of final 6 reversals: 28.982753492378876
+
+    Attributes:
+        .this_trial_n: number of completed trials
+        .intensities: presented stimulus values
+        .current_direction: 'up' or 'down'
+        .data: list of responses
+        .reversal_points: indices of reversal trials
+        .reversal_intensities: stimulus values at the reversals (used to compute threshold)
+        .finished: True/False: have we finished yet?
     """
 
     def __init__(self, start_val, n_reversals=None, step_sizes=1, step_up_factor=1, n_pretrials=0, n_up=1,
-                 n_down=2, step_type='lin', min_val=-numpy.Inf, max_val=numpy.Inf, name=''):
+                 n_down=2, step_type='lin', min_val=-numpy.Inf, max_val=numpy.Inf, label=''):
         """
         Parameters
-            name: A text label.
+            label: A text label, printed by print_trial_info.
             start_val: initial stimulus value for the staircase
             n_reversals: number of reversals needed to terminate the staircase
             step_sizes: size of steps as a single value or a list/array. For a single value the step size is fixed.
@@ -400,7 +439,7 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
             min_val: smallest stimulus value permitted, or -Inf for staircase without lower limit
             max_val: largest stimulus value permitted, or Inf for staircase without upper limit
         """
-        self.name = name
+        self.label = label
         self.start_val = start_val
         self.n_up = n_up
         self.n_down = n_down
@@ -570,7 +609,7 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
     def print_trial_info(self):
         'Convenience method for printing current trial information.'
         print(
-            f'trial # {self.this_trial_n}: reversals: {len(self.reversal_points)}/{self.n_reversals}, intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
+            f'{self.label} | trial # {self.this_trial_n}: reversals: {len(self.reversal_points)}/{self.n_reversals}, intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
 
     def save_csv(self, fileName):
         'Write a csv text file with the stimulus values in the 1st line and the corresponding responses in the 2nd.'
@@ -586,41 +625,37 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
             responses = responses.replace(' ', ', ')
             f.write(responses)
 
-    def plot(self):
+    def plot(self, axis=None, **kwargs):
         'Plot the staircase. If called after each trial, one plot is created and updated.'
         if not have_pyplot:
             raise ImportError('Plotting requires matplotlib!')
-        x = numpy.arange(-self.n_pretrials, len(self.intensities)-self.n_pretrials)
-        y = numpy.array(self.intensities) # all previously played intensities
-        responses = numpy.array(self.data)
-        fig = plt.figure('stairs')  # figure 'stairs' is created or made current
-        plt.clf()
-        plt.plot(x, y)
-        ax = plt.gca()
-        ax.set_xlim(-self.n_pretrials, max(20, (self.this_trial_n + 15)//10*10))
-        ax.set_ylim(min(y) if self.min_val == -numpy.Inf else self.min_val,
-                    max(y) if self.max_val == numpy.Inf else self.max_val)
-        # plot green dots at correct/yes responses
-        ax.scatter(x[responses], y[responses], color='green')
-        # plot red dots at correct/yes responses
-        ax.scatter(x[~responses], y[~responses], color='red')
-        ax.scatter(len(self.intensities)-self.n_pretrials+1, self._next_intensity, color='grey') # grey dot for current trial
-        ax.set_ylabel('Dependent variable')
-        ax.set_xlabel('Trial')
-        ax.set_title('Staircase')
-        if self.finished:
-            plt.hlines(self.threshold(), min(x), max(x), 'r')
-        plt.draw()
-        plt.pause(0.1)
-        # if self.pf_intensities and plot_pf:
-        #	_, (ax1, ax2) = plt.subplots(1, 2, sharey='row', gridspec_kw={'width_ratios':[2, 1], 'wspace':0.1}, num='stairs') # prepare a second panel for the pf plot
-        #ax2.plot(self.pf_percent_correct, self.pf_intensities)
-        # point_sizes = self.pf_responses_per_intensity * 5 # 5 pixels per trial at each point
-        #ax2.scatter(self.pf_percent_correct, self.pf_intensities, s=point_sizes)
-        #ax2.set_xlabel('Hit rate')
-        # ax2.set_title('Psychometric\nfunction')
+        if self.intensities: # plotting only after first response
+            x = numpy.arange(-self.n_pretrials, len(self.intensities)-self.n_pretrials)
+            y = numpy.array(self.intensities) # all previously played intensities
+            responses = numpy.array(self.data)
+            if axis is None:
+                fig = plt.figure('stairs')  # figure 'stairs' is created or made current
+                axis = fig.gca()
+            axis.clear()
+            axis.plot(x, y, **kwargs)
+            axis.set_xlim(-self.n_pretrials, max(20, (self.this_trial_n + 15)//10*10))
+            axis.set_ylim(min(0, min(y)) if self.min_val == -numpy.Inf else self.min_val,
+                        max(y) if self.max_val == numpy.Inf else self.max_val)
+            # plot green dots at correct/yes responses
+            axis.scatter(x[responses], y[responses], color='green')
+            # plot red dots at correct/yes responses
+            axis.scatter(x[~responses], y[~responses], color='red')
+            axis.scatter(len(self.intensities)-self.n_pretrials+1, self._next_intensity, color='grey') # grey dot for current trial
+            axis.set_ylabel('Dependent variable')
+            axis.set_xlabel('Trial')
+            axis.set_title('Staircase')
+            if self.finished:
+                axis.hlines(self.threshold(), min(x), max(x), 'r')
+            plt.draw()
+            plt.pause(0.01)
 
     def close_plot(self):
+        'Closes a staircase plot (if not drawn into a specified axis).'
         plt.close('stairs')
 
     def _psychometric_function(self):
@@ -799,12 +834,16 @@ class Precomputed(list):
 
 def load_config(config_file):
     '''
-    Reads a text file with python varable assignments and returns a namedtuple with the variable names and values.
+    Reads a text file with python variable assignments and returns a namedtuple with the variable names and values.
 
     Contents of example.txt:
+
+    >>> cat example.txt
     samplerate = 32000
     pause_duration = 30
     speeds = [60,120,180]
+
+    Then call load_config to parse the file into a named tuple:
 
     >>> conf = load_config('example.txt')
     >>> conf.speeds
@@ -826,11 +865,11 @@ def load_config(config_file):
 
 if __name__ == '__main__':
     # Demonstration
-    tr = Trialsequence(conditions=5, n_reps=2, name='test')
+    tr = Trialsequence(conditions=5, n_reps=2, label='test')
     stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=[8, 4, 4, 2, 2, 1],
                        min_val=20, max_val=60, n_up=1, n_down=1, n_pretrials=4)
     for trial in stairs:
-        response = stairs.simulate_response(thresh=30, transition_width=10)
+        response = stairs.simulate_response(threshold=30, transition_width=10)
         stairs.add_response(response)
         stairs.print_trial_info()
         stairs.plot()
