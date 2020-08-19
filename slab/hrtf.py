@@ -52,7 +52,7 @@ class HRTF():
                 raise ValueError('Cannot specify samplerate when initialising HRTF from a file.')
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
-            try: # load from SOFA file
+            try:  # load from SOFA file
                 f = HRTF._sofa_load(data, verbose)
             except:
                 raise ValueError('Unable to read file.')
@@ -108,7 +108,7 @@ class HRTF():
     def _sofa_get_samplerate(f):
         'Returns the sampling rate of the recordings'
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
-        unit = attr['Units'].decode('UTF-8') # extract and decode Units
+        unit = attr['Units'].decode('UTF-8')  # extract and decode Units
         if unit in ('hertz', 'Hz'):
             return float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
@@ -161,14 +161,14 @@ class HRTF():
         '''
         return sorted(list(set(numpy.round(self.sources[:, 1]))))
 
-    def plot_tf(self, sourceidx, ear='left', plot_limits=(1000, 18000), nbins=None, kind='waterfall', linesep=20, xscale='linear', axis=None):
+    def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), nbins=None, kind='waterfall', linesep=20, xscale='linear', axis=None):
         '''
         Plots transfer functions of FIR filters at a list of source indices.
 
         Attributes:
             ear: which ear to plot ('left', 'right', 'both').
             sourceidx: should typically be generated with `hrtf.cone_sources(cone=0)` for midline sources at all elevations
-            plot_limits: determines the plotted frequency range in Hz
+            xlim: determines the plotted frequency range in Hz
             n_bins: passed to :meth:`slab.Filter.tf` and determines freqency resolution
             kind: `waterfall` (as in Wightman and Kistler, 1989) and `image` plots (as in Hofman 1998) are available
             linesep: sets the vertical distance between transfer functions in the waterfall plot
@@ -184,9 +184,9 @@ class HRTF():
         elif ear == 'both':
             chan = [0, 1]
             if kind == 'image':
-                fig1 = self.plot_tf(sourceidx, ear='left', plot_limits=plot_limits,
+                fig1 = self.plot_tf(sourceidx, ear='left', xlim=xlim,
                                     linesep=linesep, nbins=nbins, kind='image', xscale=xscale)
-                fig2 = self.plot_tf(sourceidx, ear='right', plot_limits=plot_limits,
+                fig2 = self.plot_tf(sourceidx, ear='right', xlim=xlim,
                                     linesep=linesep, nbins=nbins, kind='image', xscale=xscale)
                 return fig1, fig2
         else:
@@ -195,25 +195,22 @@ class HRTF():
         if not axis:
             fig, axis = plt.subplots()
         if kind == 'waterfall':
-            vertical_line_positions = numpy.arange(0, len(sourceidx)) * linesep
+            vlines = numpy.arange(0, len(sourceidx)) * linesep
             for idx, s in enumerate(sourceidx):
                 filt = self.data[s]
                 freqs, h = filt.tf(channels=chan, nbins=nbins, show=False)
-                axis.plot(freqs, h + vertical_line_positions[idx],
-                        linewidth=0.75, color='0.0', alpha=0.7)
-            ticks = vertical_line_positions[::3]  # plot every third elevation
+                axis.plot(freqs, h + vlines[idx],
+                          linewidth=0.75, color='0.0', alpha=0.7)
+            ticks = vlines[::3]  # plot every third elevation
             labels = numpy.round(self.sources[sourceidx, 1]*2, decimals=-1)/2
             # plot every third elevation label, ommit comma to save space
             labels = labels[::3].astype(int)
-            axis.set_yticks(ticks=vertical_line_positions, minor=True)
-            axis.tick_params(axis='y', which='minor', size=0)
-            axis.set_yticks(ticks=ticks)
-            axis.set_yticklabels(labels=labels)
+            axis.set(yticks=ticks, yticklabels=labels)
             axis.grid(b=True, axis='y', which='both', linewidth=0.25)
-            axis.plot([plot_limits[0]+500, plot_limits[0]+500], [vertical_line_positions[-1]+10,
-                                                               vertical_line_positions[-1]+10+linesep], linewidth=1, color='0.0', alpha=0.9)
-            axis.text(x=plot_limits[0]+600, y=vertical_line_positions[-1]+10+linesep/2,
-                    s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
+            axis.plot([xlim[0]+500, xlim[0]+500], [vlines[-1]+10, vlines[-1] +
+                                                   10+linesep], linewidth=1, color='0.0', alpha=0.9)
+            axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
+                      s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
         elif kind == 'image':
             if not nbins:
                 img = numpy.zeros((self.data[sourceidx[0]].ntaps, len(sourceidx)))
@@ -229,14 +226,11 @@ class HRTF():
             plt.colorbar()
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
-        axis.set_xlabel('Frequency [kHz]')
-        axis.set_ylabel('Elevation [˚]')
         axis.autoscale(tight=True)
-        axis.set_xlim(plot_limits)
-        axis.set_xscale(xscale)
         axis.xaxis.set_major_formatter(
             matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x/1000))))
         axis.tick_params('both', length=2, pad=2)
+        axis.set(xlabel='Frequency [kHz]', ylabel='Elevation [˚]', xlim=xlim, xscale=xscale)
         plt.show()
         return fig
 
