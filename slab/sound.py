@@ -563,18 +563,18 @@ class Sound(Signal):
     def filter(self, frequency=100, kind='hp'):
         '''
         Filters a sound in place. This is a convenience function to avoid calling
-        the Filter class for a standard lp/hp/bp/notch filter.
+        the Filter class for a standard low-, high-, bandpass, and bandstop filter.
 
         Arguments:
-            frequency: edge frequency in Hz or tuple of frequencies for bp and notch.
-            kind: 'lp', 'hp', bp, 'notch'
+            frequency: edge frequency in Hz or tuple of frequencies for bandpass and bandstop.
+            kind: 'lp', 'hp', bp, 'bs'
 
         >>> sig = Sound.whitenoise()
         >>> sig.filter(frequency=3000, kind='lp')
         >>> _ = sig.spectrum()
         '''
         n = min(1000, self.nsamples)
-        filt = Filter.cutoff_filter(
+        filt = Filter.band(
             frequency=frequency, kind=kind, samplerate=self.samplerate, length=n)
         self.data = filt.apply(self).data
 

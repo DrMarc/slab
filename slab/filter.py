@@ -29,7 +29,7 @@ class Filter(Signal):
     ntaps = property(fget=lambda self: self.nsamples, doc='The number of filter taps.')
     nfrequencies = property(fget=lambda self: self.nsamples, doc='The number of frequency bins.')
     frequencies = property(fget=lambda self: numpy.fft.rfftfreq(self.ntaps*2-1, d=1/self.samplerate)
-                           if not self.fir else None, doc='The frequency axis of the filter.')  # TODO: freqs for FIR?
+                           if not self.fir else None, doc='The frequency axis of the filter.')
 
     def __init__(self, data, samplerate=None, fir=True):
         if fir and not have_scipy:
@@ -43,26 +43,24 @@ class Filter(Signal):
     def __str__(self):
         if self.fir:
             return f'{type(self)}, filters {self.nfilters}, FIR: taps {self.ntaps}, samplerate {self.samplerate}'
-        else:
-            return f'{type(self)}, filters {self.nfilters}, FFT: freqs {self.nfrequencies}, samplerate {self.samplerate}'
+        return f'{type(self)}, filters {self.nfilters}, FFT: freqs {self.nfrequencies}, samplerate {self.samplerate}'
 
     @staticmethod
-    def cutoff_filter(frequency=100, kind='hp', samplerate=None, length=1000, fir=True):
+    def band(frequency=100, kind='hp', samplerate=None, length=1000, fir=True):
         '''
-        Generates a rectangular filter and returns it as new Filter object.
-        frequency: edge frequency in Hz (*1*) or tuple of frequencies for bp and bs.
-        type: 'lp' (lowpass), *'hp'* (highpass), bp (bandpass), 'bs' (bandstop, notch)
-        TODO: For costum filter shapes f and type are tuples with frequencies
-        in Hz and corresponding attenuations in dB. If f is a numpy array it is
-        taken as the target magnitude of the spectrum (imposing one sound's
-        spectrum on the current sound).
-        Examples:
+        Generates a simple passband or stopband filter and returns it as new Filter object.
+
+        Arguments:
+            frequency: edge frequency in Hz or tuple of frequencies for bp and bs.
+            kind: 'lp' (lowpass), 'hp' (highpass), 'bp' (bandpass), 'bs' (bandstop, notch)
+            samplerate: samplerate of the filter (defaults to the rate set with slab.set_default_samplerate)
+            length: number of taps or frequency bins of the filter
+            fir: whether to design a FIR or an FFR filter (FIR filters require Scipy)
 
         >>> sig = Sound.whitenoise()
         >>> filt = Filter(f=3000, kind='lp', fir=False)
         >>> sig = filt.apply(sig)
         >>> _ = sig.spectrum()
-
         '''
         samplerate = Filter.get_samplerate(samplerate)
         if fir:  # design a FIR filter
@@ -90,7 +88,7 @@ class Filter(Signal):
 
     def apply(self, sig):
         '''
-        Apply the filter to signal sig. If signal and filter have the same number of channels,
+        Apply the filter to signal `sig`. If signal and filter have the same number of channels,
         each filter channel will be applied to the corresponding channel in the signal.
         If the filter has multiple channels and the signal only 1, each filter is applied to othe same signal.
         In that case the filtered signal wil contain the same number of channels as the filter with every
@@ -142,7 +140,7 @@ class Filter(Signal):
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
         return out
 
-    def tf(self, channels='all', nbins=None, show=True, axes=None, **kwargs):
+    def tf(self, channels='all', nbins=None, show=True, axis=None, **kwargs):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
         Return transfer functions of filter at index 'channels' (int or list) or,
@@ -167,22 +165,21 @@ class Filter(Signal):
         else:
             w = self.frequencies
             h = 20 * numpy.log10(self.data[:, channels])
-            # interpolate if necessary
-            if not nbins == len(w):
+            if not nbins == len(w): # interpolate if necessary
                 w_interp = numpy.linspace(0, w[-1], nbins)
                 h_interp = numpy.zeros((nbins, len(channels)))
                 for idx, _ in enumerate(channels):
                     h_interp[:, idx] = numpy.interp(w_interp, w, h[:, idx])
                 h = h_interp
                 w = w_interp
-        if show or (axes is not None):
+        if show or (axis is not None):
             if not have_pyplot:
                 raise ImportError('Plotting transfer functions requires matplotlib.')
-            if axes is None:
-                axes = plt.subplot(111)
-            axes.plot(w, h, **kwargs)
-            axes.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
-            axes.grid(True)
+            if axis is None:
+                axis = plt.subplot(1)
+            axis.plot(w, h, **kwargs)
+            axis.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
+            axis.grid(True)
         if show:
             plt.show()
         else:
@@ -193,22 +190,20 @@ class Filter(Signal):
     def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, samplerate=None):
         """Create ERB cosine filterbank of n_filters.
 
-        length: Length of signal to be filtered with the generated
-        filterbank. The signal length determines the length of the filters.
-        samplerate: Sampling rate associated with the signal waveform.
-        bandwidth: of the filters (subbands) in octaves (default 1/3)
-        low_cutoff: Lower limit of frequency range (def  saults to 0).
-        high_cutoff: Upper limit of frequency range (defaults to samplerate/2).
-        pass_bands: boolean [*False*], whether to include half a cosine filter as lowpass and highpass.
-        If True, allows reconstruction of original bandwidth when collapsing subbands.
-
-        Example:
+        Attributes:
+            length: length of signal to be filtered with the generated
+                filterbank. The signal length determines the length of the filters.
+            samplerate: sampling rate associated with the signal waveform
+            bandwidth: of the filters (subbands) in octaves
+            low_cutoff: lower limit of frequency range
+            high_cutoff: upper limit of frequency range (defaults to samplerate/2).
+            pass_bands: True or False, whether to include half cosine filters as lowpass and highpass
+                If True, allows reconstruction of original bandwidth when collapsing subbands.
 
         >>> sig = Sound.pinknoise(samplerate=44100)
         >>> fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_cutoff=100, samplerate=sig.samplerate)
         >>> fbank.tf(plot=True)
         >>> sig_filt = fbank.apply(sig)
-
         """
         samplerate = Signal.get_samplerate(samplerate)
         if not high_cutoff:
@@ -322,9 +317,7 @@ class Filter(Signal):
         return Filter(data=filt, samplerate=target.samplerate, fir=True)
 
     def save(self, filename):
-        '''
-        Save the filter in numpy's .npy format to a file.
-        '''
+        'Save the filter in Numpys .npy format to a file.'
         fs = numpy.tile(self.samplerate, reps=self.nfilters)
         fir = numpy.tile(self.fir, reps=self.nfilters)
         fs = fs[numpy.newaxis, :]
@@ -334,9 +327,7 @@ class Filter(Signal):
 
     @staticmethod
     def load(filename):
-        '''
-        Load a filter from a .npy file.
-        '''
+        'Load a filter from a .npy file.'
         data = numpy.load(filename)
         samplerate = data[0][0]  # samplerate is in the first filter
         fir = bool(data[1][0])  # fir is in the first filter
@@ -355,8 +346,5 @@ class Filter(Signal):
 
 
 if __name__ == '__main__':
-    filt = Filter.cutoff_filter(frequency=15000, kind='hp', samplerate=44100)
-    sig_filt = filt.apply(filt)
-    f, Pxx = scipy.signal.welch(sig_filt.data, sig_filt.samplerate, axis=0)
-    plt.semilogy(f, Pxx)
-    plt.show()
+    filt = Filter.band(frequency=15000, kind='hp', samplerate=44100)
+    filt.tf()

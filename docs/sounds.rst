@@ -4,7 +4,7 @@ Sound
 
 Generating sounds
 -----------------
-The **Sound** class provides methods for generating, manipulating, displaying, and analysing sound stimuli.
+The :class:`Sound` class provides methods for generating, manipulating, displaying, and analysing sound stimuli.
 You can generate typical experimental stimuli with this class, including tones, noises, and click trains, and also more specialized stimuli, like equally-masking noises, Schroeder-phase harmonics, iterated ripple noise and synthetic vowels. For instance, let's make a 500ms long 500 Hz pure tone signal with a band-limited (one octave below and above the tone) pink noise background with a 10 dB signal-to-noise ratio: ::
 
   import slab
@@ -17,7 +17,7 @@ You can generate typical experimental stimuli with this class, including tones, 
   stimulus.ramp() # apply on- and offset ramps to avoid clicks
   stimulus.play()
 
-:class:`slab.Sound` objects have many useful methods for manipulating (like :meth:`.ramp`, :meth:`.filter`, and :meth:`.pulse`) or inspecting them (like :meth:`.waveform`, :meth:`.spectrum`, and :meth:`.spectral_feature`). A complete list is in the :ref:`Reference` section, and the majority is also discussed here. If you use IPython, you can tap the `tab` key after typing ``slab.Sound.``, or the name of any Sound object followed by a full stop, to get an interactive list of the possibilities.
+:class:`Sound` objects have many useful methods for manipulating (like :meth:`.ramp`, :meth:`.filter`, and :meth:`.pulse`) or inspecting them (like :meth:`.waveform`, :meth:`.spectrum`, and :meth:`.spectral_feature`). A complete list is in the :ref:`Reference` section, and the majority is also discussed here. If you use IPython, you can tap the `tab` key after typing ``slab.Sound.``, or the name of any Sound object followed by a full stop, to get an interactive list of the possibilities.
 
 Sounds can also be created by recording them with :meth:`slab.Sound.record`. For instance ``recording = slab.Sound.record(duration=1.0, samplerate=44100)`` will record a 1-second sound at 44100 Hz from the default audio input (usually the microphone). The ``record`` method uses `SoundCard <https://github.com/bastibe/SoundCard>`_ if installed, or `SoX <http://sox.sourceforge.net>`_ (via a temporary file) otherwise. Both are cross-platform and easy to install. If neither tool is installed, you won't be able to record sounds.
 
