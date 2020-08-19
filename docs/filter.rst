@@ -108,8 +108,8 @@ every recordings is represented by a channel in the :class:`slab.Sound` object).
 is applied to a multi-channel signal with the same number of channels each filter channel is applied to
 the corresponding signal channel. This is useful for e.g. equalization of a set of loudspeakers
 
-Applying Multiple Filters
--------------------------
+Equalization
+------------
 
 In Psychoacoustic experiments, we are often interested in the effect of a specific feature. One could,
 for example, take the bandpass filtered sounds from the example above and investigate how well listeners
