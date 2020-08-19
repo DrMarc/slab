@@ -8,6 +8,7 @@ import pathlib
 import datetime
 import json
 import zipfile
+import collections
 from contextlib import contextmanager
 from collections import Counter
 try:
@@ -15,7 +16,6 @@ try:
     have_curses = True
 except ImportError:
     have_curses = False
-import collections
 import numpy
 try:
     import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ results_folder = 'Results'
 input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard 'or 'buttonbox'
 
 class _buttonbox:
-    '''Class to allow easy switching between input from the keyboard via curses and from the custom buttonbox adapter
+    '''Adapter class to allow easy switching between input from the keyboard via curses and from the custom buttonbox adapter
     (arduino device that sends a keystroke followed by a return keystroke when pressing a button on the arduino).'''
     @staticmethod
     def getch():
@@ -109,7 +109,6 @@ class TrialPresentationOptions_mixin:
         else:
             stims = [target, distractors]  # assuming two sound objects
         order = numpy.random.permutation(len(stims))
-        print(order)
         for idx in order:
             stim = stims[idx]
             stim.play()
@@ -599,7 +598,7 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
         '''Returns the average (arithmetic for step_type == 'lin',
         geometric otherwise) of the last n reversals (default: n_reversals - 1).'''
         if self.finished:
-            if n > self.n_reversals:
+            if n == 0 or n > self.n_reversals:
                 n = int(self.n_reversals) - 1
             if self.step_type == 'lin':
                 return numpy.mean(self.reversal_intensities[-n:])
