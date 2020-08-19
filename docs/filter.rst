@@ -1,25 +1,30 @@
 .. currentmodule:: slab
 
+.. _filters:
+
 Filters
 =======
 
-The **Filter** class (inherits from :class:`slab.Signal`) can be used to generate, manipulate and save
-filter banks and transfer functions. Two typical use cases are lowpass/highpass filtering and
-loudspeaker equalization.
+The :class:`Filter` class can be used to generate, manipulate and save filter banks and transfer functions. Filters are represented internally as :class:`Signal` and come in two flavours: finite impulse responses (FIR) and frequency bin amplitudes (FFT). The :attr:`fir` (True or False).
 
+Simple Filters
+--------------
+Simple low-, high-, bandpass, and bandstop filters can be used to suppress selected frequency bands in a sound. For example, if you don't want the sound to contain power above 1 kHz, apply a 1 kHz lowpass filter:
 
-Cut-Off Filtering
------------------
+.. plot::
+    :include-source:
 
-The aim of a Cut-Off filter is to suppress certain parts of a signals power spectrum. For example, if we
-don't want our sound to contain power above 12 kHz (maybe our speakers can't go higher), we can generate
-the sound and then apply a 12 kHz lowpass Filter.
+    from matplotlib import pyplot as plt
+    sound = slab.Sound.whitenoise()
+    filt = slab.Filter.cutoff_filter(frequency=1000, kind='lp')
+    sound_filt = filt.apply(sound)
+    _, [ax1, ax2] = plt.subplots(2, sharex=True)
+    sound.spectrum(axis=ax1)
+    sound_filt.spectrum(axis=ax2)
 
-.. plot:: pyplots/filter1.py
-  :include-source:
+The :meth:`~Sound.filter` of the :class:`Sound` class wraps around :meth:`Filter.cutoff_filter` and :meth:`Filter.apply` so that you can use these filters conveniently from within the :class:`Sound` class.
 
-After filtering the sound does not carry any power above 12 kHz. Since filtering can cause artifacts
-in the time domain, it is good practice to always plot and inspect the filtered signal
+Filter design is tricky and it is good practice to plot and inspect the transfer function of the filter:
 
 .. plot:: pyplots/filter2.py
   :include-source:
