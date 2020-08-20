@@ -136,9 +136,9 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
         word  = next(word_seq)
         word2 = next(word_seq)
         word3 = next(word_seq)
-        jnd_stim = slab.Sound(stim_folder / word  / word+'_SER%.4g_GPR168_%i_%i.wav' % trial_parameters[:-1])
-        default_stim1 = slab.Sound(stim_folder / word2 / word2+'_SER%.4g_GPR168_%i_%i.wav' % default[:-1])
-        default_stim2 = slab.Sound(stim_folder / word3 / word3+'_SER%.4g_GPR168_%i_%i.wav' % default[:-1])
+        jnd_stim = slab.Sound(str(stim_folder / word  / word) + '_SER%.4g_GPR168_%i_%i.wav' % trial_parameters[:-1])
+        default_stim1 = slab.Sound(str(stim_folder / word2 / word2) + '_SER%.4g_GPR168_%i_%i.wav' % default[:-1])
+        default_stim2 = slab.Sound(str(stim_folder / word3 / word3) + '_SER%.4g_GPR168_%i_%i.wav' % default[:-1])
         trials.present_afc_trial(jnd_stim, [default_stim1, default_stim2], isi=ISI_stairs)
         response = trials.data[-1] # read out the last response
         if trial_parameters.label[:4] == 'room' and response: # hit!
@@ -150,7 +150,7 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
     print(f'hitrate: {hitrate}')
     farate = false_alarms/trials.n_trials
     print(f'false alarm rate: {farate}')
-    _results_file.write(trials, tag='trials')
+    _results_file.write(repr(trials), tag='trials')
 
 def main_experiment(subject=None):
     global _results_file
