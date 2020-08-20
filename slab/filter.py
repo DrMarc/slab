@@ -143,13 +143,10 @@ class Filter(Signal):
     def tf(self, channels='all', nbins=None, show=True, axis=None, **kwargs):
         '''
         Computes the transfer function of a filter (magnitude over frequency).
-        Return transfer functions of filter at index 'channels' (int or list) or,
-        if channels='all' return all transfer functions.
-        If plot=True then plot the response and return the figure handle,
-        else return magnitude and frequency vectors.
+        Returns transfer functions of filter at index 'channels' (int or list) or, if channels='all' returns all
+        transfer functions. If show=True then plot the response, else return magnitude and frequency vectors.
         '''
-        # check chan is in range of nfilters
-        if isinstance(channels, int):
+        if isinstance(channels, int): # check chan is in range of nfilters
             channels = [channels]
         elif channels == 'all':
             channels = list(range(self.nfilters))  # now we have a list of filter indices to process
@@ -176,7 +173,7 @@ class Filter(Signal):
             if not have_pyplot:
                 raise ImportError('Plotting transfer functions requires matplotlib.')
             if axis is None:
-                axis = plt.subplot(1)
+                axis = plt.subplot(111)
             axis.plot(w, h, **kwargs)
             axis.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
             axis.grid(True)
