@@ -7,12 +7,9 @@ Use like this:
 '''
 
 import time
-import functools
 import pathlib
-import os
 import collections
 import numpy
-import scipy
 import slab
 
 # confiuration
@@ -67,7 +64,7 @@ def jnd(condition, practise=False):
     condition_values = globals()[condition+'s'] # get the parameter list (vars rooms, voices, or itds) from condition string
     while repeat == 'r':
         # make a random, non-repeating list of words to present during the staircase
-        word_seq = slab.Trialsequence(conditions=word_list, kind='infinite', name='word_seq')
+        word_seq = slab.Trialsequence(conditions=word_list, kind='infinite', label='word_seq')
         # define the staircase
         if practise:
             stairs = slab.Staircase(start_val=len(condition_values)-1, n_reversals=3,
@@ -90,10 +87,10 @@ def jnd(condition, practise=False):
                 jnd_stim = slab.Sound(stim_folder / word  / f'{word}_SER{default_voice:.4g}_GPR168_{default_room}_{current}.wav')
             default_stim1 = slab.Sound(stim_folder / word2 / f'{word2}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
             default_stim2 = slab.Sound(stim_folder / word3 / f'{word3}_SER{default_voice:.4g}_GPR168_{default_room}_{default_itd}.wav')
-            stairs.present_afc_trial(jnd_stim, [default_stim1, default_stim2], isi=ISI_stairs)
+            stairs.present_afc_trial(jnd_stim, [default_stim1, default_stim2], isi=ISI_stairs, print_info=practise)
             if practise:
                 stairs.plot()
-        thresh = stairs.threshold(n=6)
+        thresh = stairs.threshold()
         thresh_condition_value = condition_values[numpy.ceil(thresh).astype('int')]
         if practise:
             stairs.close_plot()
@@ -130,7 +127,7 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
     itd = condition(voice=default_voice, room=default_room, itd=jnd_itd, label='itd')
     conditions = [default, room, room_voice, room_itd, voice, itd]
     trials = slab.Trialsequence(conditions=conditions, n_reps=10, kind='random_permutation')
-    word_seq = slab.Trialsequence(conditions=word_list, kind='infinite', name='word_seq')
+    word_seq = slab.Trialsequence(conditions=word_list, kind='infinite', label='word_seq')
     hits = 0
     false_alarms = 0
     _results_file.write(f'interference block:', tag='time')
@@ -139,9 +136,9 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
         word  = next(word_seq)
         word2 = next(word_seq)
         word3 = next(word_seq)
-        jnd_stim = slab.Sound(stim_folder / word  / word+'_SER%.4g_GPR168_%i_%i.wav' % trial_parameters)
-        default_stim1 = slab.Sound(stim_folder / word2 / word2+'_SER%.4g_GPR168_%i_%i.wav' % default)
-        default_stim2 = slab.Sound(stim_folder / word3 / word3+'_SER%.4g_GPR168_%i_%i.wav' % default)
+        jnd_stim = slab.Sound(str(stim_folder / word  / word) + '_SER%.4g_GPR168_%i_%i.wav' % trial_parameters[:-1])
+        default_stim1 = slab.Sound(str(stim_folder / word2 / word2) + '_SER%.4g_GPR168_%i_%i.wav' % default[:-1])
+        default_stim2 = slab.Sound(str(stim_folder / word3 / word3) + '_SER%.4g_GPR168_%i_%i.wav' % default[:-1])
         trials.present_afc_trial(jnd_stim, [default_stim1, default_stim2], isi=ISI_stairs)
         response = trials.data[-1] # read out the last response
         if trial_parameters.label[:4] == 'room' and response: # hit!
@@ -153,7 +150,7 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
     print(f'hitrate: {hitrate}')
     farate = false_alarms/trials.n_trials
     print(f'false alarm rate: {farate}')
-    _results_file.write(trials, tag='trials')
+    _results_file.write(repr(trials), tag='trials')
 
 def main_experiment(subject=None):
     global _results_file
