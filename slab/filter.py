@@ -46,12 +46,12 @@ class Filter(Signal):
         return f'{type(self)}, filters {self.nfilters}, FFT: freqs {self.nfrequencies}, samplerate {self.samplerate}'
 
     @staticmethod
-    def band(frequency=100, kind='hp', samplerate=None, length=1000, fir=True):
+    def band(frequency=100, gain=None, kind='hp', samplerate=None, length=1000, fir=True):
         '''
-        Generates a simple passband or stopband filter and returns it as new Filter object.
+        Design simple passband or stopband filters, or filters with a transfer function set by frequency/gain pairs.
 
         Arguments:
-            frequency: edge frequency in Hz or tuple of frequencies for bp and bs.
+            frequency: edge frequency in Hz or tuple of frequencies for bp and bs. If
             kind: 'lp' (lowpass), 'hp' (highpass), 'bp' (bandpass), 'bs' (bandstop, notch)
             samplerate: samplerate of the filter (defaults to the rate set with slab.set_default_samplerate)
             length: number of taps or frequency bins of the filter
@@ -66,24 +66,34 @@ class Filter(Signal):
         if fir:  # design a FIR filter
             if not have_scipy:
                 raise ImportError('Generating FIR filters requires Scipy.')
-            if kind in ['lp', 'bs']:
-                pass_zero = True
-            elif kind in ['hp', 'bp']:
-                pass_zero = False
-            filt = scipy.signal.firwin(length, frequency, pass_zero=pass_zero, fs=samplerate)
+            if gain is None: # design band filter
+                if kind in ['lp', 'bs']:
+                    pass_zero = True
+                elif kind in ['hp', 'bp']:
+                    pass_zero = False
+                if kind in ['hp', 'bs'] and not length % 2: # high at nyquest requires odd n_taps
+                    filt = scipy.signal.firwin(length-1, frequency, pass_zero=pass_zero, fs=samplerate)
+                    filt = numpy.append(filt, 0) # extend to original length
+                else:
+                    filt = scipy.signal.firwin(length, frequency, pass_zero=pass_zero, fs=samplerate)
+            else:
+                filt = scipy.signal.firwin2(numtaps=length, freq=[0] + frequency + [samplerate/2], gain=[0] + gain + [0], fs=samplerate)
         else:  # FFR filter
-            st = 1 / (samplerate/2)
-            df = 1 / (st * length)
-            filt = numpy.zeros(length)
-            if kind == 'lp':
-                filt[:round(frequency/df)] = 1
-            if kind == 'hp':
-                filt[round(frequency/df):] = 1
-            if kind == 'bp':
-                filt[round(frequency[0]/df):round(frequency[1]/df)] = 1
-            if kind == 'notch':
-                filt[:round(frequency[0]/df)] = 1
-                filt[round(frequency[1]/df):] = 1
+            df = (samplerate/2) / (length-1)
+            if gain is None:
+                filt = numpy.zeros(length)
+                if kind == 'lp':
+                    filt[:round(frequency/df)] = 1
+                if kind == 'hp':
+                    filt[round(frequency/df):] = 1
+                if kind == 'bp':
+                    filt[round(frequency[0]/df):round(frequency[1]/df)] = 1
+                if kind == 'notch':
+                    filt[:round(frequency[0]/df)] = 1
+                    filt[round(frequency[1]/df):] = 1
+            else:
+                freqs = numpy.arange(0, (samplerate/2)+df, df) # frequency bins
+                filt = numpy.interp(freqs, [0] + frequency + [samplerate/2], [0] + gain + [0])
         return Filter(data=filt, samplerate=samplerate, fir=fir)
 
     def apply(self, sig):
@@ -161,7 +171,9 @@ class Filter(Signal):
                 h[:, i] = 20 * numpy.log10(numpy.abs(_h.flatten()))
         else:
             w = self.frequencies
-            h = 20 * numpy.log10(self.data[:, channels])
+            data = self.data[:, channels]
+            data[data == 0] += numpy.finfo(float).eps
+            h = 20 * numpy.log10(data)
             if not nbins == len(w): # interpolate if necessary
                 w_interp = numpy.linspace(0, w[-1], nbins)
                 h_interp = numpy.zeros((nbins, len(channels)))
@@ -173,7 +185,7 @@ class Filter(Signal):
             if not have_pyplot:
                 raise ImportError('Plotting transfer functions requires matplotlib.')
             if axis is None:
-                axis = plt.subplot(111)
+                _, axis = plt.subplots()
             axis.plot(w, h, **kwargs)
             axis.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
             axis.grid(True)
@@ -258,7 +270,7 @@ class Filter(Signal):
         return center_freqs
 
     @staticmethod
-    def equalizing_filterbank(target, signal, length=1000, low_cutoff=200, high_cutoff=16000, bandwidth=1/8, alpha=1.0):
+    def equalizing_filterbank(target, signal, length=1000, low_cutoff=200, high_cutoff=None, bandwidth=1/8, alpha=1.0):
         '''
         Generate an equalizing filter from the difference between a signal and a target.
         The main intent of the function is to help with equalizing the differences between transfer functions of
@@ -275,18 +287,21 @@ class Filter(Signal):
             raise ImportError('Generating equalizing filter banks requires Scipy.')
         if target.nchannels > 1:
             raise ValueError("The target sound must have only one channel!")
-        if bool(target.nsamples % 2):  # number of samples must be even:
+        if bool(target.nsamples % 2): # number of samples must be even:
             target.resize(target.nsamples+1)
         if bool(signal.nsamples % 2):
             signal.resize(signal.nsamples+1)
-        if target.samplerate > signal.samplerate:  # resample higher to lower rate if necessary
+        if target.samplerate > signal.samplerate: # resample higher to lower rate if necessary
             target = target.resample(signal.samplerate)
-        else:
+        elif target.samplerate < signal.samplerate:
             signal = signal.resample(target.samplerate)
+        if high_cutoff is None:
+            high_cutoff = target.samplerate/2
         fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth,
                                       low_cutoff=low_cutoff, high_cutoff=high_cutoff, samplerate=target.samplerate)
         center_freqs, _, _ = Filter._center_freqs(low_cutoff, high_cutoff, bandwidth)
-        center_freqs = Filter._erb2freq(center_freqs)
+        center_freqs = list(Filter._erb2freq(center_freqs))
+        center_freqs[-1] = min(center_freqs[-1], target.samplerate/2)
         # level of the target in each of the subbands
         levels_target = fbank.apply(target).level
         # make it the same shape as levels_signal
@@ -294,24 +309,20 @@ class Filter(Signal):
         # level of each channel in the signal in each of the subbands
         levels_signal = numpy.ones((len(center_freqs), signal.nchannels))
         for idx in range(signal.nchannels):
-            levels_signal[:, idx] = \
-                fbank.apply(signal.channel(idx)).level
+            levels_signal[:, idx] = fbank.apply(signal.channel(idx)).level
         amp_diffs = levels_target - levels_signal
         max_diffs = numpy.max(numpy.abs(amp_diffs), axis=0)
         max_diffs[max_diffs == 0] = 1
-        # normalize by divding by maximum for each speaker
         amp_diffs = amp_diffs/max_diffs
         amp_diffs *= alpha  # apply factor for filter regulation
         amp_diffs += 1  # add 1 because gain = 1 means "do nothing"
-        # filter freqs must include 0 and nyquist frequency:
-        freqs = numpy.concatenate(([0], center_freqs, [target.samplerate/2]))
-        filt = numpy.zeros((length, signal.nchannels))  # filter data
-        # create the filter for each channel of the signal:
-        for idx in range(signal.nchannels):
-            gain = numpy.concatenate(([1.0], amp_diffs[:, idx], [0]))  # gain must be 0 at nyquist
-            filt[:, idx] = scipy.signal.firwin2(
-                length, freq=freqs, gain=gain, fs=target.samplerate)
-        return Filter(data=filt, samplerate=target.samplerate, fir=True)
+        center_freqs = [0] + center_freqs
+        filts = numpy.zeros((length, signal.nchannels))
+        for chan in range(signal.nchannels):
+            gain = [1] + list(amp_diffs[:,chan])
+            filt = Filter.band(frequency=list(center_freqs), gain=gain, samplerate=target.samplerate, fir=True)
+            filts[:,chan] = filt.data.flatten()
+        return Filter(data=filts, samplerate=target.samplerate, fir=True)
 
     def save(self, filename):
         'Save the filter in Numpys .npy format to a file.'
