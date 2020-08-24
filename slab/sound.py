@@ -667,7 +667,7 @@ class Sound(Signal):
             end = self.nsamples
         end = self.in_samples(end, self.samplerate)
         if axis is None:
-            axis = plt.subplot()
+            _, axis = plt.subplots()
         if self.nchannels == 1:
             axis.plot(self.times[start:end], self.channel(0)[start:end], **kwargs)
         elif self.nchannels == 2:
@@ -727,7 +727,7 @@ class Sound(Signal):
             cmap = matplotlib.cm.get_cmap('Greys')
             extent = (times.min(), times.max(), freqs.min(), upper_frequency or freqs.max())
             if axis is None:
-                axis = plt.subplot()
+                _, axis = plt.subplots()
             axis.imshow(power, origin='lower', aspect='auto',
                         cmap=cmap, extent=extent, vmin=vmin, vmax=None, **kwargs)
             axis.set(title='Spectrogram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
@@ -754,7 +754,7 @@ class Sound(Signal):
                 raise ImportError('Plotting cochleagrams requires matplotlib.')
             cmap = matplotlib.cm.get_cmap('Greys')
             if axis is None:
-                axis = plt.subplot(111)
+                _, axis = plt.subplots()
             axis.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
             labels = list(freqs.astype(int))
             axis.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
@@ -803,7 +803,7 @@ class Sound(Signal):
             if not have_pyplot:
                 raise ImportError('Plotting spectra requires matplotlib.')
             if axis is None:
-                axis = plt.subplot()
+                _, axis = plt.subplots()
             axis.semilogx(freqs, Z, **kwargs)
             ticks_freqs = numpy.round(32000 * 2 **
                                       (numpy.arange(12, dtype=float)*-1))
