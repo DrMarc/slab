@@ -102,7 +102,7 @@ You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or 
     signal.spectrum(axis=ax4)
 
 Instead of plotting, :meth:`.spectrum` and :meth:`.spectrogram` will return the time frequency bins and spectral power values for further analysis if you set the :attr:`show` argument to False. All plotting functions can draw into an existing matplotlib.pyplot axis supplied with the :attr:`axis` argument.
-
+.. _spectral_features:
 You can also extract common features from sounds, such as the :meth:`.crest_factor` (a measure of how 'peaky' the waveform is), or the average :meth:`.onset_slope` (a measure of how fast the on-ramps in the sound are---important for sound localization). Features of the spectral content are bundled in the :meth:`.spectral_feature` method. It can compute spectral centroid, flux, flattness, and roll-off. When working with environmental sounds or other recorded stimuli, one often needs to compute relevant features for collections of recordings in different experimental conditions. The slab module contains a function :func:`slab.apply_to_path`, which applies a function to all wav files in a given folder and returns a dictionary of file names and computed features. In fact, you can also use that function to modify (for instance ramp and filter) all files in a folder.
 
 For other time-frequency processing, the :meth:`.frames` provides an easy way to step through the signal in short windowed frames and compute some values from it. For instance, you could detect on- and offsets in the signal by computing the crest factor in each frame: ::
