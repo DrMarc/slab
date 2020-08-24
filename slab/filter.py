@@ -77,7 +77,14 @@ class Filter(Signal):
                 else:
                     filt = scipy.signal.firwin(length, frequency, pass_zero=pass_zero, fs=samplerate)
             else:
-                filt = scipy.signal.firwin2(numtaps=length, freq=[0] + frequency + [samplerate/2], gain=[0] + gain + [0], fs=samplerate)
+                dc = dc_gain = []
+                if frequency[0] != 0:
+                    dc = dc_gain = [0]
+                nyq = nyq_gain = []
+                if frequency[-1] != samplerate/2:
+                    nyq = [samplerate/2]
+                    nyq_gain = [0]
+                filt = scipy.signal.firwin2(numtaps=length, freq=dc+frequency+nyq, gain=dc_gain+gain+nyq_gain, fs=samplerate)
         else:  # FFR filter
             df = (samplerate/2) / (length-1)
             if gain is None:
