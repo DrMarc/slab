@@ -1,56 +1,51 @@
 Introduction
 ============
 
-Markup
-------
-*italic*, **bold**, `link <www.python.org>`_
+Overview
+--------
 
-all headings can be linked to elsewhere in the same file: Markup_
+In this documentation we do not aim at providing a comprehensive explanation of
+every single slab function (a complete description can be found in the :ref:`Reference` section).
+Rather, we want to provide some guidance for you to start generating sounds and running experiments.
 
-* This is a bulleted list.
-* It has two items, the second
-  item uses two lines. (note the indentation)
+For starters, you should have a look at the :ref:`Sounds` section. There, you will learn how to
+generate, manipulate and write/read Sounds in slab. Next, you should see the :ref:`Psychoacoustics`
+section which is about generating trial sequences and running experiments. With these tools you can
+already do plenty of things! For example...
 
-1. This is a numbered list.
-2. It has two items too.
+The :ref:`Filter` section contains some more advanced, but powerful, methods for processing
+digital signals. The :ref:`HRTFs` section describes the handling of head related transfer functions and
+will only be relevant if you are interested in spatial audio.
 
-#. This continues the numbered list.
 
-Display a code block::
-    import slab
-    print('Hello world!')
+Frequently Asked Questions
+--------------------------
 
-To highlight a note in a box:
+* **I have set the level of a sound to 70 dB but it is way louder, why?**
+This is because soundlab does not know the system you are using to play sound.
+For example: white noise is generated so that the maximum value in the time
+series is +1 and the minimum minus one. This signal is assigned a loudness of
+82 dB per default but this is not a meaningful value because a +1 to -1 signal
+might be interpreted differently by different systems. See :ref:`calibration`
+on how to to adjust soundlab to your setup.
 
-.. note::  Use this for summaries or other important points to remember.
 
-Or highlight a warning in a red box:
+* **What is the difference between white noise and pink noise?**
+White noise is a signal that consists of random numbers. This signal has equal
+power at all frequencies. However, our auditory system does not perceive it that way
+which is why white noise appears high-pitched. In the pink noise signal, the power
+decreases with frequency to correct for this effect. You can use the function
+:func:`Sound.powerlawnoise` to create your own noise.
 
-.. warning:: Use this for exception or other unexpected behavior of the code.
 
-Add a footnote [#f1]_ .
+* **How can i make sure that the sounds I am using are similar in their low-level features?**
+There is no conclusive list of sound features that are important but several ones are implemented
+in :meth:spectral_feature. You could also construct a control condition by extracting the sounds
+envelope and generating noise that has the same temporal properties as the original sound.
 
-Test-render your text `here. <http://rst.ninjs.org/?theme=nature>`_
 
-As described in [Hofman98]_, you can cite papers. The references should be at the end of the document, but it may be more useful to directly link to the pubmed page: `Hofman (1998) <https://pubmed.ncbi.nlm.nih.gov/10196533/>`
-
-Python-specific
----------------
-
-To describe a function:
-
-.. function:: enumerate(sequence[, start=0])
-
-   Return an iterator that yields tuples of an index and an item of the
-   *sequence*. (And so on.)
-
-This also works for ``.. class::`` and ``.. method::``
-
-You can then refer to these definitions elsewhere in the text: The :func:`enumerate` function can be used for ...
-Thanks to intersphinx you can also refer to external functions in numpy, scipy and matplotlib: :func:`scipy.signal.spectrogram`
-
-.. rubric:: Footnotes
-.. [#f1] if necessary.
-
-.. rubric:: References
-.. [Hofman98] Hofman (1998) Relearning sound localization with new ears. Nat Neurosci 1(5):417-21
+* **What can I do if I am experiencing a problem that is not listed above?**
+You can post it in the `'Issues' <https://github.com/DrMarc/soundlab/issues>`_ section on our GitHub repository.
+When opening a new issue, try to be as precise as possible. Specify your operating
+system and the version of python (and libraries) that you are using. List all the
+steps that lead to the problem so we can copy them and reproduce the error.
