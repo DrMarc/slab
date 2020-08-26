@@ -2,6 +2,7 @@ Worked examples
 ===============
 
 .. _audiogram:
+
 Audiogram
 ---------
 
