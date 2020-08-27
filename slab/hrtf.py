@@ -3,6 +3,7 @@ Class for reading and manipulating head-related transfer functions. Reads files 
 python implementations of the sofa conventions were available -> will be migrated to use pysofaconventions!)
 '''
 
+import copy
 import warnings
 import pathlib
 import numpy
@@ -16,7 +17,7 @@ except ImportError:
 try:
     from mpl_toolkits.mplot3d import Axes3D
     have_mplot3d = True
-except:
+except ImportError:
     have_mplot3d = False
 try:
     #import h5py
@@ -251,17 +252,19 @@ class HRTF():
 
     def diffuse_field_equalization(self):
         '''
-        Apply a diffuse field equalization to an HRTF in place. The resulting filters have zero mean and are of type FFR.
+        Returns a diffuse field equalized version of the HRTF. The resulting filters have zero mean and are of type FFR.
         '''
         dfa = self.diffuse_field_avg()
         # invert the diffuse field average
         dfa.data = 1/dfa.data
+        dtfs = copy.deepcopy(self)
         # apply the inverted filter to the HRTFs
-        for source in range(self.nsources):
-            filt = self.data[source]
+        for source in range(dtfs.nsources):
+            filt = dtfs.data[source]
             _, h = filt.tf(show=False)
             h = 10 ** (h / 20) * dfa
-            self.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
+            dtfs.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
+        return dtfs
 
     def cone_sources(self, cone=0):
         '''
@@ -301,9 +304,29 @@ class HRTF():
         n_sources = len(source_list)
         tfs = numpy.zeros((n_bins, n_sources))
         for idx, source in enumerate(source_list):
-            freqs, jwd = self.data[source].tf(channels=0, nbins=96, plot=False)
+            freqs, jwd = self.data[source].tf(channels=0, nbins=96, show=False)
             tfs[:, idx] = jwd.flatten()
         return tfs
+
+    def vsi(self, equalize=True):
+        '''
+        Compute a measure of the dissimilarity of spectral profiles at different elevations ("vertical spectral information"), which relates to behavioral localization accuracy in the vertical dimension (Trapeau and Schönwiesner, 2016).
+
+        If `equalize` is True, the method applies a `diffuse_field_equalization()` (set to False if the hrtf object is already diffuse-field equalized), then computes the average of the correlation coefficients between all combinations of DTFs in the vertical median plane (obtained from `cone_sources()`). VSI measures the average dissimilarity of DTFs as 1 minus the average of the coefficients. A DTF set of identical transfer functions for all elevations will result in a VSI of 0, whereas highly different transfer functions will result in a high VSI (empirical maximum is ~1.07, KEMAR has a VSI of 0.82).
+        '''
+        sources = self.cone_sources()
+        if equalize:
+            dtf = self.diffuse_field_equalization()
+            tfs = dtf.tfs_from_sources(source_list=sources)
+        else:
+            tfs = self.tfs_from_sources(source_list=sources)
+        sum_corr = 0
+        n = 0
+        for i in range(len(sources)):
+            for j in range(i+1, len(sources)):
+                sum_corr += numpy.corrcoef(tfs[:,i], tfs[:,j])[1,0]
+                n += 1
+        return 1 - sum_corr / n
 
     def plot_sources(self, idx=False):
         'Plot source locations in 3D, highlighting a list of sources if indices are provided with `idx`.'
