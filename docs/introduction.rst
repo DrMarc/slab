@@ -47,9 +47,11 @@ in :meth:`spectral_feature`. You could also construct a control condition by ext
 envelope and generating noise that has the same temporal properties as the original sound.
 
 
-* **What can I do if I am experiencing a problem that is not listed above?**
+* **I think I found a bug!**
 
-You can post it in the `'Issues' <https://github.com/DrMarc/soundlab/issues>`_ section on our GitHub repository.
-When opening a new issue, try to be as precise as possible. Specify your operating
-system and the version of python (and libraries) that you are using. List all the
-steps that lead to the problem so we can copy them and reproduce the error.
+Please see the [bug reports](https://github.com/user/DrMarc/soundlab/CONTRIBUTING.md#bugs) section in the contribution guidelines.
+
+
+* **How can I contribute to the project?**
+
+Please see the [pull request](https://github.com/user/DrMarc/soundlab/CONTRIBUTING.md#pull-requests) section in the contribution guidelines if you want to contribute code or useful examples for the documentation.
