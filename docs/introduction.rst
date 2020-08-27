@@ -49,9 +49,9 @@ envelope and generating noise that has the same temporal properties as the origi
 
 * **I think I found a bug!**
 
-Please see the [bug reports](https://github.com/user/DrMarc/soundlab/CONTRIBUTING.md#bugs) section in the contribution guidelines.
+Please see the `bug reports <https://github.com/user/DrMarc/soundlab/CONTRIBUTING.md#bugs>`_ section in the contribution guidelines.
 
 
 * **How can I contribute to the project?**
 
-Please see the [pull request](https://github.com/user/DrMarc/soundlab/CONTRIBUTING.md#pull-requests) section in the contribution guidelines if you want to contribute code or useful examples for the documentation.
+Please see the `pull request <https://github.com/user/DrMarc/soundlab/CONTRIBUTING.md#pull-requests>`_ section in the contribution guidelines if you want to contribute code or useful examples for the documentation.
