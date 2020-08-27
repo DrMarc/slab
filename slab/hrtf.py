@@ -304,17 +304,23 @@ class HRTF():
         n_sources = len(source_list)
         tfs = numpy.zeros((n_bins, n_sources))
         for idx, source in enumerate(source_list):
-            freqs, jwd = self.data[source].tf(channels=0, nbins=96, show=False)
+            _, jwd = self.data[source].tf(channels=0, nbins=96, show=False)
             tfs[:, idx] = jwd.flatten()
         return tfs
 
-    def vsi(self, equalize=True):
+    def vsi(self, sources=None, equalize=True):
         '''
         Compute a measure of the dissimilarity of spectral profiles at different elevations ("vertical spectral information"), which relates to behavioral localization accuracy in the vertical dimension (Trapeau and Schönwiesner, 2016).
 
-        If `equalize` is True, the method applies a `diffuse_field_equalization()` (set to False if the hrtf object is already diffuse-field equalized), then computes the average of the correlation coefficients between all combinations of DTFs in the vertical median plane (obtained from `cone_sources()`). VSI measures the average dissimilarity of DTFs as 1 minus the average of the coefficients. A DTF set of identical transfer functions for all elevations will result in a VSI of 0, whereas highly different transfer functions will result in a high VSI (empirical maximum is ~1.07, KEMAR has a VSI of 0.82).
+        If `equalize` is True, the method applies a `diffuse_field_equalization()` (set to False if the hrtf object is already diffuse-field equalized), then computes the average of the correlation coefficients between all combinations of DTFs on the vertical midline (obtained from `cone_sources()`) or any other set of source indices supplied as `sources`. VSI measures the average dissimilarity of DTFs as 1 minus the average of the coefficients. A DTF set of identical transfer functions for all elevations will result in a VSI of 0, whereas highly different transfer functions will result in a high VSI (empirical maximum is ~1.07, KEMAR has a VSI of 0.82). To obtain the VSI measure from the paper, sources should on the vertical midline and the hrtf should be diffuse-field equalized.
+
+        Attributes:
+            sources: indices of sources for which to compute the VSI (default is the vertical midline)
+            equalize: if True, apply diffuse field equalization, saves a bit of computing time when set to false
+                      and the hrtf is already equalized.
         '''
-        sources = self.cone_sources()
+        if sources is None:
+            sources = self.cone_sources()
         if equalize:
             dtf = self.diffuse_field_equalization()
             tfs = dtf.tfs_from_sources(source_list=sources)
