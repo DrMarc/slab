@@ -38,7 +38,7 @@ When programming we use the command line with IPython and the Atom text editor w
 
 * **I get import errors when using certain functions!**
 
-Slab requires additional modules for some functionality. These modules are not installed automatically because not everyone may need them (such as HRTF file reading) or the installation is OS-dependent (such as SoundFile and curses). Please see :ref:`dependencies` for how and what to install should you need it. The import error messages will in most cases give you the necessary installation command for Mac/Linux systems.
+Slab requires additional modules for some functionality. These modules are not installed automatically because not everyone may need them (such as HRTF file reading) or the installation is OS-dependent (such as SoundFile and curses). Please see :ref:`installation` for how and what to install should you need it. The import error messages will in most cases give you the necessary installation command for Mac/Linux systems.
 
 
 * **I have set the level of a sound to 70 dB but it is way louder, why?**
