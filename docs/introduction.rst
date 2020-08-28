@@ -21,14 +21,29 @@ will only be relevant if you are interested in spatial audio.
 Frequently Asked Questions
 --------------------------
 
+* **Where can I learn enough Python to use this module?**
+
+You can find many free courses online. We usually point our students to `Google's Python class <https://developers.google.com/edu/python>`_. For those of you who prefer video, Coursera has two suitable courses: `Python for Everybody <https://www.coursera.org/learn/python>`_ and `An Introduction to Interactive Programming with Python <https://www.coursera.org/learn/interactive-python-1?trk=profile_certification_title>`_.
+There are also courses specifically for sound and signal processing, for instance `this one <https://www.coursera.org/learn/audio-signal-processing>`_.
+
+
+* **Which Python environment do you use in the lab?**
+
+We recommend `miniconda <https://docs.conda.io/en/latest/miniconda.html>`_, which bundles Python and the conda package manager and installs quickly. You can then install only the packages that you need for your work, like IPython, numpy, scipy, and matplotlib, with a single command::
+
+    conda install ipython numpy scipy matplotlib
+
+When programming we use the command line with IPython and the Atom text editor with a package for syntax highlighting. Some lab members use `PyCharm <https://www.jetbrains.com/pycharm/>`_ or `Spyder <https://www.spyder-ide.org>`_ as integrated development environments. We don't recommend IDEs for beginners, because in our experience, students tend to conflate the IDE with Python itself and develop programming habits that they need to unlearn when they want to get productive.
+
+
+* **I get import errors when using certain functions!**
+
+Slab requires additional modules for some functionality. These modules are not installed automatically because not everyone may need them (such as HRTF file reading) or the installation is OS-dependent (such as SoundFile and curses). Please see :ref:`dependencies` for how and what to install should you need it. The import error messages will in most cases give you the necessary installation command for Mac/Linux systems.
+
+
 * **I have set the level of a sound to 70 dB but it is way louder, why?**
 
-This is because soundlab does not know the system you are using to play sound.
-For example: white noise is generated so that the maximum value in the time
-series is +1 and the minimum minus one. This signal is assigned a loudness of
-82 dB per default but this is not a meaningful value because a +1 to -1 signal
-might be interpreted differently by different systems. See :ref:`calibration`
-on how to to adjust soundlab to your setup.
+This is because soundlab does not know the hardware you are using to play sound. For example, white noise is generated so that the maximum value in the time series is +1 and the minimum minus one ("full scale"). The RMS of this signal, expressed in deciBel happens to be about 82 dB, but you need to calibrate your system (see :ref:`calibration`) so that the calculated intensity and the actual output intensity are .
 
 
 * **What is the difference between white noise and pink noise?**
@@ -40,7 +55,7 @@ decreases with frequency to correct for this effect. You can use the function
 :func:`Sound.powerlawnoise` to create your own noise.
 
 
-* **How can i make sure that the sounds I am using are similar in their low-level features?**
+* **How can I make sure that the sounds I am using are similar in their low-level features?**
 
 There is no conclusive list of sound features that are important but several ones are implemented
 in :meth:`spectral_feature`. You could also construct a control condition by extracting the sounds

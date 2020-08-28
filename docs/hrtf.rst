@@ -5,6 +5,8 @@ HRTFs
 
 The :class:`HRTF` class provides methods for manipulating, plotting, and applying head-related transfer functions.
 
+.. warning:: To read HRTF files in the sofa format, you need to install the h5netcdf module: `pip install h5netcdf`.
+
 .. note:: The class is at the moment geared towards plotting and analysis of HRTF files in the `sofa format <https://www.sofaconventions.org/>`_, because we needed that functionality for grant applications. The functionality will grow as we start to record and manipulate HRTFs more often.
 
 .. note:: When we started to writing this code, there was no python module for reading and writing sofa files. Now that `pysofaconventions <https://github.com/andresperezlopez/pysofaconventions>`_ is available, we will at some point switch internally to using that module as backend for reading sofa files, instead of our own limited implementation.
