@@ -20,7 +20,6 @@ try:
 except ImportError:
     have_mplot3d = False
 try:
-    #import h5py
     import h5netcdf
     have_h5 = True
 except ImportError:
@@ -53,10 +52,7 @@ class HRTF():
                 raise ValueError('Cannot specify samplerate when initialising HRTF from a file.')
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
-            try:  # load from SOFA file
-                f = HRTF._sofa_load(data, verbose)
-            except:
-                raise ValueError('Unable to read file.')
+            f = HRTF._sofa_load(data, verbose)
             data = HRTF._sofa_get_FIR(f)
             self.samplerate = HRTF._sofa_get_samplerate(f)
             self.data = []
