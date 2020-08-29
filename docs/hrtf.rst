@@ -27,7 +27,7 @@ Plot the source positions in 3D with the :meth:`.plot_sources` to get an impress
 
 .. plot::
     :include-source:
-    :context:
+    :context: close-figs
 
     sourceidx = hrtf.cone_sources(0) # select sources on a cone of confusion at 5 deg from midline
     hrtf.plot_sources(sourceidx) # plot the sources in 3D, highlighting the selected sources
