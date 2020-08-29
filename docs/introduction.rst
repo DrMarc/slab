@@ -43,23 +43,12 @@ Slab requires additional modules for some functionality. These modules are not i
 
 * **I have set the level of a sound to 70 dB but it is way louder, why?**
 
-This is because soundlab does not know the hardware you are using to play sound. For example, white noise is generated so that the maximum value in the time series is +1 and the minimum minus one ("full scale"). The RMS of this signal, expressed in deciBel happens to be about 82 dB, but you need to calibrate your system (see :ref:`calibration`) so that the calculated intensity and the actual output intensity are .
+This is because soundlab does not know the hardware you are using to play sound. For example, white noise is generated so that the maximum value in the time series is +1 and the minimum minus one ("full scale"). The RMS of this signal, expressed in deciBels happens to be about 82 dB, but you need to calibrate your system (see :ref:`calibration`) so that the calculated intensity is meaningful. Relative intensities are correct without calibration---so decreasing the intensity by 10 dB (`sound.level -= 10`) will work as expected.
 
 
 * **What is the difference between white noise and pink noise?**
 
-White noise is a signal that consists of random numbers. This signal has equal
-power at all frequencies. However, our auditory system does not perceive it that way
-which is why white noise appears high-pitched. In the pink noise signal, the power
-decreases with frequency to correct for this effect. You can use the function
-:func:`Sound.powerlawnoise` to create your own noise.
-
-
-* **How can I make sure that the sounds I am using are similar in their low-level features?**
-
-There is no conclusive list of sound features that are important but several ones are implemented
-in :meth:`spectral_feature`. You could also construct a control condition by extracting the sounds
-envelope and generating noise that has the same temporal properties as the original sound.
+White noise is a signal that consists of random numbers. This signal has equal power at all frequencies. However, our auditory system does not perceive it that way, which is why white noise appears high-pitched. In the pink noise signal, the power decreases with frequency to correct for this effect. Pink noise is thus a more appropriate choice for a masking or background noise, because it has the same power in each octave. However, there are even better options. The :meth:`.erb_noise` method constructs a noise with equal energy not in octaves, but in fractions of approximated auditory filters widths (equivalent rectangular bandwidths, ERB). Or the :meth:`.multitone_masker`, which is a noise-like combination of many pure tones at ERB intervals. This noise does not have randum amplitude variations and masks evenly across frequency and time.
 
 
 * **I think I found a bug!**
