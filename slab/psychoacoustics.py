@@ -39,7 +39,6 @@ def Key():
     '''
     Wrapper for curses module to simplify getting a single keypress from the terminal (default) or a buttonbox.
     Set slab.psychoacoustics.input_method = 'buttonbox' to use a custom USB buttonbox.
-
     >>> with slab.Key() as key:
     >>>    response = key.getch()
     '''
@@ -64,7 +63,6 @@ class LoadSaveJson_mixin:
     def save_json(self, file_name=None):
         """
         Save the object as JSON file.
-
         Arguments:
             file_name: name of the file to create or append. If `None`, returns an in-memory JSON object.
         """
@@ -82,7 +80,6 @@ class LoadSaveJson_mixin:
     def load_json(self, file_name):
         """
         Read JSON file and deserialize the object into self.__dict__.
-
         Attributes:
             file_name: name of the file to read.
         """
@@ -91,7 +88,7 @@ class LoadSaveJson_mixin:
 
 
 class TrialPresentationOptions_mixin:
-    '''Mixin to provide AFC and Same-Different trial presentation methods and
+    '''Mixin to provide alternative forced-choice (AFC) and Same-Different trial presentation methods and
     response simulation to Trialsequence and Staircase.'''
 
     def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
@@ -105,7 +102,7 @@ class TrialPresentationOptions_mixin:
         them and record the response. Optionally call print_trial_info afterwards.
         '''
         if isinstance(distractors, list):
-            stims = [target] + distractors # assuming sound object and list of sounds
+            stims = [target] + distractors  # assuming sound object and list of sounds
         else:
             stims = [target, distractors]  # assuming two sound objects
         order = numpy.random.permutation(len(stims))
@@ -126,7 +123,6 @@ class TrialPresentationOptions_mixin:
         '''
         Present a stimulus and aquire a response. The response is compared with ``correct_key_idx`` (the index of the
         correct key in the ``key_codes`` argument) and a match is logged as True (correct response) or False (incorrect response).
-
         Arguments:
             stimulus: sound to present (object with play method)
             correct_key_idx: index of correct response key in ``key_codes``
@@ -145,7 +141,6 @@ class TrialPresentationOptions_mixin:
         '''Return a simulated response to the current condition index value by calculating the hitrate from a
         psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
         a continuous stimulus value.
-
         Arguments:
             thresh: midpoint/threshhold
             transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75 (*2*)
@@ -170,7 +165,6 @@ class TrialPresentationOptions_mixin:
 
 class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):
     """Non-adaptive trial sequences.
-
     Parameters:
         conditions: an integer, list, or flat array specifying condition indices,
             or a list of strings or other objects (dictionaries/tuples/namedtuples)
@@ -187,7 +181,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             (default if `n_conds` <= 2), or `infinite` (`non_repeating` if n_conds <= 2 or `random_permutation` trial
             sequence that reset when reaching the end to generate an infinite number of trials).
         label: a text label for the sequence.
-
     Attributes:
         .n_trials: the total number of trials that will be run
         .n_remaining: the total number of trials remaining
@@ -247,7 +240,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
     def __next__(self):
         """Advances to next trial and returns it. Updates attributes this_trial and this_trial_n.
         If the trials have ended this method will raise a StopIteration error.
-
         >>> trials = Trialsequence(.......)
         >>> for eachTrial in trials:  # automatically stops when done
         >>>     trials.print_trial_info()
@@ -362,7 +354,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
     @staticmethod
     def mmn_sequence(n_trials, deviant_freq=0.12):
         '''Returns a  MMN experiment: 2 different stimuli (conditions), between two deviants at least 3 standards.
-
         Arguments:
             n_trials: number of trials to return
             deviant_freq: frequency of deviants (should not exceed 0.25)
@@ -394,7 +385,6 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
     Lewitt (1971) gives the up-down values for different threshold points
     on the psychometric function: 1-1 (0.5), 1-2 (0.707), 1-3 (0.794),
     1-4 (0.841), 1-5 (0.891).
-
     >>> stairs = Staircase(start_val=50, n_reversals=10, step_type='lin',\
                     step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1, n_trials=10)
     >>> print(stairs)
@@ -406,7 +396,6 @@ class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationO
     reversals: [26, 30, 28, 30, 28, 30, 28, 30, 28, 30]
     >>> print(f'mean of final 6 reversals: {stairs.threshold()}')
     mean of final 6 reversals: 28.982753492378876
-
     Attributes:
         .this_trial_n: number of completed trials
         .intensities: presented stimulus values
@@ -685,7 +674,6 @@ class Resultsfile():
     A class for simplifying the typical use cases of results files, including generating the name,
     creating the folders, and writing to the file after each trial. Writes a JSON Lines file,
     in which each line is a valid self-contained JSON string (http://jsonlines.org).
-
     >>> Resultsfile.results_folder = 'MyResults'
     >>> file = Resultsfile(subject='MS')
     >>> print(file.name)
@@ -758,11 +746,9 @@ class Precomputed(list):
     ideally without direct repetition. The class allows easy generation of such stimulus lists (type `slab.Precomputed`)
     and keeps track of the previously presented stimulus. The list has a play method which automatically selects an
     element other than the previous one for playing, and can be used like an :meth:`slab.Sound` object.
-
     Attributes:
         sounds: sequence (list|callable|iterator) of stimulus objects (each must have a play method)
         n: only used if list is a callable, calls it n times to make the stimuli
-
     >>> stims = slab.Precomputed(sound_list) # using a pre-made list
     >>> stims = slab.Precomputed(lambda: slab.Sound.pinknoise(), n=10) # using a lambda function to make 10 examples of pink noise
     >>> stims = slab.Precomputed( (slab.Sound.vowel(vowel=v) for v in ['a','e','i']) ) # using a generator
@@ -834,16 +820,12 @@ class Precomputed(list):
 def load_config(config_file):
     '''
     Reads a text file with python variable assignments and returns a namedtuple with the variable names and values.
-
     Contents of example.txt:
-
     >>> cat example.txt
     samplerate = 32000
     pause_duration = 30
     speeds = [60,120,180]
-
     Then call load_config to parse the file into a named tuple:
-
     >>> conf = load_config('example.txt')
     >>> conf.speeds
     [60, 120, 180]
