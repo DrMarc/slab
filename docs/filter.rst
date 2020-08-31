@@ -1,86 +1,49 @@
 .. currentmodule:: slab
 
+.. _filters:
+
 Filters
 =======
+The :class:`Filter` class can be used to generate, manipulate and save filter banks and transfer functions. Filters are represented internally as :class:`Signal` and come in two flavours: finite impulse responses (FIR) and frequency bin amplitudes (FFT). The :attr:`fir` (True or False).
 
-The **Filter** class (inherits from :class:`slab.Signal`) can be used to generate, manipulate and save
-filter banks and transfer functions. Two typical use cases are lowpass/highpass filtering and
-loudspeaker equalization.
-
-
-Cut-Off Filtering
------------------
-
-The aim of a Cut-Off filter is to suppress certain parts of a signals power spectrum. For example, if we
-don't want our sound to contain power above 12 kHz (maybe our speakers can't go higher), we can generate
-the sound and then apply a 12 kHz lowpass Filter.
+Simple Filters
+--------------
+Simple low-, high-, bandpass, and bandstop filters can be used to suppress selected frequency bands in a sound. For example, if you don't want the sound to contain power above 1 kHz, apply a 1 kHz lowpass filter:
 
 .. plot::
     :include-source:
-    from slab import Signal, Sound, Filter
+    :context:
+
     from matplotlib import pyplot as plt
-    Signal.set_default_samplerate(44100)
-    # generate sound and filter it
-    sound = Sound.whitenoise()
-    filt = Filter.cutoff_filter(frequency=12000, kind='lp')
+    sound = slab.Sound.whitenoise()
+    filt = slab.Filter.band(frequency=1000, kind='lp')
     sound_filt = filt.apply(sound)
-    # plot the result
-    _, ax = plt.subplots(2, sharex=True, sharey=True)
-    sound.spectrum(show=False, axis=ax[0], color="blue", label="unfiltered")
-    sound_filt.spectrum(show=False, axis=ax[1], color="red", label="after lowpass")
-    ax[1].axvline(12000, color="black", linestyle="--")
-    [axis.legend() for axis in ax]
-    ax[1].set(title=None, xlabel="Frequency [Hz]")
-    plt.show()
+    _, [ax1, ax2] = plt.subplots(2, sharex=True)
+    sound.spectrum(axis=ax1, color="blue")
+    sound_filt.spectrum(axis=ax2, color="red")
 
+The :meth:`~Sound.filter` of the :class:`Sound` class wraps around :meth:`Filter.cutoff_filter` and :meth:`Filter.apply` so that you can use these filters conveniently from within the :class:`Sound` class.
 
-After filtering the sound does not carry any power above 12 kHz. Since filtering can cause artifacts
-in the time domain, it is good practice to always plot and inspect the filtered signal
+Filter design is tricky and it is good practice to plot and inspect the transfer function of the filter:
 
 .. plot::
     :include-source:
-    from slab import Signal, Sound, Filter
-    from matplotlib import pyplot as plt
-    Signal.set_default_samplerate(44100)
-    sound = Sound.whitenoise()
-    filt = Filter.cutoff_filter(frequency=12000, kind='lp')
-    sound_filt = filt.apply(sound)
-    _, ax = plt.subplots(2, sharex=True, sharey=True)
-    ax[0].plot(sound.times, sound.data, color="blue", label="unfiltered")
-    ax[1].plot(sound_filt.times, sound_filt.data, color="red", label="after lowpass")
-    [a.set(xlabel="Time in Seconds", ylabel="Amplitude") for a in ax]
-    [a.legend() for a in ax]
-    plt.show()
+    :context: close-figs
+
+    filt.tf()
 
 
-While filtering did not cause any visible artifacts, it reduced the amplitude of the signal.
-This is to be expected because by filtering we remove part of the signal and thus loose power. A naive approach would
-be to correct this by setting the level of the filtered sound equal to that of the original. However, this
-is not recommended because our perception of loudness is non-linear with respect to frequency.
-This problem will be addressed later
+Inspecting the waveform of the sound (using the :meth:`~slab.Sound.waveform` method) or the rms level (using the :attr:`slab.Sound/level` attribute) shows that the amplitude of the filtered signal is smaller than that of the original, because the filter has removed power. You might be tempted to correct this difference by increasing the level of the filtered sound, but this is not recommended because the perception of intensity (loudness) depends non-linearly on the frequency content of the sound.
 
-Applying Multiple Filters
--------------------------
-Slab features multi-channel filtering - you can easily apply multiple filters to one signal,
-one filer to multiple signals or a bunch of filters to a bunch of signals! The **apply** method will
-choose what to do depending on the number of channels in the filter and signal.
-If a multi-channel filter is applied to a one-channel signal, each filter channel is applied
-to a copy of the signal so the resulting filtered signal has the same number of channels as the filter.
-This can be used, for example, to create a set of filtered noise with different spectra
+Filter banks
+------------
+A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound` object. The :meth:`.cos_filterbank` and :meth:`.equalizing_filterbank` methods construct multi-channel filter banks for you, but you can also initialize a :class:`Filter` object with a list of filters, just as you can make a multi-channel sound by initializing a :class:`Sound` object with a list of sounds (both classes inherit this feature from the parent :class:`Signal` class):
 
 .. plot::
     :include-source:
-    from slab import Signal, Sound, Filter
-    from matplotlib import pyplot as plt
-    import numpy
-    Signal.set_default_samplerate(44100)
 
-    sound = Sound.whitenoise()
-    # make filter bank with 16 bandpass-filters of width 100 Hz
-    start, stop, n = 500, 2000, 16
-    low_cutoff = numpy.linspace(start, stop, n)
-    high_cutoff = numpy.linspace(start, stop, n)+100
     filters = []
+<<<<<<< HEAD
     for i in range(n):
         filters.append(Filter.cutoff_filter(
             frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
@@ -109,37 +72,57 @@ Imagine that the headphones used were bad at transmitting frequencies below 1000
 with center frequency of 550 Hz harder to detect than one with a center frequency of 1550 Hz. We can prevent
 this by inverting the headphones transfer function and using that as a filter. The inverse transfer function
 filter and the actual transfer function will cancel each other out and the result will be an equalized sound.
+=======
+    for freq in range(200, 3000, 300):
+        filters.append(slab.Filter.band(frequency=(freq, freq+200), kind='bp'))
+    fbank = slab.Filter(filters)
+    fbank.tf()
+
+If this multi-channel filter is applied to a one-channel signal, each filter channel is applied separately and the resulting signal has the same number of channels as the filter (subbands). You can modify these subbands and re-combine them using the :meth:`.combine_subbands` method. An example of this process is the vocoder implementation in the :class:`Sound` class, which uses these features of the :class:`Filter` class. The multi-channel filter is generated with :meth:`.cos_filterbank`, which produces cosine-shaped filters that divide the sound into small frequency bands which are spaced in a way that mimics the filters of the human auditory periphery (`equivalent rectangular bandwidth, ERB <https://en.wikipedia.org/wiki/Equivalent_rectangular_bandwidth>`_). Here is an example of the transfer functions of this filter bank:
+>>>>>>> 2f7976479d01138d861dbcc513ad8e6a526b8ec6
 
 .. plot::
     :include-source:
-    from slab import Signal, Sound, Filter
-    from scipy.signal import firwin2
-    from matplotlib import pyplot as plt
-    import numpy
-    Signal.set_default_samplerate(44100)
 
-    # For demonstration purpose, we can simulate to dissimilar headphones by applying filters with randomized gain.
-    # In reality we would obtain the recordings from playing the sound and putting a microphone next to the headphones
-    sound = Sound.whitenoise()
-    n_freqs = 11
-    freqs = numpy.append(numpy.linspace(0, 10000, n_freqs), sound.samplerate/2)
-    gain1 = numpy.append(numpy.random.uniform(low=0.3, high=2.0, size=n_freqs), 0)
-    gain2 = numpy.append(numpy.random.uniform(low=0.3, high=2.0, size=n_freqs), 0)
-    tf1 = Filter(firwin2(numtaps=1000, freq=freqs, gain=gain1, fs=sound.samplerate))
-    tf2 = Filter(firwin2(numtaps=1000, freq=freqs, gain=gain2, fs=sound.samplerate))
-    recordings = Sound([tf1.apply(sound), tf2.apply(sound)])
-    fig, ax = plt.subplots(2)
-    recordings.channel(0).spectrum(axis=ax[0], show=False, label="channel0")
-    recordings.channel(1).spectrum(axis=ax[1], show=False, label="channel1")
-    [axis.legend() for axis in ax]
+    fbank = slab.Filter.cos_filterbank()
+    fbank.tf()
 
-    # With the original sound and the recordings we can compute a filter that equalizes the two
-    fbank = Filter.equalizing_filterbank(target=sound, signal=recordings, alpha=0.8)
-    equalized = fbank.apply(recordings)
+A speech signal is filtered with this bank, and the envelopes of the subbands are computed using the :meth:`envelope` method of the :class:`Signal` class. The envelopes are filled with noise, and the subbands are collapsed back into one sound. This removes most spectral information but retains temporal information in a speech signal and sound a bit like whispered speech. Here is the code of the :meth:`~slab.Sound.vocode` method. Some arguments that make sure that all lengths and sample rates fit have been redacted for clarity::
 
-    fig, ax = plt.subplots(3, sharex=True, sharey=True)
-    sound.spectrum(axis=ax[0], show=False, label="original")
-    equalized.channel(0).spectrum(axis=ax[1], show=False, label="channel0")
-    equalized.channel(1).spectrum(axis=ax[2], show=False, label="channel1")
-    [axis.legend() for axis in ax]
-    plt.show()
+    fbank = slab.Filter.cos_filterbank()
+    subbands = fbank.apply(signal)
+    envs = subbands.envelope()
+    noise = slab.Sound.whitenoise()
+    subbands_noise = fbank.apply(noise)
+    subbands_noise *= envs  # fill envelopes with noise
+    subbands_noise.level = subbands.level # keep subband level of original
+    return Sound(slab Filter.collapse_subbands(subbands_noise, filter_bank=fbank))
+
+
+Equalization
+------------
+Psychoacoustic experiments with stimuli that contain several frequencies require presentation hardware (headphones or loudspeakers) that can transmit the different frequencies equally well. You can measure the transfer function of your system by playing a wide-band sound, like a chirp, and recording it with a probe microphone (which itself must have a flat transfer function). From this recording, you can calculate the transfer function and construct an inverse filter. Apply the inverse filter to a sound before playing it through that system to compensate for the uneven transfer, because the inverse filter and the actual transfer function cancel each other. The :meth:`~slab.Filter.equalizing_filterbank` method does most of this work for you. For a demonstration, we simulate a (pretty bad) loudspeaker transfer function by applying a random filter:
+
+.. plot::
+    :include-source:
+    :context:
+
+    import random
+    freqs = [f * 400 for f in range(10)]
+    gain = [random.random()+.4 for _ in range(10)]
+    tf = slab.Filter.band(frequency=freqs, gain=gain)
+    sound = slab.Sound.whitenoise()
+    recording = tf.apply(sound)
+    recording.spectrum()
+
+With the original sound and the simulated recording we can compute an inverse filter und pre-filter the sound (or in this case, just filter the recording) to achieve a nearly flat playback through our simulated bad loudspeaker:
+
+.. plot::
+    :include-source:
+    :context: close-figs
+
+    inverse = slab.Filter.equalizing_filterbank(target=sound, signal=recording)
+    equalized = inverse.apply(recording)
+    equalized.spectrum()
+
+If there are multiple channels in your recording (assembled from recordings of the same white noise through several loudspeakers, for instance) then the :meth:`~slab.Filter.equalizing_filterbank` method returns a filter bank with one inverse filter for each signal channel, which you can :meth:`~slab.Filter.apply` just as in the example above.

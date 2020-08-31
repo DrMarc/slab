@@ -1,10 +1,11 @@
+.. _Sounds:
 
 Sound
 =====
 
 Generating sounds
 -----------------
-The **Sound** class provides methods for generating, manipulating, displaying, and analysing sound stimuli.
+The :class:`Sound` class provides methods for generating, manipulating, displaying, and analysing sound stimuli.
 You can generate typical experimental stimuli with this class, including tones, noises, and click trains, and also more specialized stimuli, like equally-masking noises, Schroeder-phase harmonics, iterated ripple noise and synthetic vowels. For instance, let's make a 500ms long 500 Hz pure tone signal with a band-limited (one octave below and above the tone) pink noise background with a 10 dB signal-to-noise ratio: ::
 
   import slab
@@ -17,21 +18,21 @@ You can generate typical experimental stimuli with this class, including tones, 
   stimulus.ramp() # apply on- and offset ramps to avoid clicks
   stimulus.play()
 
-:class:`slab.Sound` objects have many useful methods for manipulating (like :meth:`.ramp`, :meth:`.filter`, and :meth:`.pulse`) or inspecting them (like :meth:`.waveform`, :meth:`.spectrum`, and :meth:`.spectral_feature`). A complete list is in the :ref:`Reference` section, and the majority is also discussed here. If you use IPython, you can tap the `tab` key after typing ``slab.Sound.``, or the name of any Sound object followed by a full stop, to get an interactive list of the possibilities.
+:class:`Sound` objects have many useful methods for manipulating (like :meth:`.ramp`, :meth:`.filter`, and :meth:`.pulse`) or inspecting them (like :meth:`.waveform`, :meth:`.spectrum`, and :meth:`.spectral_feature`). A complete list is in the :ref:`Reference` section, and the majority is also discussed here. If you use IPython, you can tap the `tab` key after typing ``slab.Sound.``, or the name of any Sound object followed by a full stop, to get an interactive list of the possibilities.
 
 Sounds can also be created by recording them with :meth:`slab.Sound.record`. For instance ``recording = slab.Sound.record(duration=1.0, samplerate=44100)`` will record a 1-second sound at 44100 Hz from the default audio input (usually the microphone). The ``record`` method uses `SoundCard <https://github.com/bastibe/SoundCard>`_ if installed, or `SoX <http://sox.sourceforge.net>`_ (via a temporary file) otherwise. Both are cross-platform and easy to install. If neither tool is installed, you won't be able to record sounds.
 
 Specifying durations
 --------------------
-Sometimes it is useful to specify the duration of a stimulus in **samples** rather than seconds. All functions to generate sounds have a duration argument that accepts floating point numbers or integers. Floating point numbers are interpreted as durations in seconds (``slab.Sound.tone(duration=1.0)`` results in a 1 second tone). Integers are interpreted as number of samples (``slab.Sound.tone(duration=1000)`` gives you 1000 samples of a tone).
+Sometimes it is useful to specify the duration of a stimulus in samples rather than seconds. All functions to generate sounds have a duration argument that accepts floating point numbers or integers. Floating point numbers are interpreted as durations in seconds (``slab.Sound.tone(duration=1.0)`` results in a 1 second tone). Integers are interpreted as number of samples (``slab.Sound.tone(duration=1000)`` gives you 1000 samples of a tone).
 
 Setting the sample rate
 -----------------------
-We did not specify a sample rate for any of the stimuli in the examples above. The default sample rate is 8000 Hz (for no particular reason other than that this is MATLAB's default), which is ok for stimuli well below 4 kHz. Instead of giving a sample rate separately for each Sound object (which is possible, most methods have a ``samplerate`` argument), you can also change the default at the start of your script or Python session. The default rate is saved in the variable ``_default_samplerate`` and can be set, for instance to the standard CD rate, with ``slab.Sound.set_default_samplerate(44100)``. You can access the variable directly as ``slab.signal._default_samplerate``.
+We did not specify a sample rate for any of the stimuli in the examples above. The default sample rate is 8000 Hz (for no particular reason other than that this is MATLAB's default), which is ok for stimuli well below 4 kHz. Instead of giving a sample rate separately for each Sound object (which is possible, most methods have a :attr:`samplerate` argument), you can also change the default at the start of your script or Python session. The default rate is saved in the variable :data:`_default_samplerate` and can be set, for instance to the standard CD rate, with ``slab.Sound.set_default_samplerate(44100)``. You can access the variable directly as :data:`slab.signal._default_samplerate`.
 
 Saving and loading sounds
 -------------------------
-You can save sounds to wav files by calling the object's :meth:`.Sound.write` method (``signal.write('signal.wav')``). By default, sounds are normalized to have a maximal amplitude of 1 to avoid clipping when writing the file. You should set ``signal.level`` to the intended level when loading a sound from file or disable normalization if you know what you are doing. You can load a wav file by initializing a Sound object with the filename: ``signal = slab.Sound('signal.wav')``.
+You can save sounds to wav files by calling the object's :meth:`.Sound.write` method (``signal.write('signal.wav')``). By default, sounds are normalized to have a maximal amplitude of 1 to avoid clipping when writing the file. You should set :attr:`signal.level` to the intended level when loading a sound from file or disable normalization if you know what you are doing. You can load a wav file by initializing a Sound object with the filename: ``signal = slab.Sound('signal.wav')``.
 
 Combining sounds
 ----------------
@@ -63,7 +64,7 @@ We can make a classic non-interactive demonstration of forward masking by playin
 
 I can hear all of the steps without the masker, but only the first 6 or 7 with the masker. This will depend on the intensity at which you play the demo (see :ref:`Calibrating the output<calibration>` below). The :meth:`.sequence` method is an example of list unpacking---you can provide any number of sounds to be concatenated. If you have a list of sounds, call the method like so: ``slab.Sound.sequence(*[list_of_sound_objects])`` to unpack the list into function arguments.
 
-Another method to put sounds together is :meth:`.crossfade`, which applies a crossfading between two sounds with a specified ``overlap`` in seconds. An interesting experimental use is in adaptation designs, in which one longer stimulus is played to adapt neuronal responses to its sound features, and then a new stimulus feature is introduced (but nothing else changes). Responses (measured for instance with EEG) at that point will be mostly due to that feature. A classical example is the pitch onset response, which is evoked when the temporal fine structure of a continuous noise is regularized to produce a pitch percept without altering the sound spectrum (see `Krumbholz et al. (2003) <https://pubmed.ncbi.nlm.nih.gov/12816892/>`_). It is easy to generate the main stimulus of that study, a noise transitioning to an iterates ripple noise after two seconds, with 5 ms crossfade overlap, then filtered between 0.8 and 3.2 kHz: ::
+Another method to put sounds together is :meth:`.crossfade`, which applies a crossfading between two sounds with a specified :attr:`overlap` in seconds. An interesting experimental use is in adaptation designs, in which one longer stimulus is played to adapt neuronal responses to its sound features, and then a new stimulus feature is introduced (but nothing else changes). Responses (measured for instance with EEG) at that point will be mostly due to that feature. A classical example is the pitch onset response, which is evoked when the temporal fine structure of a continuous noise is regularized to produce a pitch percept without altering the sound spectrum (see `Krumbholz et al. (2003) <https://pubmed.ncbi.nlm.nih.gov/12816892/>`_). It is easy to generate the main stimulus of that study, a noise transitioning to an iterates ripple noise after two seconds, with 5 ms crossfade overlap, then filtered between 0.8 and 3.2 kHz: ::
 
     slab.Sound.set_default_samplerate(16000) # we need a higher sample rate
     adapter = slab.Sound.whitenoise(duration=2.0)
@@ -80,7 +81,7 @@ Another method to put sounds together is :meth:`.crossfade`, which applies a cro
 
 Calibrating the output
 ----------------------
-Setting the **level** property of a stimulus changes the root-mean-square of the waveform and relative changes are correct (reducing the level attribute by 10 dB will reduce the sound output by the same amount), but the *absolute* intensity is only correct if you calibrate your output. The recommended procedure it to set your system volume to maximum, connect the listening hardware (headphone or loudspeaker) and set up a sound level meter. Then call :meth:`slab.calibrate`. The ``calibrate`` method will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The difference between the tone's level attribute and the recorded level is saved in the class variable ``_calibration_intensity``. It is applied to all level calculations so that a sound's level attribute now roughly corresponds to the actual output intensity in dB SPL---'roughly' because your output hardware may not have a flat frequency transfer function (some frequencies play louder than others). See :ref:`Filters` for methods to equalize transfer functions. Experiments sometimes require you to play different stimuli at comparable loudness. Loudness is the perception of sound intensity and it is difficult to calculate. You can use the :meth:`Sound.aweight` method of a sound to filter it so that frequencies are weighted according to the typical human hearing thresholds. This will increase the correspondence between the rms intensity measure returned by the ``level`` attribute and the perceived loudness. However, in most cases, controlling relative intensities is sufficient. If you do not have a sound level meter, then you can present in dB HL (hearing level). For that, measure the hearing threshold of the listener at the frequency or frequencies that are presented in your experiment and play you stimuli at a set level above that threshold. You can measure the hearing threshold at one frequency (or for any broadband sound, in fact) with the few lines of code shown at the start of the :ref:`introduction<audiogram>`.
+Setting the :attr:`level` property of a stimulus changes the root-mean-square of the waveform and relative changes are correct (reducing the level attribute by 10 dB will reduce the sound output by the same amount), but the *absolute* intensity is only correct if you calibrate your output. The recommended procedure it to set your system volume to maximum, connect the listening hardware (headphone or loudspeaker) and set up a sound level meter. Then call :func:`slab.calibrate`. The :func:`.calibrate` method will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The difference between the tone's level attribute and the recorded level is saved in the class variable :data:`_calibration_intensity`. It is applied to all level calculations so that a sound's level attribute now roughly corresponds to the actual output intensity in dB SPL---'roughly' because your output hardware may not have a flat frequency transfer function (some frequencies play louder than others). See :ref:`Filters` for methods to equalize transfer functions. Experiments sometimes require you to play different stimuli at comparable loudness. Loudness is the perception of sound intensity and it is difficult to calculate. You can use the :meth:`Sound.aweight` method of a sound to filter it so that frequencies are weighted according to the typical human hearing thresholds. This will increase the correspondence between the rms intensity measure returned by the :attr:`level` attribute and the perceived loudness. However, in most cases, controlling relative intensities is sufficient. If you do not have a sound level meter, then you can present in dB HL (hearing level). For that, measure the hearing threshold of the listener at the frequency or frequencies that are presented in your experiment and play you stimuli at a set level above that threshold. You can measure the hearing threshold at one frequency (or for any broadband sound, in fact) with the few lines of code shown at the start of the :ref:`introduction<audiogram>`.
 
 Plotting and analysis
 ---------------------
@@ -101,8 +102,8 @@ You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or 
     signal.spectrogram(upper_frequency=5000, axis=ax3)
     signal.spectrum(axis=ax4)
 
-Instead of plotting, :meth:`.spectrum` and :meth:`.spectrogram` will return the time frequency bins and spectral power values for further analysis if you set the ``show`` argument to False. All plotting functions can draw into an existing matplotlib.pyplot axis supplied with the ``axis`` argument.
-
+Instead of plotting, :meth:`.spectrum` and :meth:`.spectrogram` will return the time frequency bins and spectral power values for further analysis if you set the :attr:`show` argument to False. All plotting functions can draw into an existing matplotlib.pyplot axis supplied with the :attr:`axis` argument.
+.. _spectral_features:
 You can also extract common features from sounds, such as the :meth:`.crest_factor` (a measure of how 'peaky' the waveform is), or the average :meth:`.onset_slope` (a measure of how fast the on-ramps in the sound are---important for sound localization). Features of the spectral content are bundled in the :meth:`.spectral_feature` method. It can compute spectral centroid, flux, flattness, and roll-off. When working with environmental sounds or other recorded stimuli, one often needs to compute relevant features for collections of recordings in different experimental conditions. The slab module contains a function :func:`slab.apply_to_path`, which applies a function to all wav files in a given folder and returns a dictionary of file names and computed features. In fact, you can also use that function to modify (for instance ramp and filter) all files in a folder.
 
 For other time-frequency processing, the :meth:`.frames` provides an easy way to step through the signal in short windowed frames and compute some values from it. For instance, you could detect on- and offsets in the signal by computing the crest factor in each frame: ::
@@ -123,7 +124,7 @@ For experiments in spatial hearing, or any other situation that requires differe
 
 Generating binaural sounds
 --------------------------
-Binaural sounds support all sound generating functions with a ``nchannels`` attribute of the :class:`Sound` class, but automatically set ``nchannels`` to 2. Noises support an additional ``kind`` argument, which can be set to 'diotic' (identical noise in both channels) or 'dichotic' (uncorrelated noise). Other methods just return 2-channel versions of the stimuli. You can recast any Sound object as Binaural sound, which duplicates the first channel if ``nchannels`` is 1 or greater than 2: ::
+Binaural sounds support all sound generating functions with a :attr:`nchannels` attribute of the :class:`Sound` class, but automatically set :attr:`nchannels` to 2. Noises support an additional :attr:`kind` argument, which can be set to 'diotic' (identical noise in both channels) or 'dichotic' (uncorrelated noise). Other methods just return 2-channel versions of the stimuli. You can recast any Sound object as Binaural sound, which duplicates the first channel if :attr:`nchannels` is 1 or greater than 2: ::
 
     monaural = slab.Sound.tone()
     monaural.nchannels
@@ -138,7 +139,7 @@ Loading a wav file with ``slab.Binaural('file.wav')`` returns a Binaural sound o
 
 Manipulating ITD and ILD
 ------------------------
-The easiest manipulation of a binaural parameter may be to change the interaural level difference (ILD). This can be achieved by setting the ``level`` attributes of both channels: ::
+The easiest manipulation of a binaural parameter may be to change the interaural level difference (ILD). This can be achieved by setting the :attr:`level` attributes of both channels: ::
 
     noise = slab.Binaural.pinknoise()
     noise.left.level = 75
@@ -173,19 +174,18 @@ ITD and ILD manipulation leads to the percept of *lateralization*, that is, a so
 
 Signals
 -------
-Sounds inherit from the :class:`Signal` class, which provides a generic signal object with properties duration, number of samples, sample times, number of channels. The actual samples are kept as numpy array in the ``data`` property and can be accessed, if necessary as for instance ``signal.data``. Signals support slicing, arithmetic operations, and conversion between sample points and time points directly, without having to access the ``data`` property. The methods :meth:`.resample`, :meth:`.envelope`, and :meth:`.delay` are also implemented in Signal and passed to the child classes :class:`Sound`, :class:`Binaural`, and :class:`Filter`. You do not normally need to use the Signal class directly. ::
+Sounds inherit from the :class:`Signal` class, which provides a generic signal object with properties duration, number of samples, sample times, number of channels. The actual samples are kept as numpy array in the :attr:`data` property and can be accessed, if necessary as for instance :attr:`signal.data`. Signals support slicing, arithmetic operations, and conversion between sample points and time points directly, without having to access the :attr:`data` property. The methods :meth:`.resample`, :meth:`.envelope`, and :meth:`.delay` are also implemented in Signal and passed to the child classes :class:`Sound`, :class:`Binaural`, and :class:`Filter`. You do not normally need to use the Signal class directly. ::
 
     sig = slab.Sound.pinknoise(nchannels=3)
     sig.duration
-	out: 1.0
-	sig.nsamples
-	out: 8000
+    out: 1.0
+    sig.nsamples
+    out: 8000
     sig.data.shape # accessing the sample array
     out: (8000, 3) # which has shape (nsamples x nchannels)
-	sig2 = sig.resample(samplerate=4000) # resample to 4 kHz
-	env = sig2.envelope() # returns a new signal containing the lowpass Hilbert envelopes of both channels
-	sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
-
+    sig2 = sig.resample(samplerate=4000) # resample to 4 kHz
+    env = sig2.envelope() # returns a new signal containing the lowpass Hilbert envelopes of both channels
+    sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
 
 .. rubric:: Footnotes
 

@@ -3,11 +3,13 @@ import numpy
 import scipy
 
 
-def test_cutoff():
+def test_band():
 
     sound = slab.Sound.whitenoise()
-    bandpass = slab.Filter.cutoff_filter(frequency=(500, 1000), kind='bp')
+    bandpass = slab.Filter.band(frequency=(500, 1000), kind='bp', fir=True)
     bandpass.tf(show=False)
+    sound = bandpass.apply(sound)
+    bandpass = slab.Filter.band(frequency=(500, 1000), kind='bp', fir=False)
     sound = bandpass.apply(sound)
 
 
