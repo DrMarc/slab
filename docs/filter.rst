@@ -43,7 +43,6 @@ A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound`
     :include-source:
 
     filters = []
-<<<<<<< HEAD
     for i in range(n):
         filters.append(Filter.cutoff_filter(
             frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
@@ -79,7 +78,6 @@ filter and the actual transfer function will cancel each other out and the resul
     fbank.tf()
 
 If this multi-channel filter is applied to a one-channel signal, each filter channel is applied separately and the resulting signal has the same number of channels as the filter (subbands). You can modify these subbands and re-combine them using the :meth:`.combine_subbands` method. An example of this process is the vocoder implementation in the :class:`Sound` class, which uses these features of the :class:`Filter` class. The multi-channel filter is generated with :meth:`.cos_filterbank`, which produces cosine-shaped filters that divide the sound into small frequency bands which are spaced in a way that mimics the filters of the human auditory periphery (`equivalent rectangular bandwidth, ERB <https://en.wikipedia.org/wiki/Equivalent_rectangular_bandwidth>`_). Here is an example of the transfer functions of this filter bank:
->>>>>>> 2f7976479d01138d861dbcc513ad8e6a526b8ec6
 
 .. plot::
     :include-source:
@@ -108,8 +106,8 @@ Psychoacoustic experiments with stimuli that contain several frequencies require
     :context:
 
     import random
-    freqs = [f * 800 for f in range(5)]
-    gain = [random.uniform(.3, 1) for _ in range(5)]
+    freqs = [f * 400 for f in range(10)]
+    gain = [random.random()+.4 for _ in range(10)]
     tf = slab.Filter.band(frequency=freqs, gain=gain)
     sound = slab.Sound.whitenoise()
     recording = tf.apply(sound)
