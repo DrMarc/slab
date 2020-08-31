@@ -108,8 +108,8 @@ Psychoacoustic experiments with stimuli that contain several frequencies require
     :context:
 
     import random
-    freqs = [f * 400 for f in range(10)]
-    gain = [random.random()+.4 for _ in range(10)]
+    freqs = [f * 800 for f in range(5)]
+    gain = [random.uniform(.3, 1) for _ in range(5)]
     tf = slab.Filter.band(frequency=freqs, gain=gain)
     sound = slab.Sound.whitenoise()
     recording = tf.apply(sound)

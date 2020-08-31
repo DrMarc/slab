@@ -143,7 +143,7 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
         response = trials.data[-1] # read out the last response
         if trial_parameters.label[:4] == 'room' and response: # hit!
             hits += 1
-        elif trial_parameters.label[:4] != 'room' and response: # false alarm!
+        elif trial_parameters.label[:3] in ['voi', 'itd'] and response: # false alarm!
             false_alarms += 1
         time.sleep(_after_stim_pause)
     hitrate = hits/trials.n_trials
