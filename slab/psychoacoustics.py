@@ -191,7 +191,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         .finished: True/False: have we finished yet?
         .kind: records the kind of sequence (`random_permutation`, `non_repeating`, `infinite`)
 """
-    def __init__(self, conditions=2, n_reps=1, trials=None, kind=None, label=''):
+    def __init__(self, conditions=2, n_reps=1, target_freq=None, trials=None, kind=None, label=''):
         self.label = label
         self.n_reps = int(n_reps)
         self.conditions = conditions
@@ -216,6 +216,13 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 self.trials = Trialsequence._create_simple_sequence(len(self.conditions), self.n_reps)
             elif kind == 'random_permutation':
                 self.trials = Trialsequence._create_random_permutation(len(self.conditions), self.n_reps)
+            elif kind == 'mismatch_negativity':
+                if self.n_conds >2:
+                    raise ValueError("MMN sequence is only implemented for n = 2 conitions!")
+                else:
+                    if target_freq is None:
+                        target_freq = 0.1
+                    self.trials = Trialsequence._create_mmn_sequence(int(self.n_conds*self.n_reps), target_freq)
             elif kind == 'infinite':
                 # implementation if infinite sequence is a bit of a hack (number of completed trials needs
                 # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
@@ -289,6 +296,32 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         return trials
 
     @staticmethod
+    def _create_mmn_sequence(n_trials, deviant_freq=.1, mindist=3):
+        '''Create sequence for a mismatch negativity (MMN) experiment which contains two conditions - standard (0) and
+        deviant (1).
+
+        Args:
+            n_trials (int): length of the generated sequence.
+            deviant_freq (float): frequency of the deviant, should not be greater than .25
+            mindist (int): minimum number of standards between two deviants
+
+        Returns:
+            The return value. True for success, False otherwise.
+        '''
+        n_partials = int(numpy.ceil((2 / deviant_freq) - 7))
+        reps = int(numpy.ceil(n_trials/n_partials))
+        partials = []
+        for i in range(n_partials):
+            partials.append([0] * (mindist+i) + [1])
+        idx = list(range(n_partials)) * reps
+        numpy.random.shuffle(idx)
+        trials = []
+        for i in idx:  # make the trial sequence by putting possibilities together
+            trials.extend(partials[i])
+        trials = trials[:n_trials]  # cut the list to the requested number of trials
+        return trials
+
+    @staticmethod
     def _create_random_permutation(n_conditions, n_reps):
         '''Create a sequence of n_conditions x n_reps trials in random order.'''
         return list(numpy.random.permutation(numpy.tile(list(range(n_conditions)), n_reps)))
@@ -350,26 +383,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         axis.scatter(range(self.n_trials), self.trials, **kwargs)
         axis.set(title='Trial sequence', xlabel='Trials', ylabel='Condition index')
         plt.show()
-
-    @staticmethod
-    def mmn_sequence(n_trials, deviant_freq=0.12):
-        '''Returns a  MMN experiment: 2 different stimuli (conditions), between two deviants at least 3 standards.
-        Arguments:
-            n_trials: number of trials to return
-            deviant_freq: frequency of deviants (should not exceed 0.25)
-        '''
-        n_partials = int(numpy.ceil((2 / deviant_freq) - 7))
-        reps = int(numpy.ceil(n_trials/n_partials))
-        partials = []
-        for i in range(n_partials):
-            partials.append([0] * (3+i) + [1])
-        idx = list(range(n_partials)) * reps
-        numpy.random.shuffle(idx)
-        trials = []
-        for i in idx: # make the trial sequence by putting possibilities together
-            trials.extend(partials[i])
-        trials = trials[:n_trials]  # cut the list to the requested number of trials
-        return Trialsequence(conditions=2, n_reps=1, trials=trials)
 
 
 class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):
