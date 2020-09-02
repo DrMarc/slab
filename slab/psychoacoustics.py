@@ -218,10 +218,10 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                                                                deviant_freq=deviant_freq)
             else:  # no deviants
                 deviants = numpy.array([])
-            if (kind == 'non_repeating') or self.n_conds == 1:
-                trials = Trialsequence._create_simple_sequence(self.n_conds, self.n_reps)
-            elif kind == 'random_permutation':
+            if kind == 'random_permutation' or self.n_conds == 1:
                 trials = Trialsequence._create_random_permutation(self.n_conds, self.n_reps)
+            elif kind == 'non_repeating':
+                trials = Trialsequence._create_simple_sequence(self.n_conds, self.n_reps)
             elif kind == 'infinite':
                 # implementation if infinite sequence is a bit of a hack (number of completed trials needs
                 # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
