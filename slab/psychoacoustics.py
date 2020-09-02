@@ -213,29 +213,27 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             if kind is None:
                 kind = 'random_permutation' if self.n_conds <= 2 else 'non_repeating'
             if deviant_freq is not None:
-                n_trials = (conditions * n_reps) + (conditions * n_reps * deviant_freq)
-                trials = Trialsequence._create_odball_sequence()
-
-            if kind == 'non_repeating':
-                self.trials = Trialsequence._create_simple_sequence(len(self.conditions), self.n_reps)
-            elif kind == 'random_permutation':
-                self.trials = Trialsequence._create_random_permutation(len(self.conditions), self.n_reps)
-            elif kind == 'oddball':
-                if self.n_conds > 1:
-                    raise ValueError("The mismatch sequence is only implemented for n = 2 conitions!")
+                n_trials = int((self.n_conds * self.n_reps) + numpy.ceil(self.n_conds * self.n_reps * deviant_freq))
+                trials = Trialsequence._create_odball_sequence(n_trials, deviant_freq)
+                if self.n_conds == 1:  # oddball sequence with standard (1) and deviant (0)
+                    self.trials = trials
                 else:
-                    if deviant_freq is None:
-                        deviant_freq = 0.1
-                    self.trials = Trialsequence._create_odball_sequence(self.n_reps, deviant_freq)
-            elif kind == 'infinite':
-                # implementation if infinite sequence is a bit of a hack (number of completed trials needs
-                # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
-                if self.n_conds <= 2:
-                    self.trials = Trialsequence._create_random_permutation(len(self.conditions), 5)
+                    deviant_idx = numpy.where([numpy.array(trials) == 0])[1]
+            else:  # no deviants
+                deviant_idx = numpy.array([])
+                if kind == 'non_repeating':
+                    trials = Trialsequence._create_simple_sequence(self.n_conds, self.n_reps)
+                elif kind == 'random_permutation':
+                    trials = Trialsequence._create_random_permutation(self.n_conds, self.n_reps)
+                elif kind == 'infinite':
+                    # implementation if infinite sequence is a bit of a hack (number of completed trials needs
+                    # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
+                    if self.n_conds <= 2:
+                        self.trials = Trialsequence._create_random_permutation(self.n_conds, 5)
+                    else:
+                        self.trials = Trialsequence._create_simple_sequence(self.n_conds, 1)
                 else:
-                    self.trials = Trialsequence._create_simple_sequence(len(self.conditions), 1)
-            else:
-                raise ValueError(f'Unknown kind parameter: {kind}!')
+                    raise ValueError(f'Unknown kind parameter: {kind}!')
         else:
             self.trials = trials
         self.n_trials = len(self.trials)
@@ -300,7 +298,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         return trials
 
     @staticmethod
-    def _create_oddball_sequence(n_trials, deviant_freq=.1, mindist=3):
+    def _deviant_indices(n_trials, deviant_freq=.1, mindist=3):
         '''Create sequence for an odball experiment which contains two conditions - standard (0) and
         deviant (1).
 
@@ -323,7 +321,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         for i in idx:  # make the trial sequence by putting possibilities together
             trials.extend(partials[i])
         trials = trials[:n_trials]  # cut the list to the requested number of trials
-        return trials
+        return numpy.where([numpy.array(trials) == 0])[1]
 
     @staticmethod
     def _create_random_permutation(n_conditions, n_reps):
