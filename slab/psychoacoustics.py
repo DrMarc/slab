@@ -198,7 +198,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         if isinstance(conditions, str) and os.path.isfile(conditions):
             self.load_json(conditions)  # import entire object from file
         elif isinstance(conditions, int):
-            self.conditions = list(range(conditions))
+            self.conditions = list(range(1, conditions+1))
         else:
             self.conditions = conditions
         self.n_conds = len(self.conditions)
@@ -292,7 +292,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             while trials[-1] == permute[0]:
                 numpy.random.shuffle(permute)
             trials += permute
-        trials = trials[1:] # delete first entry ('previous')
+        trials = trials[1:]  # delete first entry ('previous')
         return trials
 
     @staticmethod
