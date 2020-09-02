@@ -212,17 +212,21 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         if trials is None:
             if kind is None:
                 kind = 'random_permutation' if self.n_conds <= 2 else 'non_repeating'
+            if deviant_freq is not None:
+                n_trials = (conditions * n_reps) + (conditions * n_reps * deviant_freq)
+                trials = Trialsequence._create_odball_sequence()
+
             if kind == 'non_repeating':
                 self.trials = Trialsequence._create_simple_sequence(len(self.conditions), self.n_reps)
             elif kind == 'random_permutation':
                 self.trials = Trialsequence._create_random_permutation(len(self.conditions), self.n_reps)
-            elif kind == 'mismatch_negativity':
+            elif kind == 'oddball':
                 if self.n_conds > 1:
                     raise ValueError("The mismatch sequence is only implemented for n = 2 conitions!")
                 else:
                     if deviant_freq is None:
                         deviant_freq = 0.1
-                    self.trials = Trialsequence._create_mmn_sequence(self.n_reps, deviant_freq)
+                    self.trials = Trialsequence._create_odball_sequence(self.n_reps, deviant_freq)
             elif kind == 'infinite':
                 # implementation if infinite sequence is a bit of a hack (number of completed trials needs
                 # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
@@ -259,8 +263,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             self.this_rep_n += 1
         if self.n_remaining < 0:  # all trials complete
             if self.kind == 'infinite': # finite sequence -> reset and start again
-                self.trials = Trialsequence._create_simple_sequence(len(self.conditions), 1,
-                                previous=self.trials[-1]) # new sequence, avoid start with previous condition
+                self.trials = Trialsequence._create_simple_sequence(
+                    len(self.conditions), 1, previous=self.trials[-1]) # new sequence, avoid start with previous condition
                 self.this_n = 0
                 self.n_remaining = self.n_trials - 1 # reset trial countdown to length of new trial sequence
                                 # (subtract 1 because we return the 0th trial below)
@@ -296,8 +300,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         return trials
 
     @staticmethod
-    def _create_mmn_sequence(n_trials, deviant_freq=.1, mindist=3):
-        '''Create sequence for a mismatch negativity (MMN) experiment which contains two conditions - standard (0) and
+    def _create_oddball_sequence(n_trials, deviant_freq=.1, mindist=3):
+        '''Create sequence for an odball experiment which contains two conditions - standard (0) and
         deviant (1).
 
         Args:
@@ -312,7 +316,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         reps = int(numpy.ceil(n_trials/n_partials))
         partials = []
         for i in range(n_partials):
-            partials.append([0] * (mindist+i) + [1])
+            partials.append([1] * (mindist+i) + [0])
         idx = list(range(n_partials)) * reps
         numpy.random.shuffle(idx)
         trials = []
