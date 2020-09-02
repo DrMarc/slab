@@ -202,6 +202,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         else:
             self.conditions = conditions
         self.n_conds = len(self.conditions)
+        self.trials = trials
         self.this_rep_n = 0  # index of repetition of the conditions we are currently in
         self.this_trial_n = -1  # trial index within this repetition
         self.this_n = -1 # trial index in entire sequence
@@ -209,33 +210,30 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         self.finished = False
         self.data = [] # holds responses if TrialPresentationOptions methods are called
         # generate stimulus sequence
-        if trials is None:
+        if self.trials is None:
             if kind is None:
                 kind = 'random_permutation' if self.n_conds <= 2 else 'non_repeating'
             if deviant_freq is not None:
-                n_trials = int((self.n_conds * self.n_reps) + numpy.ceil(self.n_conds * self.n_reps * deviant_freq))
-                trials = Trialsequence._create_odball_sequence(n_trials, deviant_freq)
-                if self.n_conds == 1:  # oddball sequence with standard (1) and deviant (0)
-                    self.trials = trials
-                else:
-                    deviant_idx = numpy.where([numpy.array(trials) == 0])[1]
+                deviants = slab.Trialsequence._deviant_indices(n_trials=int(conditions * n_reps),
+                                                               deviant_freq=deviant_freq)
             else:  # no deviants
-                deviant_idx = numpy.array([])
-                if kind == 'non_repeating':
-                    trials = Trialsequence._create_simple_sequence(self.n_conds, self.n_reps)
-                elif kind == 'random_permutation':
-                    trials = Trialsequence._create_random_permutation(self.n_conds, self.n_reps)
-                elif kind == 'infinite':
-                    # implementation if infinite sequence is a bit of a hack (number of completed trials needs
-                    # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
-                    if self.n_conds <= 2:
-                        self.trials = Trialsequence._create_random_permutation(self.n_conds, 5)
-                    else:
-                        self.trials = Trialsequence._create_simple_sequence(self.n_conds, 1)
+                deviants = numpy.array([])
+            if (kind == 'non_repeating') or self.n_conds == 1:
+                trials = Trialsequence._create_simple_sequence(self.n_conds, self.n_reps)
+            elif kind == 'random_permutation':
+                trials = Trialsequence._create_random_permutation(self.n_conds, self.n_reps)
+            elif kind == 'infinite':
+                # implementation if infinite sequence is a bit of a hack (number of completed trials needs
+                # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
+                # It's also not possible to make an infinite sequence with devaints.
+                if self.n_conds <= 2:
+                    self.trials = Trialsequence._create_random_permutation(self.n_conds, 5)
                 else:
-                    raise ValueError(f'Unknown kind parameter: {kind}!')
-        else:
-            self.trials = trials
+                    self.trials = Trialsequence._create_simple_sequence(self.n_conds, 1)
+            else:
+                raise ValueError(f'Unknown kind parameter: {kind}!')
+        if self.trials is None:  # insert 0 at deviant indices
+            self.trials = numpy.insert(trials, deviants, 0)
         self.n_trials = len(self.trials)
         self.n_remaining = self.n_trials
         self.kind = kind
