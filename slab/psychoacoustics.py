@@ -191,7 +191,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         .finished: True/False: have we finished yet?
         .kind: records the kind of sequence (`random_permutation`, `non_repeating`, `infinite`)
 """
-    def __init__(self, conditions=2, n_reps=1, target_freq=None, trials=None, kind=None, label=''):
+    def __init__(self, conditions=2, n_reps=1, deviant_freq=None, trials=None, kind=None, label=''):
         self.label = label
         self.n_reps = int(n_reps)
         self.conditions = conditions
@@ -217,12 +217,12 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             elif kind == 'random_permutation':
                 self.trials = Trialsequence._create_random_permutation(len(self.conditions), self.n_reps)
             elif kind == 'mismatch_negativity':
-                if self.n_conds >2:
-                    raise ValueError("MMN sequence is only implemented for n = 2 conitions!")
+                if self.n_conds > 1:
+                    raise ValueError("The mismatch sequence is only implemented for n = 2 conitions!")
                 else:
-                    if target_freq is None:
-                        target_freq = 0.1
-                    self.trials = Trialsequence._create_mmn_sequence(self.n_reps, target_freq)
+                    if deviant_freq is None:
+                        deviant_freq = 0.1
+                    self.trials = Trialsequence._create_mmn_sequence(self.n_reps, deviant_freq)
             elif kind == 'infinite':
                 # implementation if infinite sequence is a bit of a hack (number of completed trials needs
                 # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
@@ -285,7 +285,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         '''Create a sequence of n_conditions x n_reps trials, where each repetitions contains all conditions in random
         order, and no condition is directly repeated across repetitions. `previous` can be set to an index in
         `range(n_conditions)``, which ensures that the sequence does not start with this index.'''
-        permute = list(range(n_conditions))
+        permute = list(range(1, n_conditions+1))
         trials = [previous]
         for _ in range(n_reps):
             numpy.random.shuffle(permute)
@@ -324,7 +324,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
     @staticmethod
     def _create_random_permutation(n_conditions, n_reps):
         '''Create a sequence of n_conditions x n_reps trials in random order.'''
-        return list(numpy.random.permutation(numpy.tile(list(range(n_conditions)), n_reps)))
+        return list(numpy.random.permutation(numpy.tile(list(range(1, n_conditions+1)), n_reps)))
 
     def get_future_trial(self, n=1):
         """Returns the condition for n trials into the future or past,
