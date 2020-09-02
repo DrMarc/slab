@@ -222,7 +222,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 else:
                     if target_freq is None:
                         target_freq = 0.1
-                    self.trials = Trialsequence._create_mmn_sequence(int(self.n_conds*self.n_reps), target_freq)
+                    self.trials = Trialsequence._create_mmn_sequence(self.n_reps, target_freq)
             elif kind == 'infinite':
                 # implementation if infinite sequence is a bit of a hack (number of completed trials needs
                 # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
