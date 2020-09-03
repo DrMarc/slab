@@ -216,7 +216,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             if deviant_freq is not None:
                 deviants = slab.Trialsequence._deviant_indices(n_trials=int(conditions * n_reps),
                                                                deviant_freq=deviant_freq)
-                self.n_conds += 1  # add one condition for deviants
             else:  # no deviants
                 deviants = numpy.array([])
             if kind == 'random_permutation' or self.n_conds == 1:
@@ -239,6 +238,9 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         self.n_remaining = self.n_trials
         self.kind = kind
         self.data = [None for _ in self.trials]
+        if deviant_freq is not None:
+            self.n_conds += 1  # add one condition for deviants
+
 
     def __repr__(self):
         return self.__dict__.__repr__()
