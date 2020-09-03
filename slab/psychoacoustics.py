@@ -216,8 +216,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             if deviant_freq is not None:
                 deviants = slab.Trialsequence._deviant_indices(n_trials=int(conditions * n_reps),
                                                                deviant_freq=deviant_freq)
-            else:  # no deviants
-                deviants = numpy.array([])
             if kind == 'random_permutation' or self.n_conds == 1:
                 trials = Trialsequence._create_random_permutation(self.n_conds, self.n_reps)
             elif kind == 'non_repeating':
@@ -226,14 +224,18 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 # implementation if infinite sequence is a bit of a hack (number of completed trials needs
                 # to be calculated as: trials.this_rep_n * trials.n_conds + trials.this_trial_n + 1)
                 # It's also not possible to make an infinite sequence with devaints.
+                if deviant_freq is not None:
+                    raise ValueError("Deviants are not implemented for infinite sequences!")
                 if self.n_conds <= 2:
-                    self.trials = Trialsequence._create_random_permutation(self.n_conds, 5)
+                    trials = Trialsequence._create_random_permutation(self.n_conds, 5)
                 else:
-                    self.trials = Trialsequence._create_simple_sequence(self.n_conds, 1)
+                    trials = Trialsequence._create_simple_sequence(self.n_conds, 1)
             else:
                 raise ValueError(f'Unknown kind parameter: {kind}!')
-        if self.trials is None:  # insert 0 at deviant indices
-            self.trials = list(numpy.insert(trials, deviants, 0))
+            if deviant_freq is not None:  # insert deviants
+                self.trials = list(numpy.insert(trials, deviants, 0))
+            else:
+                self.trials = trials
         self.n_trials = len(self.trials)
         self.n_remaining = self.n_trials
         self.kind = kind
