@@ -1,45 +1,48 @@
 import slab
-import numpy
+from itertools import zip_longest
 
 def test_trialsequence():
-
-    seq = slab.Trialsequence(conditions=5, kind="infinite")
-    for i in range(10):
-        seq.__next__()
-        seq.get_future_trial(i)
-
-    kinds = ["non_repeating", "random_permutation"]
-    for kind in kinds:
-        seq = slab.Trialsequence(conditions=5, n_reps=10, kind=kind)
-        seq.transitions()
-        seq.condition_probabilities()
-        for trial in seq:
+    seq = slab.Trialsequence(conditions=5, n_reps=10, kind="random_permutation")
+    inf = slab.Trialsequence(conditions=5, kind="infinite")
+    for trial in seq:
+        inf.__next__()
+    seq = slab.Trialsequence(conditions=5, n_reps=10, kind="non_repeating", deviant_freq=0.1)
+    n_deviants = len([i for i, cond in enumerate(seq.trials) if cond == 0])
+    seq.transitions()
+    seq.condition_probabilities()
+    for trial in seq:
+        if trial != 0:
             seq.add_response(seq.simulate_response(threshold=1))
-        assert seq.response_summary() is not None
-        seq.plot()
-
-    deviant_freq = 0.15
-    seq = slab.Trialsequence(conditions=1, n_reps=1000,
-        deviant_freq=deviant_freq, kind="mismatch_negativity")
-    sum(seq.trials)/len(seq.trials)
+    assert seq.data.count(None) == n_deviants
 
 
-def test_mmnsequence():
-    deviant_freq = 0.15
-    n_trials = 100
-    seq = slab.Trialsequence.mmn_sequence(n_trials=110, deviant_freq=deviant_freq)
-    sum(seq.trials)
+def test_staircase():
+    # normal staircase
+    stairs1 = slab.Staircase(start_val=10, n_reversals=4)
+    stairs2 = slab.Staircase(start_val=8, n_reversals=6)
+    stairs = zip_longest(stairs1, stairs2)
+    for stim1, stim2 in stairs:
+        if stim1:
+            r1 = stairs1.simulate_response(4)
+            stairs1.add_response(r1)
+            # stairs1.print_trial_info()
+        if stim2:
+            r2 = stairs2.simulate_response(2)
+            stairs2.add_response(r2)
+            # stairs2.print_trial_info()
+    stairs1.plot()
+    stairs2.plot()
+    # adaptive staircase
+    stairs = slab.Staircase(start_val=10, n_reversals=18, step_sizes=[4, 1])
+    for stimulus_value in stairs:
+        response = stairs.simulate_response(threshold=3)
+        stairs.add_response(response)
+    stairs.save_csv("staircase.csv")
 
-    n_partials = int(numpy.ceil((2 / deviant_freq) - 7))
-    reps = int(numpy.ceil(n_trials/n_partials))
 
-    partials = []
-    for i in range(n_partials):
-        partials.append([0] * (3+i) + [1])
-    print(partials)
+def test_readwrite():
 
-    idx = list(range(n_partials)) * reps
-    numpy.random.shuffle(idx)
+    pass
 
 
 # def test_keyinput():
