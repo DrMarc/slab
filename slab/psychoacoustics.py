@@ -237,6 +237,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         self.n_trials = len(self.trials)
         self.n_remaining = self.n_trials
         self.kind = kind
+        self.data = [[] for _ in self.trials]
 
     def __repr__(self):
         return self.__dict__.__repr__()
@@ -254,16 +255,16 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         self.this_trial_n += 1
         self.this_n += 1
         self.n_remaining -= 1
-        if self.this_trial_n >= self.n_conds: # start a new repetition
+        if self.this_trial_n >= self.n_conds:  # start a new repetition
             self.this_trial_n = 0
             self.this_rep_n += 1
         if self.n_remaining < 0:  # all trials complete
-            if self.kind == 'infinite': # finite sequence -> reset and start again
+            if self.kind == 'infinite':  # finite sequence -> reset and start again
                 self.trials = Trialsequence._create_simple_sequence(
-                    len(self.conditions), 1, previous=self.trials[-1]) # new sequence, avoid start with previous condition
+                    len(self.conditions), 1, previous=self.trials[-1])  # new sequence, avoid start with previous condition
                 self.this_n = 0
-                self.n_remaining = self.n_trials - 1 # reset trial countdown to length of new trial sequence
-                                # (subtract 1 because we return the 0th trial below)
+                self.n_remaining = self.n_trials - 1  # reset trial countdown to length of new trial
+                #  sequence (subtract 1 because we return the 0th trial below)
             else:  # finite sequence -> finish
                 self.this_trial = []
                 self.finished = True
@@ -274,7 +275,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
 
     def add_response(self, response):
         'Append a response value to the list `self.data`.'
-        self.data.append(response)
+        self.data[self.this_trial_n].append(response)
 
     def print_trial_info(self):
         'Convenience method for printing current trial information.'
