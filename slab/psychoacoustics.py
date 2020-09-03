@@ -233,14 +233,13 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             else:
                 raise ValueError(f'Unknown kind parameter: {kind}!')
         if self.trials is None:  # insert 0 at deviant indices
-            self.trials = numpy.insert(trials, deviants, 0)
+            self.trials = list(numpy.insert(trials, deviants, 0))
         self.n_trials = len(self.trials)
         self.n_remaining = self.n_trials
         self.kind = kind
         self.data = [None for _ in self.trials]
         if deviant_freq is not None:
             self.n_conds += 1  # add one condition for deviants
-
 
     def __repr__(self):
         return self.__dict__.__repr__()
