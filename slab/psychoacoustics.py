@@ -237,7 +237,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         self.n_trials = len(self.trials)
         self.n_remaining = self.n_trials
         self.kind = kind
-        self.data = [[] for _ in self.trials]
+        self.data = [None for _ in self.trials]
 
     def __repr__(self):
         return self.__dict__.__repr__()
@@ -275,7 +275,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
 
     def add_response(self, response):
         'Append a response value to the list `self.data`.'
-        self.data[self.this_trial_n].append(response)
+        self.data[self.this_n] = response
 
     def print_trial_info(self):
         'Convenience method for printing current trial information.'
