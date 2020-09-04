@@ -43,6 +43,35 @@ A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound`
     :include-source:
 
     filters = []
+    for i in range(n):
+        filters.append(Filter.cutoff_filter(
+            frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
+    fbank = Filter(filters)  # put the list into a single filter object
+    sound_filt = fbank.apply(sound)  # apply each filter to a copy of sound
+    # plot the spectra, each color represents one channel of the filtered sound
+    _, ax = plt.subplots(1)
+    sound_filt.spectrum(axis=ax, show=False)
+    ax.set_xlim(100, 5000)
+    plt.show()
+
+If the a one-channel filter is applied to a multi-channel signal, the filter will be applied to each
+channel individually. This can be used, for example, to easily pre-process a set of recordingss (where
+every recordings is represented by a channel in the :class:`slab.Sound` object). If a multi-channel filter
+is applied to a multi-channel signal with the same number of channels each filter channel is applied to
+the corresponding signal channel. This is useful for e.g. equalization of a set of loudspeakers
+
+Equalization
+------------
+
+In Psychoacoustic experiments, we are often interested in the effect of a specific feature. One could,
+for example, take the bandpass filtered sounds from the example above and investigate how well listeners
+can discriminate them from a noisy background - a typical cocktail-party task. However, if the transfer
+function of the loudspeakers or headphones used in the experiment is not flat, the finding will be biased.
+Imagine that the headphones used were bad at transmitting frequencies below 1000 Hz. This would make a sound
+with center frequency of 550 Hz harder to detect than one with a center frequency of 1550 Hz. We can prevent
+this by inverting the headphones transfer function and using that as a filter. The inverse transfer function
+filter and the actual transfer function will cancel each other out and the result will be an equalized sound.
+=======
     for freq in range(200, 3000, 300):
         filters.append(slab.Filter.band(frequency=(freq, freq+200), kind='bp'))
     fbank = slab.Filter(filters)
@@ -77,8 +106,8 @@ Psychoacoustic experiments with stimuli that contain several frequencies require
     :context:
 
     import random
-    freqs = [f * 800 for f in range(5)]
-    gain = [random.uniform(.3, 1) for _ in range(5)]
+    freqs = [f * 400 for f in range(10)]
+    gain = [random.random()+.4 for _ in range(10)]
     tf = slab.Filter.band(frequency=freqs, gain=gain)
     sound = slab.Sound.whitenoise()
     recording = tf.apply(sound)
