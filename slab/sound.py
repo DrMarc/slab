@@ -475,7 +475,7 @@ class Sound(Signal):
         '''
         if not have_soundfile:
             raise ImportError(
-                'Writing wav files requires SoundFile (pip install SoundFile.')
+                'Writing wav files requires SoundFile (pip install SoundFile).')
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
         if self.samplerate % 1:
@@ -560,6 +560,14 @@ class Sound(Signal):
         # if data is 2D (>1 channel) broadcase the envelope to fit
         self.data *= numpy.broadcast_to(envelope, self.data.shape)
 
+    def am(self, frequency=10, depth=1, phase=0):
+        '''
+        Apply an amplitude modulation to the sound (in place).
+        '''
+        envelope = (1 + depth * numpy.sin(2 * numpy.pi * frequency * self.times + phase))
+        envelope = envelope[:, None]
+        self.data *= numpy.broadcast_to(envelope, self.data.shape)
+
     def filter(self, frequency=100, kind='hp'):
         '''
         Filters a sound in place. This is a convenience function to avoid calling
@@ -636,7 +644,7 @@ class Sound(Signal):
 
     @staticmethod
     def play_file(fname):
-        fname = str(fname)  # in case it is a pathlib.Path object, get the name string
+        fname = str(fname) # in case it is a pathlib.Path object, get the name string
         from platform import system
         system = system()
         if system == 'Windows':

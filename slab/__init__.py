@@ -1,6 +1,8 @@
 
 import pathlib
 import os
+import sys
+sys.path.append('..\\')
 from _version import __version__
 DATAPATH = str(pathlib.Path(__file__).parent.resolve() / pathlib.Path('data')) + os.sep
 from slab.hrtf import *
