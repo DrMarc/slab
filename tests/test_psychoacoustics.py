@@ -1,6 +1,7 @@
 import slab
 from itertools import zip_longest
 
+
 def test_trialsequence():
     seq = slab.Trialsequence(conditions=5, n_reps=10, kind="random_permutation")
     inf = slab.Trialsequence(conditions=5, kind="infinite")
@@ -42,12 +43,16 @@ def test_staircase():
 
 def test_readwrite():
 
+    sounds = [slab.Sound.whitenoise() for _ in range(10)]
+    sounds = slab.Precomputed(sounds)
+    sounds
     pass
 
+# Functions to test:
 
-# def test_keyinput():
-# Seems like curses does not run in pytest - is there a workaround?
-#    with slab.Key() as key:
-#        response = key.getch()
-#    print(response)
-#    seq.present_afc_trial(target=slab.Sound.tone(), distractors=slab.Sound.whitenoise())
+# present_afc_trial
+# present_tone_trial
+# save_csv
+# class Resultsfile
+# class Precomputed
+# load_config
