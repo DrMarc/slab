@@ -2,6 +2,8 @@ import time
 import pathlib
 import tempfile
 import numpy
+import copy
+
 try:
     import soundfile
     have_soundfile = True
@@ -943,7 +945,7 @@ class Sound(Signal):
     def frames(self, duration=1024):
         '''
         Returns a generator that steps through the sound in overlapping, windowed frames.
-        Get the frame center times by calling `frametimes`.
+        Get the frame center times by calling `frametimes`. The frames have the same class as the object.
 
         Arguments:
             duration: half-length of the returned frames in samples or seconds
@@ -952,6 +954,7 @@ class Sound(Signal):
         >>> for w in windows:
         >>>		process(w) # process windowed frame here
         '''
+        frame = copy.deepcopy(self)
         if not have_scipy:
             raise ImportError('Need scipy for time window processing.')
         window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
@@ -963,11 +966,10 @@ class Sound(Signal):
             window_nsamp, window_sigma), (self.nchannels, 1)).T
         idx = 0
         while idx + window_nsamp/2 < self.nsamples: # loop through windows, yield each one
-            frame = Sound(self.data[idx:min(self.nsamples, idx +
-                                              window_nsamp), :], samplerate=self.samplerate)
+            frame.data = self.data[idx:min(self.nsamples, idx + window_nsamp), :]
             frame.resize(window_nsamp)  # in case the last window is too short
             frame *= window
-            yield frame  # return a new sound object
+            yield frame
             idx += step_nsamp
 
     def frametimes(self, duration=1024):
