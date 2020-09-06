@@ -2,9 +2,12 @@
 import pathlib
 import os
 import sys
+
+__version__ = '0.7.0'
+
 sys.path.append('..\\')
-from _version import __version__
 DATAPATH = str(pathlib.Path(__file__).parent.resolve() / pathlib.Path('data')) + os.sep
+
 from slab.hrtf import *
 from slab.psychoacoustics import *
 from slab.binaural import *
