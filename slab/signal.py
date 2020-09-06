@@ -298,7 +298,7 @@ class Signal:
         t = numpy.array(range(filter_length))
         if isinstance(duration, (int, float, numpy.int64, numpy.float64)):  # just a constant delay
             duration = Signal.in_samples(duration, self.samplerate)
-            x = t-duration
+            x = t - duration + 1
             window = 0.54 - 0.46 * numpy.cos(2 * numpy.pi * (x+0.5) /
                                              filter_length)  # Hamming window
             if numpy.abs(duration) < 1e-10:
