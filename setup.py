@@ -11,8 +11,6 @@ with open('slab/__init__.py') as file:
         m = re.match("__version__ *= *['\"](.*)['\"]", line)
         if m:
             version = m.group(1)
-        raise RuntimeError('Unable to find version string in __init__.py')
-
 
 setup(name='soundlab',
       version=version,
