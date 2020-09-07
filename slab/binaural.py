@@ -67,17 +67,29 @@ class Binaural(Sound):
             if self.nchannels != 2: # last check that it is a 2-channel sound
                 ValueError('Binaural sounds must have two channels!')
 
-    def itd(self, duration):
+    def itd(self, duration=0.001, estimate=False):
         '''
-        Returns a binaural sound object with one channel delayed with respect to the other channel by `duration`, which
-        can be the number of samples or a length of time in seconds. Negative durations delay the right channel (virtual
-        sound source moves to the left).
+        Applies an interaural time difference to a sound, or computes the present interaural time difference.
+        If `estimate` is False, returns a binaural sound object with one channel delayed with respect to the other
+        channel by `duration`, which can be the number of samples or a length of time in seconds. Negative durations
+        delay the right channel (virtual sound source moves to the left).
+        If `estimate` is True, compute the interaural time difference in samples between the left and right channels of
+        the sounds up to a maximum difference given by the `duration` argument in seconds or samples. The temporal
+        resolution of the ITD calculation is 1/samplerate seconds.
 
         >>> sig = Binaural.whitenoise()
-        >>> _ = sig.itd(1) # delay left channel by 1 sample
-        >>> _ = sig.itd(-0.001) # delay right channel by 1ms
+        >>> _ = sig.itd(0.001) # delay left channel by 1 sample
+        >>> lateral = sig.itd(-1) # delay right channel by 1ms
+        >>> itd = lateral.itd(estimate=True) # returns -1
         '''
         duration = Sound.in_samples(duration, self.samplerate)
+        if estimate:
+            max_lag = Sound.in_samples(duration, self.samplerate)
+            xcorr = numpy.correlate(self.data[:,0], self.data[:,1], 'full')
+            lags = numpy.arange(-max_lag, max_lag + 1)
+            xcorr = xcorr[self.nsamples - 1 - max_lag:self.nsamples + max_lag]
+            idx = numpy.argmax(xcorr)
+            return lags[idx]
         new = copy.deepcopy(self)  # so that we can return a new signal
         if duration == 0:
             return new  # nothing needs to be shifted
@@ -87,6 +99,19 @@ class Binaural(Sound):
             channel = 0  # left
         new.delay(duration=abs(duration), channel=channel)
         return new
+
+    def calc_itd(self, duration=0.001):
+        '''
+        Compute the interaural time difference in samples between the left and right channels of the sounds up to a maximum
+        difference given by the `duration` argument in seconds or samples. The temporal resolution of the ITD calculation
+        is 1/samplerate seconds.
+        '''
+        max_lag = Sound.in_samples(duration, self.samplerate)
+        xcorr = numpy.correlate(self.data[:,0], self.data[:,1], 'full')
+        lags = numpy.arange(-max_lag, max_lag + 1)
+        xcorr = xcorr[self.nsamples - 1 - max_lag:self.nsamples + max_lag]
+        idx = numpy.argmax(xcorr)
+        return lags[idx]
 
     def ild(self, dB):
         '''

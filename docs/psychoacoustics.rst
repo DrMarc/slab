@@ -102,6 +102,8 @@ When you use a staircase in a listening experiment, you need to record responses
         stairs.plot()
     stairs.threshold()
 
+Note that slab is not optimal for measuring reaction times due to the timing uncertainties in the millisecond range introduced by modern multi-tasking operating systems. If you are serious about reaction times, you should use an external DSP device to ensure accurate timing. A ubiquitous in auditory research is a realtime processor from Tucker-Davies Technologies.
+
 Trial sequences
 ---------------
 Trial sequences are useful for non-adaptive testing (the current stimulus does not depend on the listeners previous responses) and other situations where you need a controlled sequence of stimulus values. The :class:`Trialsequence` class constructs several controlled sequences (random permutation, non-repeating, infinite, oddball), computes transition probabilities and condition frequencies, and can keep track of responses::
@@ -134,6 +136,8 @@ The infinite kind of :class:`Trialsequence` is perhaps less suitable for control
 
     word_seq = slab.Trialsequence(conditions=word_list, kind='infinite', name='word_seq')
     word = next(word_seq) # draw a word from the list
+
+This is one of the very few cases where it makes sense to get the next trial by calling Python's :func:`next` function, because this is not the main trial sequence. The main trial sequence (the one determining the values of your main experimental parameter) should normally be used in a `for` loop as in the previous example.
 
 Presenting sounds
 ^^^^^^^^^^^^^^^^^

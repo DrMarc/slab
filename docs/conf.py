@@ -12,15 +12,11 @@ sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../slab/'))
 
 # extract version
-with open('../_version.py') as f:
-    version_file_content = f.read().strip()
-
-pattern = r"^__version__ = ['\"]([^'\"]*)['\"]"
-mo = re.search(pattern, version_file_content, re.M)
-if mo:
-    version = mo.group(1)
-else:
-    raise RuntimeError('Unable to find version string in _version.py')
+with open('../slab/__init__.py') as file:
+    for line in file.readlines():
+        m = re.match("__version__ *= *['\"](.*)['\"]", line)
+        if m:
+            version = m.group(1)
 
 # -- Project information -----------------------------------------------------
 project = 'slab'

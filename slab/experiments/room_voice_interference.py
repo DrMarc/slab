@@ -152,23 +152,36 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
     print(f'false alarm rate: {farate}')
     _results_file.write(repr(trials), tag='trials')
 
-def main_experiment(subject=None):
+def main_experiment(subject=None, do_jnd=True, do_interference=True):
+    'Interference between room and voice processing'
     global _results_file
     # set up the results file
     if not subject:
         subject = input('Enter subject code: ')
     _results_file = slab.Resultsfile(subject=subject)
-    jnd('room', practise=True)  # run the stairs practice for the room condition
-    jnd_room = jnd('room') # mesure
-    jnd('voice', practise=True)  # run the stairs practice for the room condition
-    jnd_voice = jnd('voice')
-    jnd('itd', practise=True)  # run the stairs practice for the room condition
-    jnd_itd = jnd('itd')
-
-    print('The main part of the experiment starts now (interference task).')
-    print('Blocks of about 4min each are presented with pauses inbetween.')
-    for _ in range(10):
-        interference_block(jnd_room, jnd_voice, jnd_itd)
+    if do_jnd:
+        jnd('room', practise=True)  # run the stairs practice for the room condition
+        jnd_room = jnd('room') # mesure
+        jnd('voice', practise=True)  # run the stairs practice for the room condition
+        jnd_voice = jnd('voice')
+        jnd('itd', practise=True)  # run the stairs practice for the room condition
+        jnd_itd = jnd('itd')
+    else: # need to get the jnds from the resultsfile
+        prev = slab.Resultsfile.previous_file(subject=subject)
+        jnd_room = slab.Resultsfile.read_file(prev, tag='jnd_room')
+        if not jnd_room:
+            raise ValueError('jnd_room not found in previous results file. Please run the full experiment.')
+        jnd_voice = slab.Resultsfile.read_file(prev, tag='jnd_voice')
+        if not jnd_voice:
+            raise ValueError('jnd_voice not found in previous results file. Please run the full experiment.')
+        jnd_itd = slab.Resultsfile.read_file(prev, tag='jnd_itd')
+        if not jnd_itd:
+            raise ValueError('jnd_itd not found in previous results file. Please run the full experiment.')
+    if do_interference:
+        print('The main part of the experiment starts now (interference task).')
+        print('Blocks of about 4min each are presented with pauses inbetween.')
+        for _ in range(10):
+            interference_block(jnd_room, jnd_voice, jnd_itd)
 
 if __name__ == '__main__':
     main_experiment()

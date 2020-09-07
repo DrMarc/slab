@@ -27,20 +27,19 @@ or get the latest development version directly from GitHub (if you have `git <ht
 The releases use `semantic versioning <https://semver.org>`_: ``major.minor.patch``, where ``major`` increments for changes that break backwards compatibility, ``minor`` increments of added functionality, and ``patch`` increases for internal bug fixes.
 ```slab.__version__``` prints the installed version.
 
-Some functionality requires additional dependencies, including playing sounds, saving wav files, reading HRTF files, getting button presses from the keyboard. These are not installed by the package manager, because not everyone may need these functions. The respective methods will raise errors and tell you which dependencies you need and how to install them from the command line. If you prefer, you can install them right away::
-
-    pip install SoundFile SoundCard h5netcdf
-
-On Linux, you need to install libsndfile (required by SoundFile) using your distribution's package manager, for instance::
+On Linux, you may need to install libsndfile (required by SoundFile) using your distribution's package manager, for instance::
 
     sudo apt-get install libsndfile1
 
-Getting single button presses from the keyboard requires the curses library, which unfortunately has different names for Unix-based and Windows operating systems. On a Mac and on Linux you can install::
+Working with head related transfer functions requires the h5netcdf module (trying to load a hrtf file will raise an error and tell you to install::
 
-    pip install curses # Mac and Linux
-    pip install windows-curses # Windows
+    pip install h5netcdf
 
-Numpy, scipy.signal (required for filtering and several other DSP functions), and Matplotlib (required for all plotting) should have been automatically installed with slab, and you should see meaningful errors if that did not happen for some reason.
+All other dependencies should have been automatically installed , and you should see meaningful errors if that did not happen for some reason. The dependencies are: numpy, scipy.signal (for filtering and several other DSP functions), matplotlib (for all plotting), SoundFile (for reading and writing wav files), curses or windows-curses (for getting key presses), and SoundCard (for playing and recording sounds). We have seen a hard-to-replicate problem on some Macs with the SoundCard module: a pause of several seconds after a sound is played. If you experience this issue, just uninstall SoundCard::
+
+    pip uninstall SoundCard
+
+Slab will then use another method to play sounds (winsound on Windows, afplay on Macs, and `SoX <http://sox.sourceforge.net>`_ on Linux), and will record sounds from the microphone using SoX. There are many other packages to play sounds, depending on our operating system. If you prefer a different one, you can easily modify or replace the :meth:`~slab.Sound.play` method.
 
 .. toctree::
   :caption: Contents
