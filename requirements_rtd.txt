@@ -1,6 +1,4 @@
 numpy
 scipy
 matplotlib
-SoundFile
-SoundCard
 h5netcdf
