@@ -32,7 +32,9 @@ class _buttonbox:
     (arduino device that sends a keystroke followed by a return keystroke when pressing a button on the arduino).'''
     @staticmethod
     def getch():
-        return int(input())  # buttonbox adapter has to return the keycode of intended keys!
+        key = input() # buttonbox adapter has to return the keycode of intended keys!
+        if key:
+            return int(key)
 
 @contextmanager
 def Key():
@@ -733,6 +735,8 @@ class Resultsfile():
                     jwd = json.loads(line)
                     if tag in jwd:
                         content.append(jwd[tag])
+        if len(content) == 1: # if only one item in list
+            content = content[0] # get rid of the list
         return content
 
     def read(self, tag=None):
@@ -742,6 +746,17 @@ class Resultsfile():
         Objects are dictionaries with the tag as key and the saved data as value.
         '''
         return Resultsfile.read_file(self.path, tag)
+
+    @staticmethod
+    def previous_file(subject=None):
+        '''
+        Returns the name of the most recently used resultsfile for a given `subject`.
+        Intended for extracting information from a previous file when running partial experiments.
+        '''
+        path = pathlib.Path(results_folder) / pathlib.Path(subject)
+        files = [f for f in path.glob(subject + '*') if f.is_file()]
+        files.sort()
+        return files[-1]
 
     def clear(self):
         'Clears the file by erasing all content.'
