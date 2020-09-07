@@ -1,5 +1,12 @@
 import slab
 from itertools import zip_longest
+import tempfile
+from pathlib import Path
+dir = tempfile.TemporaryDirectory()
+dirpath = Path(dir.name)
+
+# NOTE: Everythig involving pressing a key is currently untested
+# becauses curses does not run within pytest
 
 
 def test_trialsequence():
@@ -18,7 +25,6 @@ def test_trialsequence():
 
 
 def test_staircase():
-    # normal staircase
     stairs1 = slab.Staircase(start_val=10, n_reversals=4)
     stairs2 = slab.Staircase(start_val=8, n_reversals=6)
     stairs = zip_longest(stairs1, stairs2)
@@ -38,21 +44,23 @@ def test_staircase():
     for stimulus_value in stairs:
         response = stairs.simulate_response(threshold=3)
         stairs.add_response(response)
-    stairs.save_csv("staircase.csv")
+    stairs.save_csv(dirpath / "staircase.csv")
 
 
-def test_readwrite():
-
+def test_precomputed():
     sounds = [slab.Sound.whitenoise() for _ in range(10)]
     sounds = slab.Precomputed(sounds)
-    sounds
-    pass
+    sounds = slab.Precomputed(sounds.random_choice(5))
+    sounds.write(dirpath / "precomputed.zip")
+    sounds = slab.Precomputed.read(dirpath / "precomputed.zip")
+    cfg = slab.psychoacoustics.load_config("tests/config.txt")
 
-# Functions to test:
 
-# present_afc_trial
-# present_tone_trial
-# save_csv
-# class Resultsfile
-# class Precomputed
-# load_config
+def test_results():
+    slab.psychoacoustics.results_folder = dirpath
+    results = slab.Resultsfile(subject="MrPink")
+    data = [1, 2, 3]
+    results.write(data)
+    results.read()
+    results = slab.Resultsfile.read_file(slab.Resultsfile.previous_file(subject="MrPink"))
+    results.clear()
