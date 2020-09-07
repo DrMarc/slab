@@ -159,20 +159,23 @@ class HRTF():
         '''
         return sorted(list(set(numpy.round(self.sources[:, 1]))))
 
-    def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), nbins=None, kind='waterfall', linesep=20, xscale='linear', axis=None):
-        '''
+    def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), nbins=None, kind='waterfall',
+                linesep=20, xscale='linear', show=True, axis=None):
+        """
         Plots transfer functions of FIR filters at a list of source indices.
-
-        Attributes:
-            ear: which ear to plot ('left', 'right', 'both').
-            sourceidx: should typically be generated with `hrtf.cone_sources(cone=0)` for midline sources at all elevations
-            xlim: determines the plotted frequency range in Hz
-            n_bins: passed to :meth:`slab.Filter.tf` and determines freqency resolution
-            kind: `waterfall` (as in Wightman and Kistler, 1989) and `image` plots (as in Hofman 1998) are available
-            linesep: sets the vertical distance between transfer functions in the waterfall plot
-            xscale: sets x-axis scaling ('linear', 'log')
-            axis: if a plot axis is supplied, then the figure is drawn into that axis
-        '''
+        Args:
+            ear (str): which ear to plot ('left', 'right', 'both').
+            sourceidx (list of int): sources to plot. should typically be generated with
+                                    `hrtf.cone_sources(cone=0)` for midline sources at all elevations
+            xlim (tuple of int): frequency range of the plot
+            nbins (int) : passed to :meth:`slab.Filter.tf` and determines freqency resolution
+            kind (str): `waterfall` (as in Wightman and Kistler, 1989) and
+                        `image` plots (as in Hofman 1998) are available
+            linesep (int): vertical distance between transfer functions in the waterfall plot
+            xscale (str): sets x-axis scaling ('linear', 'log')
+            show (bool): Whether to show plot or
+            axis (matplotlib.axes._subplots.AxesSubplot): Axis to draw the plot on
+        """
         if not have_pyplot:
             raise ImportError('Plotting HRTFs requires matplotlib.')
         if ear == 'left':
@@ -189,7 +192,6 @@ class HRTF():
                 return fig1, fig2
         else:
             raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
-        fig = None  # if axis is provided, return None
         if not axis:
             fig, axis = plt.subplots()
         if kind == 'waterfall':
@@ -229,8 +231,8 @@ class HRTF():
             matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x/1000))))
         axis.tick_params('both', length=2, pad=2)
         axis.set(xlabel='Frequency [kHz]', ylabel='Elevation [˚]', xlim=xlim, xscale=xscale)
-        plt.show()
-        return fig
+        if show:
+            plt.show()
 
     def diffuse_field_avg(self):
         '''
@@ -331,12 +333,23 @@ class HRTF():
                 n += 1
         return 1 - sum_corr / n
 
-    def plot_sources(self, idx=False):
-        'Plot source locations in 3D, highlighting a list of sources if indices are provided with `idx`.'
+    def plot_sources(self, idx=False, show=True, axis=None):
+        """
+        Plot source locations in 3D.
+        Args:
+            idx (list of int): Indices to highlight in den plot
+            show (bool): Whether to show plot or
+            axis (mpl_toolkits.mplot3d.axes3d.Axes3D): Axis to draw the plot on
+        """
         if not have_pyplot and not have_mplot3d:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
-        fig = plt.figure()
-        ax = Axes3D(fig)
+        if axis in None:
+            ax = Axes3D(plt.figure())
+        else:
+            if not (isinstance(axis, Axes3D)):
+                raise ValueError("Axis must be instance of Axes3D!")
+            else:
+                ax = axis
         azimuth = numpy.deg2rad(self.sources[:, 0])
         elevation = numpy.deg2rad(self.sources[:, 1]-90)
         r = self.sources[:, 2]
@@ -353,7 +366,8 @@ class HRTF():
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
-        plt.show()
+        if show:
+            plt.show()
 
 
 if __name__ == '__main__':
