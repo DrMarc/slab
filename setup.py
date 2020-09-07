@@ -23,7 +23,7 @@ setup(name='soundlab',
       license='MIT',
       python_requires='>=3.6',
       install_requires=['numpy', 'scipy', 'matplotlib', 'SoundFile', 'SoundCard'
-        ] + ['windows-curses'] if "win" in sys.platform else ['curses'],
+        ] + ['windows-curses'] if "win" in sys.platform,
       packages=find_packages(),
       package_data={'slab': ['data/mit_kemar_normal_pinna.sofa',
                              'data/KEMAR_interaural_level_spectrum.npy']},
