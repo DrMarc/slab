@@ -61,7 +61,8 @@ class HRTF():
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             self.listener = HRTF._sofa_get_listener(f)
             self.sources = HRTF._sofa_get_sourcepositions(f)
-        elif isinstance(data, Filter):
+        elif isinstance(data,
+         Filter):
             # This is a hacky shortcut for casting a filterbank as HRTF. Avoid unless you know what you are doing.
             if sources is None:
                 raise ValueError('Must provide source positions when using a Filter object.')
@@ -288,8 +289,8 @@ class HRTF():
         Return indices of sources along a horizontal sphere slice at the given `elevation`.
         The default returns sources along the fronal horizon.
         '''
-        idx = numpy.where((hrtf.sources[:, 1] == elevation) & (
-            (hrtf.sources[:, 0] <= 90) | (hrtf.sources[:, 0] >= 270)))
+        idx = numpy.where((self.sources[:, 1] == elevation) & (
+            (self.sources[:, 0] <= 90) | (self.sources[:, 0] >= 270)))
         return idx[0]
 
     def tfs_from_sources(self, source_list, n_bins=96):
