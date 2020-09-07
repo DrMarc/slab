@@ -1,4 +1,3 @@
-
 import pathlib
 import os
 import sys
@@ -13,8 +12,3 @@ from slab.psychoacoustics import *
 from slab.binaural import *
 from slab.sound import *
 from slab.signal import *
-from slab.sound import *
-from slab.binaural import *
-from slab.psychoacoustics import *
-from slab.hrtf import *
-from _version import __version__
