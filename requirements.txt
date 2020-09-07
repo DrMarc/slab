@@ -2,3 +2,4 @@ numpy
 scipy
 matplotlib
 h5netcdf
+SoundFile
