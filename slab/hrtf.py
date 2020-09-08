@@ -62,7 +62,7 @@ class HRTF():
             self.listener = HRTF._sofa_get_listener(f)
             self.sources = HRTF._sofa_get_sourcepositions(f)
         elif isinstance(data,
-         Filter):
+                        Filter):
             # This is a hacky shortcut for casting a filterbank as HRTF. Avoid unless you know what you are doing.
             if sources is None:
                 raise ValueError('Must provide source positions when using a Filter object.')
@@ -329,7 +329,7 @@ class HRTF():
         n = 0
         for i in range(len(sources)):
             for j in range(i+1, len(sources)):
-                sum_corr += numpy.corrcoef(tfs[:,i], tfs[:,j])[1,0]
+                sum_corr += numpy.corrcoef(tfs[:, i], tfs[:, j])[1, 0]
                 n += 1
         return 1 - sum_corr / n
 
@@ -343,7 +343,7 @@ class HRTF():
         """
         if not have_pyplot and not have_mplot3d:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
-        if axis in None:
+        if axis is None:
             ax = Axes3D(plt.figure())
         else:
             if not (isinstance(axis, Axes3D)):
