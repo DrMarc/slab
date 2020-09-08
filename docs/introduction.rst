@@ -4,11 +4,18 @@ Introduction
 Overview
 --------
 
-This documentation describes the main functionality of the package in for of a tutorial suitable for students starting out with auditory experimentation and stimulus generation. A complete description of all classes, methods, and functions can be found in the :ref:`reference` section.
+In this documentation we do not aim at providing a comprehensive explanation of
+every single slab function (a complete description can be found in the :ref:`reference` section).
+Rather, we want to provide some guidance for you to start generating sounds and running experiments.
 
-If you are new here, start with  the :ref:`Sounds` section. There, you will learn how to generate, manipulate and write/read sounds in slab. Next, you should see the :ref:`Psychoacoustics` section which is about generating trial sequences and running experiments.
+For starters, you should have a look at the :ref:`Sounds` section. There, you will learn how to
+generate, manipulate and write/read Sounds in slab. Next, you should see the :ref:`Psychoacoustics`
+section which is about generating trial sequences and running experiments. With these tools you can
+already do plenty of things! For example...
 
-The :ref:`Filter` section contains some more advanced, but powerful, methods for processing digital signals. The :ref:`HRTF` section describes the handling of head related transfer functions and will only be relevant if you are interested in spatial audio.
+The :ref:`Filter` section contains some more advanced, but powerful, methods for processing
+digital signals. The :ref:`HRTF` section describes the handling of head related transfer functions and
+will only be relevant if you are interested in spatial audio.
 
 
 Frequently Asked Questions
