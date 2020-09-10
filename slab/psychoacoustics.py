@@ -277,7 +277,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 self.finished = True
         if self.finished:
             raise StopIteration
-        self.this_trial = self.trials[self.this_n]  # fetch the trial info
+        self.this_trial = self.conditions[self.trials[self.this_n]-1]  # fetch the trial info, should return condition??
         return self.this_trial
 
     def add_response(self, response):
