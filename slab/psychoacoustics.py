@@ -217,7 +217,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 if kind is None:
                     kind = 'random_permutation' if self.n_conds <= 2 else 'non_repeating'
                 if deviant_freq is not None:
-                    deviants = slab.Trialsequence._deviant_indices(n_trials=int(conditions * n_reps),
+                    deviants = slab.Trialsequence._deviant_indices(n_trials=int(self.n_conds * n_reps),
                                                                    deviant_freq=deviant_freq)
                 if kind == 'random_permutation' or self.n_conds == 1:
                     trials = Trialsequence._create_random_permutation(self.n_conds, self.n_reps)
@@ -277,7 +277,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 self.finished = True
         if self.finished:
             raise StopIteration
-        self.this_trial = self.conditions[self.trials[self.this_n]-1]  # fetch the trial info, should return condition??
+        self.this_trial = self.conditions[self.trials[self.this_n]-1]  # fetch the trial info
         return self.this_trial
 
     def add_response(self, response):
