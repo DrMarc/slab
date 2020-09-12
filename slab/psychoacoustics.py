@@ -240,9 +240,10 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 else:
                     self.trials = trials
             self.n_trials = len(self.trials)
+            self.trials = [t.item() for trial in self.trials]
             self.n_remaining = self.n_trials
             self.kind = kind
-            self.data = [-999 for _ in self.trials]
+            self.data = [None for _ in self.trials]
             if deviant_freq is not None:
                 self.n_conds += 1  # add one condition for deviants
 
