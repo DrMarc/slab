@@ -240,7 +240,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 else:
                     self.trials = trials
             self.n_trials = len(self.trials)
-            self.trials = [t.item() for trial in self.trials]
+            self.trials = [t.item() for t in self.trials]
             self.n_remaining = self.n_trials
             self.kind = kind
             self.data = [None for _ in self.trials]
