@@ -278,7 +278,10 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 self.finished = True
         if self.finished:
             raise StopIteration
-        self.this_trial = self.conditions[self.trials[self.this_n]-1]  # fetch the trial info
+        if self.trials[self.this_n] == 0:
+            self.this_trial = 0
+        else:
+            self.this_trial = self.conditions[self.trials[self.this_n]-1]  # fetch the trial info
         return self.this_trial
 
     def add_response(self, response):
