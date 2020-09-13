@@ -305,7 +305,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                 numpy.random.shuffle(permute)
             trials += permute
         trials = trials[1:]  # delete first entry ('previous')
-        return trials
+        return numpy.array(trials)
 
     @staticmethod
     def _deviant_indices(n_trials, deviant_freq=.1, mindist=3):
