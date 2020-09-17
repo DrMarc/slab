@@ -788,7 +788,7 @@ class Sound(Signal):
             axis.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
             labels = list(freqs.astype(int))
             axis.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
-                labels)) data_chans # centre frequencies as ticks
+                labels))  # centre frequencies as ticks
             axis.set_xlim([0, self.duration])
             axis.set(title='Cochleagram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
             if show:
