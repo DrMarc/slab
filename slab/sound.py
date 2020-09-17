@@ -489,35 +489,38 @@ class Sound(Signal):
             soundfile.write(filename, self.data, self.samplerate, format=fmt)
 
     def ramp(self, when='both', duration=0.01, envelope=None):
-        '''
-        Adds an on/off ramp to the sound (in place).
+        """
+        Adds an on and/or off ramp to the sound.
 
-        Arguments:
-            when: Can take values 'onset', 'offset' or 'both'
-            duration: The time over which the ramping happens (in samples or seconds)
-            envelope: A ramping function, if not specified uses `sin(pi*t/2)**2`. The
-                function should be a function of one variable `t` ranging from
-                0 to 1, and should increase from `f(0)=0` to `f(0)=1`. The
-                reverse is applied for the offset ramp.
-        '''
+        Args:
+            when (str): can take values 'onset', 'offset' or 'both'
+            duration (int, float): time over which the ramping happens (in samples or seconds)
+        Returns:
+            slab.Sound: copy of the instance with the added ramp(s)
+        """
+        sound = copy.deepcopy(self)
         when = when.lower().strip()
         if envelope is None:
             envelope = lambda t: numpy.sin(numpy.pi * t / 2) ** 2  # squared sine window
-        sz = Sound.in_samples(duration, self.samplerate)
+        sz = Sound.in_samples(duration, sound.samplerate)
         multiplier = envelope(numpy.reshape(numpy.linspace(0.0, 1.0, sz), (sz, 1)))
         if when in ('onset', 'both'):
-            self.data[:sz, :] *= multiplier
+            sound.data[:sz, :] *= multiplier
         if when in ('offset', 'both'):
-            self.data[self.nsamples-sz:, :] *= multiplier[::-1]
+            sound.data[sound.nsamples-sz:, :] *= multiplier[::-1]
+        return sound
 
     def repeat(self, n):
-        'Repeats the sound n times.'
-        self.data = numpy.vstack((self.data,)*int(n))
-
-    def copychannel(self, n):
-        '''Copies a single-channel sound in place to make an n-channel sound.
-        If a multi-channel sound is supplied, all channels except the first are silently dropped.'''
-        self.data = numpy.repeat(self.channel(0), n, axis=1)
+        """
+        Repeat the sound n times.
+        Args:
+            n (int): number of repetitions
+        Returns:
+            slab.Sound: copy of the instance with n repetitions
+        """
+        sound = copy.deepcopy(self)
+        sound.data = numpy.vstack((sound.data,)*int(n))
+        return sound
 
     @staticmethod
     def crossfade(sound1, sound2, overlap=0.01):
@@ -543,50 +546,67 @@ class Sound(Signal):
         sound2 = Sound.sequence(silence, sound2)  # sound2 has to be prepended with silence
         return sound1 + sound2
 
-    def pulse(self, pulse_frequency=4, duty=0.75):
-        '''
+    def pulse(self, pulse_frequency=4, duty=0.75, rf_time=0.05):
+        """
         Apply a pulse envelope to the sound with a `pulse_frequency` and `duty` cycle (in place).
-        '''
+        Args:
+            pulse_frequency (int): description
+            duty (float, int): duty cycle in s
+            rf(float): rise/fall time of the pulse in milliseconds
+        Returns:
+            slab.Sound: pulsed copy of the instance
+        """
+        sound = copy.deepcopy(self)
         pulse_period = 1/pulse_frequency
-        n_pulses = round(self.duration / pulse_period)  # number of pulses in the stimulus
-        pulse_period = self.duration / n_pulses  # period in s, fits into stimulus duration
-        pulse_samples = Sound.in_samples(pulse_period * duty, self.samplerate)  # duty cycle in s
-        fall_samples = Sound.in_samples(5/1000, self.samplerate)  # 5ms rise/fall time
+        n_pulses = round(sound.duration / pulse_period)  # number of pulses in the stimulus
+        pulse_period = sound.duration / n_pulses  # period in s, fits into stimulus duration
+        pulse_samples = Sound.in_samples(pulse_period * duty, sound.samplerate)
+        fall_samples = Sound.in_samples(rf_time, sound.samplerate)  # 5ms rise/fall time
         fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * (fall_samples)))**2
         pulse = numpy.concatenate((1-fall, numpy.ones(pulse_samples - 2 * fall_samples), fall))
         pulse = numpy.concatenate(
-            (pulse, numpy.zeros(Sound.in_samples(pulse_period, self.samplerate)-len(pulse))))
+            (pulse, numpy.zeros(Sound.in_samples(pulse_period, sound.samplerate)-len(pulse))))
         envelope = numpy.tile(pulse, n_pulses)
-        # add an empty axis to get to the same shape as self.data: (n_samples, 1)
-        envelope = envelope[:, None]
+        envelope = envelope[:, None]  # add an empty axis to get to the same shape as sound.data
         # if data is 2D (>1 channel) broadcase the envelope to fit
-        self.data *= numpy.broadcast_to(envelope, self.data.shape)
+        sound.data *= numpy.broadcast_to(envelope, sound.data.shape)
+        return sound
 
     def am(self, frequency=10, depth=1, phase=0):
-        '''
-        Apply an amplitude modulation to the sound (in place).
-        '''
-        envelope = (1 + depth * numpy.sin(2 * numpy.pi * frequency * self.times + phase))
+        """
+        Apply an amplitude modulation to the sound by multplication with a sine funnction
+        Args:
+            frequency (int): frequency of the modulating sine function in Hz
+            depth (int, float): amplitude of the modulating sine function
+            phase (int, float): initial phase of the modulating sine function
+        Returns:
+            slab.Sound: amplitude modulated copy of the instance
+        """
+        sound = copy.deepcopy(self)
+        envelope = (1 + depth * numpy.sin(2 * numpy.pi * frequency * sound.times + phase))
         envelope = envelope[:, None]
-        self.data *= numpy.broadcast_to(envelope, self.data.shape)
+        sound.data *= numpy.broadcast_to(envelope, sound.data.shape)
+        return sound
 
     def filter(self, frequency=100, kind='hp'):
-        '''
-        Filters a sound in place. This is a convenience function to avoid calling
-        the Filter class for a standard low-, high-, bandpass, and bandstop filter.
+        """
+        Convenient wrapper for the Filter class for a standard low-, high-, bandpass,
+        and bandstop filter.
+        Args:
+            frequency (int, tuple): cutoff frequency in Hz. Integer for low- and highpass filters,
+                                    tuple eith lowe cutoff and upper cutoff for bandpass and -stop.
+            kind (str): type of filter, can be "lp" (lowpass), "hp" (highpass)
+                        "bp" (bandpass) or "bs" (bandstop)
+        Returns:
+            slab.Sound: filtered copy of the instance
 
-        Arguments:
-            frequency: edge frequency in Hz or tuple of frequencies for bandpass and bandstop.
-            kind: 'lp', 'hp', bp, 'bs'
-
-        >>> sig = Sound.whitenoise()
-        >>> sig.filter(frequency=3000, kind='lp')
-        >>> _ = sig.spectrum()
-        '''
+        """
+        sound = copy.deepcopy(self)
         n = min(1000, self.nsamples)
         filt = Filter.band(
             frequency=frequency, kind=kind, samplerate=self.samplerate, length=n)
-        self.data = filt.apply(self).data
+        sound.data = filt.apply(self).data
+        return sound
 
     def aweight(self):
         '''
@@ -768,7 +788,7 @@ class Sound(Signal):
             axis.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
             labels = list(freqs.astype(int))
             axis.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
-                labels))  # centre frequencies as ticks
+                labels)) data_chans # centre frequencies as ticks
             axis.set_xlim([0, self.duration])
             axis.set(title='Cochleagram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
             if show:
