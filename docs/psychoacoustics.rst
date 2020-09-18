@@ -2,7 +2,36 @@
 
 Psychoacoustics
 ===============
-The :class:`Psychoacoustics` class simplifies psychoacoustic experiments by providing classes and methods for trial sequences and adaptive staircases, results and configuration files, response collection via keyboard and button boxes, and handling of collections of precomputed stimuli. For instance, let's make an interleaved staircase (two staircases running in alternation and measuring two thresholds simultaneously):
+The :class:`Psychoacoustics` class simplifies psychoacoustic experiments by providing classes and methods
+for trial sequences and adaptive staircases, results and configuration files, response collection via keyboard and
+button boxes, and handling of collections of precomputed stimuli. This all-in-one approach makes for clean code and
+easy data management.
+
+Trial sequences
+-------------------
+
+In many cases, experiments are operated by a sequence of trials. This sequence is generated before the experiment
+according to a certain set of rules. In the most basic case, experimental conditions are repeated a number of times with
+every condition appearing equally as often. Then, in every trial, an element is drawn from the list, determining
+the condition of that trial. These experiments can be handled by the :class:`Trialsequence` class. To generate an
+instance of :class:`Trialsequence` you have to define a list of ``conditions`` and and how often each of them is
+repeated (``n_reps``). You can also specify the ``kind`` of list you want to generate: "non_repeating" means that
+the same condition will not appear twice in a row, "random-permutation" means that the order is completely randomized.
+For an example, lets generate pure tones with different frequencies and play them in non repeating, randomized order.::
+
+  freqs = [100, 500, 750, 1010]  # frequencies of the tones
+  tones = [slab.Sound.tone(frequency=f) for f in freqs]  # make list of tones
+  trials = slab.Trialsequence(conditions=tones, n_reps=10)  # 10 repetitions per condition
+  # now we draw elements from the list and play them one-by-one until we reach the end:
+  for stimulus in trials:
+    stimulus.play()
+
+Usually, we do not only want to play sounds to the subjects in our experiment. Instead, we want them to perform some
+kind of task and give a response. In the example above we could for instance ask after every tone if that tone
+was higher or lower in frequency than the previous one.
+
+
+
 
 .. plot::
     :include-source:
