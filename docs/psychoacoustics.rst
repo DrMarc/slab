@@ -19,61 +19,177 @@ repeated (``n_reps``). You can also specify the ``kind`` of list you want to gen
 the same condition will not appear twice in a row, "random-permutation" means that the order is completely randomized.
 For an example, lets generate pure tones with different frequencies and play them in non repeating, randomized order.::
 
-  freqs = [100, 500, 750, 1010]  # frequencies of the tones
-  tones = [slab.Sound.tone(frequency=f) for f in freqs]  # make list of tones
-  trials = slab.Trialsequence(conditions=tones, n_reps=10)  # 10 repetitions per condition
-  # now we draw elements from the list and play them one-by-one until we reach the end:
-  for stimulus in trials:
+  freqs = [495, 498, 501, 504]  # frequencies of the tones
+  seq = slab.Trialsequence(conditions=freqs, n_reps=10)  # 10 repetitions per condition
+  # now we draw elements from the list, generate a tone and play it until we reach the end:
+  for freq in seq:
+    stimulus = slab.Sound.tone(frequency=freq)
     stimulus.play()
 
 Usually, we do not only want to play sounds to the subjects in our experiment. Instead, we want them to perform some
 kind of task and give a response. In the example above we could for instance ask after every tone if that tone
-was higher or lower in frequency than the previous one.
+was higher or lower in frequency than the previous one. The response is captured with the :meth:`~slab.psychoacoustics.Key`
+context manager which can record single button presses using the :mod:`curses` module. In our example, we instruct the
+subject to press "y" (yes) if the played tone was higher then the previous and "n" (no) if it was lower. After each
+trial we check if the response was correct and store that information as 1 (correct) or 0 (wrong) in the trial sequence.
 
+  for freq in seq:
+    stimulus = slab.Sound.tone(frequency=freq)
+    stimulus.play()
+    if trials.this_n > 0:  # don't get response for first trial
+      with slab.Key() as key:  # wait for a key press
+        response = key.getch()
+      # check if the response was correct, if so store a 1, else store 0
+      if (freq > previous and response == 121) or (freq<previous and response == 110):
+        seq.add_response(1)
+      else:
+        seq.add_response(0)
+  seq.save_json("sequence.json")  # save the trial sequence and response
 
+There are two ways for a response to be correct in this experiment. Either the frequency of the stimulus was higher
+than the last one and the value of response is 121 (which means the y-key was pressed) or it was lower and the value
+of response is 110 (which means n was pressed). All other options, including misclicks, are counted as wrong answers.
+Since we encoded correct responses as 1 and wrong responses as 0 we could just sum over the list of responses and
+divide by the length of the list to get the fraction of trials that was answered correctly.
 
+Alternative Choices
+^^^^^^^^^^^^^^^^^^^
 
-.. plot::
-    :include-source:
+Often, an experimental paradigm requires different responses beyond yes and no. A common one is "forced choice"
+where the subject has to pick from a defined set of responses. Since this is a common paradigm,
+the :class:`Trialsequence` and :class:`Staircase` class have a method for it called :meth:`present_afc_trial`
+(afc stands for alternative forced choice). With this functin we can make our frequency discrimination task from
+the eample above a bit more elaborate. We define the frequencies of our target tones and add two distractor tones
+with a frequency of 500 Hz. In each trial, all three tones (target + 2 x distractor) are played in random order. The
+question that the subject has to answer is "which tone was different from the others?" by pressing the key 1,2 or 3.
+All of this can be done in only  lines of code: ::
 
-    from itertools import zip_longest
-    import matplotlib.pyplot as plt # to prepare a 2 panel plot
-    _, [ax1, ax2] = plt.subplots(nrows=2, ncols=1, constrained_layout=True)
-    stairs1 = slab.Staircase(start_val=10, n_reversals=4)
-    stairs2 = slab.Staircase(start_val=8, n_reversals=6)
-    stairs = zip_longest(stairs1,stairs2)
-    for stim1, stim2 in stairs:
-        if stim1:
-            r1 = stairs1.simulate_response(4)
-            stairs1.add_response(r1)
-            # stairs1.print_trial_info()
-        if stim2:
-            r2 = stairs2.simulate_response(2)
-            stairs2.add_response(r2)
-            # stairs2.print_trial_info()
-    stairs1.plot(axis=ax1)
-    stairs2.plot(axis=ax2)
+    distractor = slab.Sound.tone(duration=0.5, frequency=500)
+    freqs = list(range(495, 505))
+    trials = slab.Trialsequence(conditions=freqs, n_reps=2)
+    for freq in trials:
+        target = slab.Sound.tone(frequency=freq, duration=0.25)
+        trials.present_afc_trial(stimulus, [distractor, distractor], isi=0.2)
+
+Controlling the sequence
+^^^^^^^^^^^^^^^^^^^^^^^^
+Sometimes it is necessary to control the transition probabilities between conditions more tightly.
+For instance, you may want to ensure nearly equal transitions, or avoid certain combinations of subsequent
+conditions entirely. A brute force algorithm is easily implemented using the :meth:`.transitions` method, which
+returns an array of transitions. For instance::
+
+    trials = slab.Trialsequence(conditions=4, n_reps=10)
+    trials.transitions()
+    out:
+    array([[0., 2., 6., 2.],
+           [3., 0., 0., 7.],
+           [2., 6., 0., 1.],
+           [4., 2., 4., 0.]])
+
+In the returned matrix the rows represent the condition transitioned from and the columns the condition transitioned
+to. For example, the field in row0/column2 shows the tarnsitions from condition 0 to condition 2 (there are
+6 of those in the trial sequence).The diagonal of this array contains only zeroes, because a condition cannot
+follow itself in the default non_repeating`` trial sequence. If you want near-equal transitions,
+then you could generate sequences in a loop until a set condition is fulfilled, for instance, no transition > 4::
+
+    trans = 5
+    while numpy.any(trans>4):
+        trials = slab.Trialsequence(conditions=4, n_reps=10)
+        trans = trials.transitions()
+    print(trans)
+    out:
+    array([[0., 3., 3., 3.],
+           [4., 0., 3., 3.],
+           [3., 4., 0., 3.],
+           [3., 3., 4., 0.]])
+
+If your condition is more complicated, you can perform several tests in the loop body and set a flag that determines
+when all have been satisfied and the loop should be end. But be careful, setting these constraints
+too tightly may result in an infinite loop.
 
 Adaptive staircases
 -------------------
-This is a complicated example to start with, but it shows what is possible with a few lines of code. The :class:`Staircase` object acts as a Python generator that keeps all information in one place and returns a new stimulus value each trial (each time its ``__next__`` method is called). You don't normally call this method directly, but rather use the :class:`Staircase` object in a for loop, which calls ``__next__`` under hood and stops when the staircase is finished (:func:`itertools.zip_longest` in the example just returns stimulus values from both staircases until the longer one is finished):
+
+In many cases, you do not want to test every condition with the same frequency. For example, when measuring an
+audiogram, you want to spend most of the testing time around the threshold to make the testing efficient. This is
+what the :class:`Staircase` class is for. You pick an initial value (``start_val``) and a step size (``step_sizes``).
+With each trial, the starting value is decreased by one step size until the subject is not able to respond correctly
+anymore. Then it is increased step wise until the response is correct again, then decreased again and so on. This
+procedure is repeated until the given number of reversals (``n_reversals``) is reached. The step size can be a list in
+which case the current step size moves one index in the list by each reversal until the end of that list is reached.
+For example we could use a step size of 4 until we crossed the threshold for the first time, then use a step size of
+1 for the rest of the experiment. This ensures that we get to the threshold quickly and ,once we are there, measure
+it precisely. The :meth:`simulate_response` method used here is explained later on.
 
 .. plot::
     :include-source:
 
     stairs = slab.Staircase(start_val=10, n_reversals=18, step_sizes=[4,1])
     for stimulus_value in stairs:
-        response = stairs.simulate_response(threshold=3)
+        response = stairs.simulate_response(threshold=3) # simulate subject's response
         stairs.add_response(response) # initiates calculation of next stimulus value
         stairs.plot()
 
-Calling the plot function in the for loop (always *after* :meth:`Staircase.add_response`) will update the plot each trial and let you monitor the performance of the participant, including the current stimulus value (grey dot), and correct/incorrect responses (green and red dots). In a staircase test, each correct response leads to a decrease in stimulus value, each incorrect response to an increase, thus converging on the threshold. After the staircase has finished you can obtain the threshold with :meth:`.threshold`.
+Calling the plot function in the for loop (always *after* :meth:`Staircase.add_response`) will update the plot each
+trial and let you monitor the performance of the participant, including the current stimulus value (grey dot), and
+correct/incorrect responses (green and red dots).
+As mentioned earlier, staircases are useful for measuring audigrams.
+We can define a list of frequencies and run a staircase for each one. Afterwards we can print out the result using the
+:meth:`tresh()` method.
+
+.. audiogram:
+.. plot::
+    :include-source:
+
+    freqs = [125, 250, 500, 1000, 2000, 4000]
+    threshs = []
+    for frequency in freqs:
+        stimulus = slab.Sound.tone(frequency=frequency, duration=0.5)
+        stairs = slab.Staircase(start_val=50, n_reversals=18)
+        print(f'Starting staircase with {frequency} Hz:')
+        for level in stairs:
+            stimulus.level = level
+            stairs.present_tone_trial(stimulus)
+            stairs.print_trial_info()
+        threshs.append({stairs.threshold())
+        print(f'Threshold at {frequency} Hz: {stairs.threshold()} dB')
+    plt.plot(freqs, threshs) # plot the audiogram
+
+The :meth:`present_tone_trial()` methods is simply a compressed way of drawing an element from the sequence and
+playing a sound as we did in the :class:`Trialsequence` example.
+
+
+Staircase Parameters
+^^^^^^^^^^^^^^^^^^^^
+Setting up a near optimal staircase requires some expertise and pilot data. Practical recommendations can be found in
+`García-Pérez (1998) <https://pubmed.ncbi.nlm.nih.gov/9797963/>`_. ``start_val`` sets the stimulus value presented in
+the first trial and the starting point of the staircase. This stimulus should in general be easy to detect/discriminate
+for all participants. You can limit the range of stimulus values between ``min_val`` and ``max_val`` (the default is
+infinity in both directions). ``step_sizes`` determines how far to go up or down when changing the stimulus value
+adaptively. If it is a list of values, then the first element is used until the first reversal, the second until the
+second reversal, etc. ``step_type`` determines what kind of steps are taken: 'lin' adds/subtracts the step size from
+the current stimulus value, 'db' and 'log' will step by a certain number of decibels or log units.
+Typically you would start with a large step size to quickly get close to the threshold, and then switch to a smaller
+step size. Steps going up are multiplied with ``step_up_factor`` to allow unequal step sizes and weighted up-down
+procedures (`Kaernbach (1991) <https://pubmed.ncbi.nlm.nih.gov/2011460/>`_).
+Optimal step sizes are a bit smaller than the spread of the psychometric function for the parameter you are testing.
+You can set the number of correct responses required to reduce the stimulus value with ``ndown`` and the number of
+incorrect responses required to increase the value with ``nup``. The default is a 1up-2down procedure.
+You can add a number of training trials, in which the stimulus value does not change with ``n_pretrials``.
+
 
 Simulating responses
 ^^^^^^^^^^^^^^^^^^^^
-Setting up a near optimal staircase requires some expertise and pilot data. Practical recommendations can be found in `García-Pérez (1998) <https://pubmed.ncbi.nlm.nih.gov/9797963/>`_. ``start_val`` sets the stimulus value presented in the first trial and the starting point of the staircase. This stimulus should in general be easy to detect/discriminate for all participants. You can limit the range of stimulus values between ``min_val`` and ``max_val`` (the default is infinity in both directions). ``step_sizes`` determines how far to go up or down when changing the stimulus value adaptively. If it is a list of values, then the first element is used until the first reversal, the second until the second reversal, etc. ``step_type`` determines what kind of steps are taken: 'lin' adds/subtracts the step size from the current stimulus value, 'db' and 'log' will step by a certain number of decibels or log units. Typically you would start with a large step size to quickly get close to the threshold, and then switch to a smaller step size. Steps going up are multiplied with ``step_up_factor`` to allow unequal step sizes and weighted up-down procedures (`Kaernbach (1991) <https://pubmed.ncbi.nlm.nih.gov/2011460/>`_). Optimal step sizes are a bit smaller than the spread of the psychometric function for the parameter you are testing. You can set the number of correct responses required to reduce the stimulus value with ``ndown`` and the number of incorrect responses required to increase the value with ``nup``. The default is a 1up-2down procedure. You can add a number of training trials, in which the stimulus value does not change with ``n_pretrials``.
-
-The above examples use :meth:`.simulate_responses` to draw responses from a logistic psychometric function with a given threshold and width (expressed as the stimulus range in which the function increases from 20% to 80% hitrate). For instance, if the current stimulus value is at the threshold, then the function returns a hit with 50% probability. This is useful to simulate and compare different staircase settings and determine to which hit rate they converge. For instance, let's get a feeling for the effect of the length of the measurement (number of reversals required to end the staircase) and the accuracy of the threshold (standard deviation of thresholds across 100 simulated runs). We test from 10 to 40 reversals and run 100 staircases in the inner loop, each time saving the threshold, then computing the interquartile range and plotting it against the number of reversals. Longer measurements should reduce the variability:
+For testing and comparing different staircase settings it can be useful to simulate responses
+The first staircase example uses :meth:`.simulate_responses` to draw responses from a logistic psychometric function
+with a given threshold and width (expressed as the stimulus range in which the function increases from 20% to 80% hitrate).
+For instance, if the current stimulus value is at the threshold, then the function returns a hit with 50% probability.
+This is useful to simulate and compare different staircase settings and determine to which hit rate they converge.
+For instance, let's get a feeling for the effect of the length of the measurement (number of reversals required to
+end the staircase) and the accuracy of the threshold (standard deviation of thresholds across 100 simulated runs).
+We test from 10 to 40 reversals and run 100 staircases in the inner loop, each time saving the threshold,
+then computing the interquartile range and plotting it against the number of reversals. Longer measurements
+should reduce the variability:
 
 .. plot::
     :include-source:
@@ -114,7 +230,9 @@ As you can see, even through the threshold in the response simulation is 3 (that
 
 Recording responses
 ^^^^^^^^^^^^^^^^^^^
-When you use a staircase in a listening experiment, you need to record responses from the participant, usually in the form of button presses. The :meth:`~slab.psychoacoustics.Key` context manager can record single button presses from the computer keyboard (or an attached number pad) using the :mod:`curses` module, or from a custom USB buttonbox. The input is selected by setting :attr:`slab.psychoacoustics.input_method` to 'keyboard' or 'buttonbox'. This allow you to test your code on your laptop and switch to button box input at the lab computer by changing a single line of code. Getting a button press from the keyboard will clear your terminal while waiting for the response, and restore it afterwards. Here is an example of how to use the function in a staircase that finds the detection threshold for a 500 Hz tone:
+When you use a staircase in a listening experiment, you need to record responses from the participant,
+usually in the form of button presses. The :meth:`~slab.psychoacoustics.Key` context manager can record single button presses
+from the computer keyboard (or an attached number pad) using the :mod:`curses` module, or from a custom USB buttonbox. The input is selected by setting :attr:`slab.psychoacoustics.input_method` to 'keyboard' or 'buttonbox'. This allow you to test your code on your laptop and switch to button box input at the lab computer by changing a single line of code. Getting a button press from the keyboard will clear your terminal while waiting for the response, and restore it afterwards. Here is an example of how to use the function in a staircase that finds the detection threshold for a 500 Hz tone:
 
 .. _detection_example:
 
@@ -168,24 +286,7 @@ The infinite kind of :class:`Trialsequence` is perhaps less suitable for control
 
 This is one of the very few cases where it makes sense to get the next trial by calling Python's :func:`next` function, because this is not the main trial sequence. The main trial sequence (the one determining the values of your main experimental parameter) should normally be used in a `for` loop as in the previous example.
 
-Presenting sounds
-^^^^^^^^^^^^^^^^^
-Presenting a single stimulus and getting a Yes/No response is takes only a few lines of code, but often you want to present several stimuli in pseudorandom order in an n-alternative forced choice paradigm. :class:`Trialsequence` and :class:`Staircase` provide convenience methods for psychoacoustic stimulus presentation. We implement a frequency discrimination test using a 3-alternative forced choice paradigm. Three stimuli are presented in each trial (in random order with an inter-stimulus interval of 0.2 s): a target pure tone with a frequency between 495 and 505 Hz, and two distractors with a constant frequency of 500 Hz. The listener indicates whether the different tone was presented first, second, or third by pressing buttons 1, 2, or 3 on the keyboard. Responses are checked against the actual stimulus order and logged as True (correct) or False (incorrect). All of that can be done with 6 lines of code using the :meth:`~slab.Staircase.present_afc_trial`::
 
-    distractor = slab.Sound.tone(duration=0.5)
-    freqs = list(range(495, 505, 1, endpoint=True))
-    trials = slab.Trialsequence(conditions=freqs, n_reps=2)
-    for freq in trials:
-        target = slab.Sound.tone(frequency=freq, duration=0.25)
-        trials.present_afc_trial(stimulus, [distractor, distractor], isi=0.2)
-
-Even the Yes/No example above, or any other experiment in which the listener classifies a stimulus with one of several possible responses can be shortened with the :meth:`~slab.Staircase.present_tone_trial` method when using :class:`Trialsequence`  or :class:`Staircase`. Here is the :ref:`the detection threshold task <detection_example>` again, using the :meth:`~slab.Staircase.present_tone_trial` method to play the stimulus, collect the response, and log it in the :class:`Staircase` object as correct or incorrect, and print the trial information in each trial::
-
-    stimulus = slab.Sound.tone(duration=0.5)
-    stairs = slab.Staircase(start_val=60, steps=[10, 3])
-    for level in stairs:
-        stimulus.level = level
-        stairs.present_tone_trial(stimulus)
 
 Controlling the sequence
 ^^^^^^^^^^^^^^^^^^^^^^^^
