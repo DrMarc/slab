@@ -290,9 +290,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
 
     def print_trial_info(self):
         'Convenience method for printing current trial information.'
-        print(f'{self.label} | trial  # {self.this_n} of {"inf" if self.kind=="infinite" else self.n_trials}
-              ({"inf" if self.kind == "infinite" else self.n_remaining} remaining): condition {self.this_trial},
-              last response: {self.data[-1] if self.data else None}')
+        print(f'{self.label} | trial # {self.this_n} of {"inf" if self.kind=="infinite" else self.n_trials} ({"inf" if self.kind=="infinite" else self.n_remaining} remaining): condition {self.this_trial}, last response: {self.data[-1] if self.data else None}')
 
     @staticmethod
     def _create_simple_sequence(n_conditions, n_reps, previous=1):
