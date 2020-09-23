@@ -334,6 +334,32 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         return numpy.where([numpy.array(trials) == 0])[1]
 
     @staticmethod
+    def _deviant_indices(n_trials, deviant_freq=.1, mindist=3):
+        '''Create sequence for an odball experiment which contains two conditions - standard (0) and
+        deviant (1).
+
+        Args:
+            n_trials (int): length of the generated sequence.
+            deviant_freq (float): frequency of the deviant, should not be greater than .25
+            mindist (int): minimum number of standards between two deviants
+
+        Returns:
+            The return value. True for success, False otherwise.
+        '''
+        n_partials = int(numpy.ceil((2 / deviant_freq) - 7))
+        reps = int(numpy.ceil(n_trials/n_partials))
+        partials = []
+        for i in range(n_partials):
+            partials.append([1] * (mindist+i) + [0])
+        idx = list(range(n_partials)) * reps
+        numpy.random.shuffle(idx)
+        trials = []
+        for i in idx:  # make the trial sequence by putting possibilities together
+            trials.extend(partials[i])
+        trials = trials[:n_trials]  # cut the list to the requested number of trials
+        return numpy.where([numpy.array(trials) == 0])[1]
+
+    @staticmethod
     def _create_random_permutation(n_conditions, n_reps):
         '''Create a sequence of n_conditions x n_reps trials in random order.'''
         return list(numpy.random.permutation(numpy.tile(list(range(1, n_conditions+1)), n_reps)))
