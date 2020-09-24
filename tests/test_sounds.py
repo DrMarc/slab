@@ -5,12 +5,11 @@ import numpy
 def test_properties():
     slab.calibrate(intensity=80, make_permanent=False)
     sound = slab.Sound(numpy.ones([10, 2]), samplerate=10)
-    sound.repeat(n=5)
-    sound.copychannel(n=10)
+    sound = sound.repeat(n=5)
     assert sound.samplerate == 10
     assert sound.nsamples == 50
     assert sound.duration == 5.0
-    assert sound.nchannels == 10
+    assert sound.nchannels == 2
 
 
 def test_tone():
@@ -46,6 +45,7 @@ def test_manipulations():
     sound1 = slab.Sound.pinknoise()
     sound2 = slab.Sound.pinknoise()
     sound1.pulse()
+    sound1.am()
     sound2.aweight()
     sound = slab.Sound.crossfade(sound1, sound2, overlap=0.01)
     for feat in ['centroid', 'fwhm', 'flux', 'rolloff', 'flatness']:
