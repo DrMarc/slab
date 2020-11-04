@@ -24,15 +24,26 @@ bibliography: paper.bib
 
 ---
 # Summary
-Psychoacoustics is the scientific study of the perception of sound. Designing
-and conducting psychoacoustic experiments requires knowledge about managing psychological experiments,
-as well as digital signal processing and acoustics. Researchers who lack the math and coding skills
-to implement everything from scratch are forced to draw from a number of different packages which is
-bound to cause problems. With slab, we provide a framework which is powerful yet accessible
-for handling all aspects of an experiment like managing trial sequences, generating and playing sounds,
-extracting features, recording responses and saving results. Rather than provide a high-level interface for all of those features,
-slab equips the user with the basic building blocks. This modular design makes it easy to integrate your own code and facilitates
-learning by forcing the user to make careful considerations about experimental design and signal processing.
+Designing and conducting psychoacoustic experiments requires skills in coding and digital signal
+processing - both of which are usually not taught in a typical psychology undergraduate course.
+Researchers who lack the math and coding skills to implement everything from scratch have to draw
+from a number of different packages which is bound to cause problems. With slab, we provide a framework
+which is powerful yet accessible for handling all aspects of an experiment like managing trial sequences,
+generating and playing sounds, extracting features, recording responses and saving results.
+Rather than provide a high-level interface for all of those features, slab equips the user with the basic building blocks.
+This modular design makes it easy to integrate your own code and facilitates
+learning by requiring the user to make careful considerations about stimulation, sequencing and data management.
+To make it easier for users to get started we provide tutorials (see soundlab.readthedocs.io) as well as sample
+experiments that we conducted in our lab.
+
+The functionalities include:
+* Generating and manipulating sounds
+* Sound-feature extraction
+* Experimental Design
+* Frequency filtering and equalization
+* Spatial binaural sounds
+* Handling head-related transfer functions
+
 
 # Statement of need
 We believe that researchers should be able to write and understand the code they are using, even if they
@@ -45,20 +56,13 @@ feature extraction, it has an emphasis on music and lacks the utilities for cond
 is based on BrianHears (@brian2hears). To our knowledge, slab is the only python package that features handling of head-realted transfer funtion for experimental purpose. Slab is used in several ongoing experiments partially in combination with
 electrophysiology and neuroimaging.
 
-# Typical slab workflow
-Every experiment starts with quesitions about the design: How many conditions exists? How often are they repeated?
-What is the order? Do I need to precompute stimuli? Questions like these are handled by the Psychoacoustics module.
-This module features precomputed trial sequences, as well as adaptive ones where the trials are computed dynamically
-while the experiment is running. It also handles input during the experiment via keyboard or a button-box.
 
+# Audience
+Slab is directed towards a broad audience of students and researchers studying the
+perception of sound. It is useful for students who are learning how to code and design experiments
+as well as for senior researchers who aim at making their code cleaner and more readable.
+Slab is routinely used in experiments at the Neurobiology department at the University of Leipzig.
 
-# Typical Psychoacoustics workflow
-
-
-# Figures
-
-# Acknowledgements
-
-We acknowledge contributions from
 
 # References
+see paper.bib
