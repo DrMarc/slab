@@ -1042,7 +1042,7 @@ def apply_to_path(path='.', method=None, kwargs={}, out_path=None):
         path = pathlib.Path(path)
     if isinstance(out_path, str):
         out_path = pathlib.Path(out_path)
-    files = path.glob('*.wav')
+    files = sorted(path.glob('*.wav'))
     results = dict()
     for file in files:
         sig = Sound(file)

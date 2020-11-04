@@ -139,16 +139,16 @@ class TrialPresentationOptions_mixin:
         if print_info:
             self.print_trial_info()
 
-    def simulate_response(self, threshold, transition_width=2, intervals=1, hitrates=None):
+    def simulate_response(self, threshold=None, transition_width=2, intervals=1, hitrates=None):
         '''Return a simulated response to the current condition index value by calculating the hitrate from a
         psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
         a continuous stimulus value.
         Arguments:
-            thresh: midpoint/threshhold
-            transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75 (*2*)
+            threshold: midpoint/threshhold
+            transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
             intervals: use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
-            hitrates: list of hitrates for the different conditions, to allow custom rates instead of simulation.
-                      If given, thresh and transition_width are not used.
+            hitrates: list or numpy array of hitrates for the different conditions, to allow custom rates instead of simulation.
+                      If given, thresh and transition_width are not used. If a single value is given, this value is used.
         '''
         slope = 0.5 / transition_width
         if self.__class__.__name__ == 'Trialsequence': # check which class the mixin is in
@@ -158,7 +158,10 @@ class TrialPresentationOptions_mixin:
         if hitrates is None:
             hitrate = 1 / (1 + numpy.exp(4 * slope  * (threshold - current_condition))) # scale/4  = slope at midpoint
         else:
-            hitrate = hitrates[current_condition]
+            if isinstance(hitrates, (list, numpy.ndarray)):
+                hitrate = hitrates[current_condition]
+            else:
+                hitrate = hitrates
         hit = numpy.random.rand() < hitrate # True with probability hitrate
         if hit or intervals == 1:
             return hit
@@ -366,7 +369,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
     def response_summary(self):
         '''Returns a tally of responses as list of lists for a finished Trialsequence.
         The indices of the outer list are the indices of the conditions in the sequence. Each inner list contains the
-        number of responses per response key, with the response keys sorted in ascending order - the last element always
+        number of responses per response key, with the response keys sorted in ascending order, the last element always
         represents None. For example, 3 conditions with 10 repetitions each, and 2 response keys (Yes/No experiment)
         + None returns a structure like this: [[0, 10, 0], [2, 8, 0], [9, 1, 0]], indicating that the person responded
         10 out of 10 times No in the first condition, 2 out of 10 Yes (and 8 out of 10 No) in the second,
@@ -375,10 +378,10 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         '''
         if not self.finished:
             return None
-        response_keys = list(set(self.data)) # list of used response key codes
-        response_keys = sorted(response_keys, key=lambda x: (x is None, x))
+        response_keys = list(set(self.data)) + [None] # list of used response key codes (add None in case it's not present)
+        response_keys = sorted(response_keys, key=lambda x: (x is None, x)) # sort, with 'None' at the end
         responses = []
-        for condition in range(self.n_conds):
+        for condition in self.conditions:
             idx = [i for i, cond in enumerate(self.trials) if cond == condition] # indices of condition in sequence
             count = Counter([self.data[i] for i in idx])
             resp_1cond = []

@@ -52,6 +52,9 @@ This module features precomputed trial sequences, as well as adaptive ones where
 while the experiment is running. It also handles input during the experiment via keyboard or a button-box.
 
 
+# Typical Psychoacoustics workflow
+
+
 # Figures
 
 # Acknowledgements
