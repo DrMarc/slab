@@ -1,7 +1,5 @@
 ---
-title: 'Psychoacoustics: A teaching-oriented Python package for running psychoacoustic experiments and manipulating sounds'
-       'Import Psychoacoustics as psy - an accessible experimenters toolkit'
-       'Manipulating Sounds and Running Experiments in Python 3 with Psychoacoustics'
+title: 's(ound)lab: A teaching-oriented Python package for running psychoacoustic experiments and manipulating sounds'
 tags:
   - Python
   - psychoacoustics
@@ -25,48 +23,46 @@ date: 30 September 2020
 bibliography: paper.bib
 
 ---
-
 # Summary
-Psychoacoustics is the scientific study of the perception of sound. Designing
-and conducting psychoacoustic experiments requires knowledge about managing psychological experiments,
-as well as digital signal processing and acoustics. Researchers who lack the math and coding skills
-to implement everythig from scratch are forced to draw from a number of different packages which is
-bound to cause problems. With Psychoacoustics, we provide a framework which is powerful yet accessible
-for handling all aspects of an experiment.
+Designing and conducting psychoacoustic experiments requires skills in coding and digital signal
+processing - both of which are usually not taught in a typical psychology undergraduate course.
+Researchers who lack the math and coding skills to implement everything from scratch have to draw
+from a number of different packages which is bound to cause problems. With slab, we provide a framework
+which is powerful yet accessible for handling all aspects of an experiment like managing trial sequences,
+generating and playing sounds, extracting features, recording responses and saving results.
+Rather than provide a high-level interface for all of those features, slab equips the user with the basic building blocks.
+This modular design makes it easy to integrate your own code and facilitates
+learning by requiring the user to make careful considerations about stimulation, sequencing and data management.
+To make it easier for users to get started we provide tutorials (see soundlab.readthedocs.io) as well as sample
+experiments that we conducted in our lab.
 
+The functionalities include:
+* Generating and manipulating sounds
+* Sound-feature extraction
+* Experimental Design
+* Frequency filtering and equalization
+* Spatial binaural sounds
+* Handling head-related transfer functions
 
-Begin your paper with a summary of the high-level functionality of your software for a non-specialist reader. Avoid jargon in this section.
-JOSS welcomes submissions from broadly diverse research areas. For this reason, we require that authors include in the paper some sentences that explain the software functionality and domain of use to a non-specialist reader. We also require that authors explain the research applications of the software. The paper should be between 250-1000 words
-A summary describing the high-level functionality and purpose of the software for a diverse, non-specialist audience.
 
 # Statement of need
-
-A clear Statement of Need that illustrates the research purpose of the software.
-Mention (if applicable) a representative set of past or ongoing research projects using the software and recent scholarly publications enabled by it.
-If you want to cite a software repository URL (e.g. something on GitHub without a preferred
-citation) then you can do it with the example BibTeX entry below for @fidgit.
-For a quick reference, the following citation commands can be used:
-- `@author:2001`  ->  "Author et al. (2001)"
-- `[@author:2001]` -> "(Author et al., 2001)"
-- `[@author1:2001; @author2:2001]` -> "(Author1 et al., 2001; Author2 et al., 2002)"
-
-# Typical Psychoacoustics workflow
+We believe that researchers should be able to write and understand the code they are using, even if they
+lack formal training. With slab, we want to facilitate learning by providing basic building blocks and instructing
+researchers on how to combine them to experiments of various levels of complexity. This approach sets us apart from
+other packages with similar scope (@psychopy2_2019; @pychoacoustics) which are run mainly via a graphic user interface
+and come with default experiments that work out of the box. There is considerable overlap with sound and music
+processing packages like librosa (@librosa). However, while librosa offers much more in terms of sound analysis and
+feature extraction, it has an emphasis on music and lacks the utilities for conducting experiments. The signal class
+is based on BrianHears (@brian2hears). To our knowledge, slab is the only python package that features handling of head-realted transfer funtion for experimental purpose. Slab is used in several ongoing experiments partially in combination with
+electrophysiology and neuroimaging.
 
 
-# Figures
+# Audience
+Slab is directed towards a broad audience of students and researchers studying the
+perception of sound. It is useful for students who are learning how to code and design experiments
+as well as for senior researchers who aim at making their code cleaner and more readable.
+Slab is routinely used in experiments at the Neurobiology department at the University of Leipzig.
 
-Figures can be included like this:
-![Caption for example figure.\label{fig:example}](figure.png)
-and referenced from text using \autoref{fig:example}.
-
-Fenced code blocks are rendered with syntax highlighting:
-```python
-for n in range(10):
-    yield f(n)
-```
-
-# Acknowledgements
-
-We acknowledge contributions from
 
 # References
+see paper.bib
