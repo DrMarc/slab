@@ -7,6 +7,7 @@ dirpath = Path(dir.name)
 
 # NOTE: Everythig involving pressing a key is currently untested
 # becauses curses does not run within pytest
+# TODO: make some crazy lists
 
 
 def test_trialsequence():
