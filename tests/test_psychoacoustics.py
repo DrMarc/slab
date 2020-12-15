@@ -86,20 +86,20 @@ def test_staircase():
     for stimulus_value in stairs:
         response = stairs.simulate_response(threshold=3)
         stairs.add_response(response)
-    stairs.save_csv(dirpath / "staircase.csv")
+    stairs.save_csv(PATH / "staircase.csv")
 
 
 def test_precomputed():
     sounds = [slab.Sound.whitenoise() for _ in range(10)]
     sounds = slab.Precomputed(sounds)
     sounds = slab.Precomputed(sounds.random_choice(5))
-    sounds.write(dirpath / "precomputed.zip")
-    sounds = slab.Precomputed.read(dirpath / "precomputed.zip")
+    sounds.write(PATH / "precomputed.zip")
+    sounds = slab.Precomputed.read(PATH / "precomputed.zip")
     cfg = slab.psychoacoustics.load_config("tests/config.txt")
 
 
 def test_results():
-    slab.psychoacoustics.results_folder = dirpath
+    slab.psychoacoustics.results_folder = PATH
     results = slab.Resultsfile(subject="MrPink")
     data = [1, 2, 3]
     results.write(data)
