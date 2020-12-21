@@ -46,12 +46,11 @@ behavioral experiments which provide a high level graphical user interface to cu
 (@psychopy2_2019; @pychoacoustics). While there is some overlap with sound and music processing packages like librosa
 (@librosa) we only implemented the basics of sound processing and analysis. While there is a Python API for the
 spatially oriented format for acoustics, there is, to our knowledge, no package that features experimental
-manipulation of head-related transfer functions. The signal class is based on Brian.Hears (@brian2hears).
-
+manipulation of head-related transfer functions. The signal class is based on BrianHears (@brian2hears).
 
 # Audience
 Slab is directed towards students and researchers of all levels studying the perception of sound.
-Researchers and incoming students at our lab use it routinely in behavioral experiments and neuroimaging experiments.
+Researchers and incoming students at our lab use it routinely in behavioral and neuroimaging experiments.
 
 # References
 see paper.bib

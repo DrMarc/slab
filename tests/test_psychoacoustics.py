@@ -1,28 +1,69 @@
 import slab
 from itertools import zip_longest
 import tempfile
+import numpy
+import random
 from pathlib import Path
-dir = tempfile.TemporaryDirectory()
-dirpath = Path(dir.name)
-
-# NOTE: Everythig involving pressing a key is currently untested
-# becauses curses does not run within pytest
-# TODO: make some crazy lists
+DIR = tempfile.TemporaryDirectory()
+PATH = Path(DIR.name)
+# NOTE: Everything involving pressing a key is currently untested because curses does not run within pytest
 
 
-def test_trialsequence():
-    seq = slab.Trialsequence(conditions=5, n_reps=10, kind="random_permutation")
-    inf = slab.Trialsequence(conditions=5, kind="infinite")
-    for trial in seq:
-        inf.__next__()
-    seq = slab.Trialsequence(conditions=5, n_reps=10, kind="non_repeating", deviant_freq=0.1)
-    n_deviants = len([i for i, cond in enumerate(seq.trials) if cond == 0])
-    seq.transitions()
-    seq.condition_probabilities()
-    for trial in seq:
-        if trial != 0:
-            seq.add_response(seq.simulate_response(threshold=1))
-    assert seq.data.count(None) == n_deviants
+def test_sequence_from_trials():
+    for i in range(100):  # generate from integers
+        start = numpy.random.randint(1, 100)
+        stop = start+numpy.random.randint(1, 10)
+        trials = [numpy.random.randint(start, stop) for i in range(100)]
+        sequence = slab.Trialsequence(trials=trials)
+        assert all(numpy.unique(sequence.trials) == numpy.array(range(1, sequence.n_conditions+1)))
+    trials = ["a", "x", "x", "z", "a", "a", "a", "z"]
+    sequence = slab.Trialsequence(trials=trials)
+    assert all(numpy.unique(sequence.trials) == numpy.array(range(1, sequence.n_conditions + 1)))
+    sounds = [slab.Sound.pinknoise(), slab.Sound.whitenoise()]
+    trials = [random.choice(sounds) for i in range(50)]
+    sequence = slab.Trialsequence(trials=trials)
+    assert all(numpy.unique(sequence.trials) == numpy.array(range(1, sequence.n_conditions + 1)))
+
+
+def test_sequence():
+    for _ in range(100):
+        conditions_list = [numpy.random.randint(2, 10), ["a", "b", "c"], [("a", "b"), (1.5, 3.2)],
+                           [slab.Sound.pinknoise(), slab.Sound.whitenoise()]]
+        kinds = ["random_permutation", "non_repeating", "infinite"]
+        for conditions in conditions_list:
+            n_reps = numpy.random.randint(1, 10)
+            kind = random.choice(kinds)
+            sequence = slab.Trialsequence(conditions=conditions, n_reps=n_reps, kind=kind)
+            if isinstance(conditions, int):
+                conditions = list(range(1, conditions+1))
+            assert sequence.conditions == conditions
+            assert all(numpy.unique(sequence.trials) == numpy.array(range(1, sequence.n_conditions + 1)))
+            if kind != "infinite":
+                assert sequence.n_trials == len(conditions) * n_reps
+                for trial in sequence:
+                    assert trial == sequence.conditions[sequence.trials[sequence.this_n]-1]
+            else:
+                count = 0
+                for trial in sequence:
+                    assert trial == sequence.conditions[sequence.trials[sequence.this_n]-1]
+                    count += 1
+                    if count > 100:
+                        break
+
+def test_deviants():
+    for i in range(100):
+        conditions = 4
+        n_reps = 50
+        n_trials = conditions*n_reps
+        deviant_frequency = 0.2 * random.random() + .05
+        sequence = slab.Trialsequence(conditions=4, n_reps=50, deviant_freq=deviant_frequency)
+        count_deviants = 0
+        for trial in sequence:
+            if trial == 0:
+                count_deviants += 1
+            else:
+                assert trial == sequence.conditions[sequence.trials[sequence.this_n] - 1]
+        assert count_deviants == sequence.trials.count(0) == int(n_trials*deviant_frequency)
 
 
 def test_staircase():
@@ -45,20 +86,20 @@ def test_staircase():
     for stimulus_value in stairs:
         response = stairs.simulate_response(threshold=3)
         stairs.add_response(response)
-    stairs.save_csv(dirpath / "staircase.csv")
+    stairs.save_csv(PATH / "staircase.csv")
 
 
 def test_precomputed():
     sounds = [slab.Sound.whitenoise() for _ in range(10)]
     sounds = slab.Precomputed(sounds)
     sounds = slab.Precomputed(sounds.random_choice(5))
-    sounds.write(dirpath / "precomputed.zip")
-    sounds = slab.Precomputed.read(dirpath / "precomputed.zip")
+    sounds.write(PATH / "precomputed.zip")
+    sounds = slab.Precomputed.read(PATH / "precomputed.zip")
     cfg = slab.psychoacoustics.load_config("tests/config.txt")
 
 
 def test_results():
-    slab.psychoacoustics.results_folder = dirpath
+    slab.psychoacoustics.results_folder = PATH
     results = slab.Resultsfile(subject="MrPink")
     data = [1, 2, 3]
     results.write(data)
