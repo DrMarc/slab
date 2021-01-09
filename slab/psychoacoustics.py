@@ -238,8 +238,9 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
             if deviant_freq is not None:  # insert deviants
                 deviants = slab.Trialsequence._deviant_indices(n_trials=int(self.n_conditions * n_reps),
                                                                deviant_freq=deviant_freq)
-                self.trials = list(numpy.insert(self.trials, deviants, 0))
+                self.trials = numpy.insert(self.trials, deviants, 0)
                 self.n_conditions += 1  # add one condition for deviants
+        self.trials = list(self.trials)  # convert trials to list
         self.this_rep_n = 0  # index of repetition of the conditions we are currently in
         self.this_trial_n = -1  # trial index within this repetition
         self.this_n = -1  # trial index in entire sequence
