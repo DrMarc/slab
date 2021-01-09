@@ -206,8 +206,11 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
                     if trial == condition:
                         trials[t] = i+1
             self.trials = trials
-        elif isinstance(conditions, str) and os.path.isfile(conditions):
-            self.load_json(conditions)  # import entire object from file
+        elif isinstance(conditions, str):
+            if not os.path.isfile(conditions):
+                raise ValueError(f"could not load the file {conditions}")
+            else:
+                self.load_json(conditions)  # import entire object from file
         else:
             if isinstance(conditions, int):
                 self.conditions = list(range(1, conditions+1))
