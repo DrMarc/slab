@@ -230,11 +230,14 @@ class Trialsequence(collections.abc.Iterator, LoadSave_mixin, TrialPresentationO
                     if trial == condition:
                         trials[t] = i+1
             self.trials = trials
-        elif isinstance(conditions, str):
+        elif isinstance(conditions, (str, pathlib.PosixPath)):
             if not os.path.isfile(conditions):
                 raise ValueError(f"could not load the file {conditions}")
             else:
-                self.load_json(conditions)  # import entire object from file
+                try:
+                    self.load_json(conditions)  # import entire object from file
+                except UnicodeDecodeError:
+                    self.load_pickle(conditions)
         else:
             if isinstance(conditions, int):
                 self.conditions = list(range(1, conditions+1))
