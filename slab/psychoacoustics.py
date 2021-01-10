@@ -94,7 +94,7 @@ class LoadSave_mixin:
             with open(file_name, 'w') as f:
                 json.dump(self.__dict__, f, indent=2, default=default)
                 return True
-        except TypeError:
+        except (TypeError, ValueError) as e:  # type error caused by json dump, value error by default function
             print("Your sequence contains data which is not JSON serializable, use the save_pickle method instead")
         except OSError:
             return False
