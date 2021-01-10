@@ -7,6 +7,7 @@ import io
 import pathlib
 import datetime
 import json
+import pickle
 import zipfile
 import collections
 from contextlib import contextmanager
@@ -59,10 +60,25 @@ def Key():
         yield _buttonbox
 
 
-class LoadSaveJson_mixin:
-    'Mixin to provide JSON loading and saving functions'
+class LoadSave_mixin:
+    """Mixin to provide JSON and pickle loading and saving functions"""
+
+    def save_pickle(self, file_name):
+        if isinstance(file_name, pathlib.PosixPath):
+            file_name = str(file_name)
+        with open(file_name, 'wb') as fp:
+            pickle.dump(self.__dict__, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def load_pickle(self, file_name):
+        if isinstance(file_name, pathlib.PosixPath):
+            file_name = str(file_name)
+        if not os.path.isfile(file_name):
+            raise ValueError(f"the file {file_name} does not exist")
+        with open(file_name, 'rb') as fp:
+            self.__dict__ = pickle.load(fp)
 
     def save_json(self, file_name=None):
+
         """
         Save the object as JSON file.
         Arguments:
@@ -70,12 +86,16 @@ class LoadSaveJson_mixin:
         """
         # self_copy = copy.deepcopy(self) use if reading the json file sometimes fails
         def default(i): return int(i) if isinstance(i, numpy.int64) else i
+        if isinstance(file_name, pathlib.PosixPath):
+            file_name = str(file_name)
         if (file_name is None) or (file_name == 'stdout'):
             return json.dumps(self.__dict__, indent=2, default=default)
         try:
             with open(file_name, 'w') as f:
                 json.dump(self.__dict__, f, indent=2, default=default)
                 return True
+        except TypeError:
+            print("Your sequence contains data which is not JSON serializable, use the save_pickle method instead")
         except OSError:
             return False
 
@@ -85,6 +105,10 @@ class LoadSaveJson_mixin:
         Attributes:
             file_name: name of the file to read.
         """
+        if isinstance(file_name, pathlib.PosixPath):
+            file_name = str(file_name)
+        if not os.path.isfile(file_name):
+            raise ValueError(f"the file {file_name} does not exist")
         with open(file_name, 'r') as f:
             self.__dict__ = json.load(f)
 
@@ -168,7 +192,7 @@ class TrialPresentationOptions_mixin:
         return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
 
 
-class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):
+class Trialsequence(collections.abc.Iterator, LoadSave_mixin, TrialPresentationOptions_mixin):
     """Non-adaptive trial sequences.
     Parameters:
         conditions: an integer, list, or flat array specifying condition indices,
@@ -411,7 +435,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentat
         plt.show()
 
 
-class Staircase(collections.abc.Iterator, LoadSaveJson_mixin, TrialPresentationOptions_mixin):
+class Staircase(collections.abc.Iterator, LoadSave_mixin, TrialPresentationOptions_mixin):
     """Class to handle smoothly the selection of the next trial
     and report current values etc.
     Calls to next() will fetch the next object given to this
