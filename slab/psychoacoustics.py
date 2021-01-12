@@ -236,7 +236,7 @@ class Trialsequence(collections.abc.Iterator, LoadSave_mixin, TrialPresentationO
             else:
                 try:
                     self.load_json(conditions)  # import entire object from file
-                except (UnicodeDecodeError, JSONDecodeError) as e:
+                except (UnicodeDecodeError, json.JSONDecodeError) as e:
                     self.load_pickle(conditions)
         else:
             if isinstance(conditions, int):
