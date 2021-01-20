@@ -1,5 +1,5 @@
 ![Package](https://github.com/DrMarc/soundlab/workflows/Python%20package/badge.svg)
-[![TestPyPI](https://github.com/DrMarc/soundlab/workflows/TestPyPi/badge.svg)](https://test.pypi.org/project/soundlab/)
+[![PyPI](https://github.com/DrMarc/soundlab/workflows/PyPi/badge.svg)](https://pypi.org/project/slab/)
 [![Documentation Status](https://readthedocs.org/projects/soundlab/badge/?version=latest)](https://soundlab.readthedocs.io/en/latest/?badge=latest)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/soundlab/graphs/commit-activity)
 ![PyPI pyversions](https://img.shields.io/badge/python-%3E%3D3.6-blue)
