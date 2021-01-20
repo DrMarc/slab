@@ -230,7 +230,7 @@ class Trialsequence(collections.abc.Iterator, LoadSave_mixin, TrialPresentationO
                     if trial == condition:
                         trials[t] = i+1
             self.trials = trials
-        elif isinstance(conditions, str):
+        if isinstance(conditions, str):
             if not os.path.isfile(conditions):
                 raise ValueError(f"could not load the file {conditions}")
             else:
@@ -243,44 +243,44 @@ class Trialsequence(collections.abc.Iterator, LoadSave_mixin, TrialPresentationO
                 self.conditions = list(range(1, conditions+1))
             else:
                 self.conditions = conditions
-        self.n_conditions = len(self.conditions)
-        if trials is None:  # generate stimulus sequence
-            if kind is None:
-                kind = 'random_permutation' if self.n_conditions <= 2 else 'non_repeating'
-            if kind == 'random_permutation':
-                self.trials = Trialsequence._create_random_permutation(self.n_conditions, self.n_reps)
-            elif kind == 'non_repeating':
-                self.trials = Trialsequence._create_simple_sequence(self.n_conditions, self.n_reps)
-            elif kind == 'infinite':
-                # implementation if infinite sequence is a bit of a hack (number of completed trials needs
-                # to be calculated as: trials.this_rep_n * trials.n_conditions + trials.this_trial_n + 1)
-                # It's also not possible to make an infinite sequence with devaints.
-                if deviant_freq is not None:
-                    raise ValueError("Deviants are not implemented for infinite sequences!")
-                if self.n_conditions <= 2:
-                    self.trials = Trialsequence._create_random_permutation(self.n_conditions, 5)
-                    self.n_reps = 5
+            self.n_conditions = len(self.conditions)
+            if trials is None:  # generate stimulus sequence
+                if kind is None:
+                    kind = 'random_permutation' if self.n_conditions <= 2 else 'non_repeating'
+                if kind == 'random_permutation':
+                    self.trials = Trialsequence._create_random_permutation(self.n_conditions, self.n_reps)
+                elif kind == 'non_repeating':
+                    self.trials = Trialsequence._create_simple_sequence(self.n_conditions, self.n_reps)
+                elif kind == 'infinite':
+                    # implementation if infinite sequence is a bit of a hack (number of completed trials needs
+                    # to be calculated as: trials.this_rep_n * trials.n_conditions + trials.this_trial_n + 1)
+                    # It's also not possible to make an infinite sequence with devaints.
+                    if deviant_freq is not None:
+                        raise ValueError("Deviants are not implemented for infinite sequences!")
+                    if self.n_conditions <= 2:
+                        self.trials = Trialsequence._create_random_permutation(self.n_conditions, 5)
+                        self.n_reps = 5
+                    else:
+                        self.trials = Trialsequence._create_simple_sequence(self.n_conditions, 1)
+                        self.n_reps = 1
                 else:
-                    self.trials = Trialsequence._create_simple_sequence(self.n_conditions, 1)
-                    self.n_reps = 1
-            else:
-                raise ValueError(f'Unknown kind parameter: {kind}!')
-            if deviant_freq is not None:  # insert deviants
-                deviants = slab.Trialsequence._deviant_indices(n_trials=int(self.n_conditions * n_reps),
-                                                               deviant_freq=deviant_freq)
-                self.trials = numpy.insert(self.trials, deviants, 0)
-                self.n_conditions += 1  # add one condition for deviants
-        self.trials = list(self.trials)  # convert trials to list
-        self.this_rep_n = 0  # index of repetition of the conditions we are currently in
-        self.this_trial_n = -1  # trial index within this repetition
-        self.this_n = -1  # trial index in entire sequence
-        self.this_trial = []  # condition of current trial
-        self.finished = False
-        self.data = []  # holds responses if TrialPresentationOptions methods are called
-        self.n_trials = len(self.trials)
-        self.n_remaining = self.n_trials
-        self.kind = kind
-        self.data = [None for _ in self.trials]
+                    raise ValueError(f'Unknown kind parameter: {kind}!')
+                if deviant_freq is not None:  # insert deviants
+                    deviants = slab.Trialsequence._deviant_indices(n_trials=int(self.n_conditions * n_reps),
+                                                                   deviant_freq=deviant_freq)
+                    self.trials = numpy.insert(self.trials, deviants, 0)
+                    self.n_conditions += 1  # add one condition for deviants
+            self.trials = list(self.trials)  # convert trials to list
+            self.this_rep_n = 0  # index of repetition of the conditions we are currently in
+            self.this_trial_n = -1  # trial index within this repetition
+            self.this_n = -1  # trial index in entire sequence
+            self.this_trial = []  # condition of current trial
+            self.finished = False
+            self.data = []  # holds responses if TrialPresentationOptions methods are called
+            self.n_trials = len(self.trials)
+            self.n_remaining = self.n_trials
+            self.kind = kind
+            self.data = [None for _ in self.trials]
 
     def __repr__(self):
         return self.__dict__.__repr__()
