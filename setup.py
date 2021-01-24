@@ -12,12 +12,12 @@ with open('slab/__init__.py') as file:
         if m:
             version = m.group(1)
 
-setup(name='soundlab',
+setup(name='slab',
       version=version,
       description='Tools for generating and manipulating digital signals, particularly sounds.',
       long_description=readme,
       long_description_content_type='text/markdown',
-      url='http://github.com/DrMarc/soundlab.git',
+      url='http://github.com/DrMarc/slab.git',
       author='Marc Schoenwiesner',
       author_email='marc.schoenwiesner@gmail.com',
       license='MIT',
