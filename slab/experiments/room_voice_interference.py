@@ -4,6 +4,7 @@ Interference between room and voice processing
 Use like this:
 >>> from slab.experiments import room_voice_interference
 >>> room_voice_interference.main_experiment('subject01')
+Please see docstring of main_experiment() for details.
 '''
 
 import time
@@ -12,9 +13,7 @@ import collections
 import numpy
 import slab
 
-# confiuration
-# could go into config file and be loaded here with cfg = slab.load_config('config.txt'),
-# then variables are accessible as cfg.speaker_positions etc.
+# configuration
 slab.Signal.set_default_samplerate(44100)
 _results_file = None
 slab.Resultsfile.results_folder = 'Results'
@@ -28,11 +27,8 @@ default_voice = voices[0] # 0.98
 default_itd = itds[0] # 0
 ISI_stairs = 0.15
 _after_stim_pause = 0.3
-#word_list = ['Aertel', 'Apor', 'Aucke', 'Bohke', 'Dercke', 'Eika', 'Eukof', 'Felcke', 'Geke', 'Gelkat', 'Kansup', 'Kelpeit', 'Kirpe', 'Kitlu', 'Klamsup', 'Kontus', 'Lanrapf', 'Manzeb', 'Nukal', 'Pekus', 'Perkus', 'Raupfan', 'Reiwat', 'Repad', 'Retel', 'Schaujak', 'Seckuck', 'Sekaak', 'Stiecke', 'Subter', 'Trepfel', 'Tunsat', 'Verzung', 'Waatep', 'Wieken', 'Zeten']
-word_list = ['Aertel', 'Apor', 'Aucke']
-# folder 'stimuli' in same folder as the script:
-#stim_folder = pathlib.Path(__file__).parent.resolve() / pathlib.Path('Stimuli')
-stim_folder = pathlib.Path('/Users/Marc/Documents/Projects') / pathlib.Path('Stimuli')
+word_list = ['Aertel', 'Apor', 'Aucke', 'Bohke', 'Dercke', 'Eika', 'Eukof', 'Felcke', 'Geke', 'Gelkat', 'Kansup', 'Kelpeit', 'Kirpe', 'Kitlu', 'Klamsup', 'Kontus', 'Lanrapf', 'Manzeb', 'Nukal', 'Pekus', 'Perkus', 'Raupfan', 'Reiwat', 'Repad', 'Retel', 'Schaujak', 'Seckuck', 'Sekaak', 'Stiecke', 'Subter', 'Trepfel', 'Tunsat', 'Verzung', 'Waatep', 'Wieken', 'Zeten']
+stim_folder = pathlib.Path('..') / pathlib.Path('Stimuli') # set to correct path
 condition = collections.namedtuple('condition', ['voice', 'room', 'itd', 'label']) # used to set parameters in interference_block
 
 def jnd(condition, practise=False):
@@ -111,12 +107,12 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
     jnd_room etc. ... the room, SER and ITD values that are perceived as different from the default
                       (default value + measured jnd rounded to the nearest available stimulus)
     '''
-    print('Two sounds are presented in each trial.')
+    print('Three sounds are presented in each trial.')
     print('They are always different, but sometimes')
     print('one sound is played in a larger room,')
     print('and sometimes all three are played in the same room.')
     print('Was the larger room presented first, second, or third?')
-    print('Press 1 for first, 2 for second, and .')
+    print('Press 1 for first, 2 for second, and 3 for third.')
     input('Press enter to start the test...')
     # set parameter values of conditions in named tuples -> list of these is used for slab.Trialsequence
     default = condition(voice=default_voice, room=default_room, itd=default_itd, label='default')
@@ -153,7 +149,16 @@ def interference_block(jnd_room, jnd_voice, jnd_itd):
     _results_file.write(repr(trials), tag='trials')
 
 def main_experiment(subject=None, do_jnd=True, do_interference=True):
-    'Interference between room and voice processing'
+    '''
+    Interference between room and voice processing.
+    Pre-recorded voice recordings are presented in different simulated rooms (the large stimulus
+    set is not included). Just-noticeable differences for changes in room volume and voice
+    parameters (glottal pulse rate and vocal tract length) are first measured, then 3-alternative-
+    forced-choice trial are presented with the target in a larger room. Does a simultaneous voice
+    change impede the detection of the room change?
+
+    This experiment showcases participant data handling, AFC trials, prerecorded stimulus handling, among others.
+    '''
     global _results_file
     # set up the results file
     if not subject:
