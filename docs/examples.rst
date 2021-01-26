@@ -49,12 +49,12 @@ Measure temporal modulation transfer functions via detection thresholds for ampl
     base_stimulus = slab.Sound.pinknoise(duration=1.)
     base_stimulus.level = 60
     for frequency in mod_freqs:
-        stairs = slab.Staircase(start_val=50, n_reversals=18)
+    stairs = slab.Staircase(start_val=0.5, n_reversals=12, step_type='db',
+                step_sizes=[4,2], min_val=0, max_val=1)
         print(f'Starting staircase with {frequency} Hz:')
         for depth in stairs:
             stimulus = base_stimulus.am(frequency=frequency, depth=depth)
-            stairs.present_tone_trial(stimulus)
-            stairs.print_trial_info()
-        threshs.append({stairs.threshold())
-        print(f'Threshold at {frequency} Hz: {stairs.threshold()} dB')
+            stairs.present_afc_trial(stimulus, base_stimulus)
+        threshs.append(stairs.threshold())
+        print(f'Threshold at {frequency} Hz: {stairs.threshold()} modulation depth')
     plt.plot(freqs, threshs) # plot the transfer function
