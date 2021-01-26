@@ -12,9 +12,7 @@ import numpy
 import scipy
 import slab
 
-# confiuration
-# could go into config file and be loaded here with cfg = slab.load_config('config.txt'),
-# then variables are accessible as cfg.speaker_positions etc.
+# configuration
 slab.Signal.set_default_samplerate(44100)
 _speaker_positions = numpy.arange(-90, 0.01, 4)
 _results_file = None
@@ -40,7 +38,6 @@ def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
     else:
         dir = 1
         starting_loc = _speaker_positions[0]
-    # make a function amplitude(pos) = f(time, pos)
 
     def loc(time):
         return (speed * time) * dir + starting_loc
@@ -54,7 +51,6 @@ def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
         speaker_amps[:, idx] = scipy.stats.norm.pdf(_speaker_positions, loc=loc(t), scale=width)
     # scale the amplitudes to max 0, min -SNR dB
     maximum = scipy.stats.norm.pdf(0, loc=0, scale=width)
-    #minimum = 0
     minimum = speaker_amps.min()
     speaker_amps = numpy.interp(speaker_amps, [minimum, maximum], [-SNR, 0])
     speaker_signals = []
@@ -68,9 +64,9 @@ def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
         sig += speaker_signal
     sig /= len(_speaker_positions)
     sig.ramp(duration=end_time/3)  # ramp the sum
-    #sig.filter(f=[500,14000], kind='bp')
-    #sig = sig.externalize()
-    sig.level = 75  # set to 75dB
+    sig.filter(f=[500,14000], kind='bp')
+    sig = sig.externalize() # apply smooth KEMAR HRTF to move perceived source outside of the head
+    sig.level = 75
     return sig
 
 
@@ -98,7 +94,6 @@ def familiarization():
             else:
                 resp = resp == 50
             responses.append(resp)
-            #_results_file.write(dir + ', ' + str(resp))
             time.sleep(_after_stim_pause)
         # compute hitrate
         hitrate = sum(responses)/trials.n_trials
@@ -181,6 +176,11 @@ def make_adapters():
 
 
 def main_experiment(subject=None):
+    '''
+    A complex spatially extended moving sound is generated ('moving_gaussian'). This stimulus simulates the acoustics of a free-field loudspeaker arc.  A gaussian profile moves from left to right or right to left across the virtual speaker array and the speed of the movement and modulation depth (across space) can be varied. Detection thresholds for motion direction are measured at different motion speeds. Then the effect of adaptation by a long moving adapter at one speed on the detectability of motion at different speeds is measured.
+
+    This experiment showcases complex stimulus generation and staircases, among others.
+    '''
     global _results_file
     # set up the results file
     if not subject:
