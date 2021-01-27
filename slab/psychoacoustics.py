@@ -205,15 +205,23 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
             `random_permutation` (complete randomization, default if `n_conditions` <= 2) or
             `infinite` (sequence that reset when reaching the end to generate an infinite number of trials.
             randomization method is random_permutation` if n_conditions` <= 2 and `non_repeating` otherwise).
+        deviant_freq (float): frequency with which deviants (encoded as 0) appear in the sequence. The minimum number
+        of trials between two deviants is 3 if deviant frequency is below 10%, 2 if it is below 20% and 1 if it
+            is below 30%. A deviant frequency greater than 30% is not supported
         label (str): a text label for the sequence.
     Attributes:
+        .trials: The order in which the conditions are repeated in the sequence. The elements are integers referring
+             to indices in `conditions`, starting from 1. 0 represents a deviant (only present if `deviant_freq` > 0)
         .n_trials: the total number of trials in the sequence
+        .conditions: list of the different unique elements in the sequence
+        .n_conditions: number of conditions, is equal to len(conditions) or len(conditions)+1 if there are deviants
         .n_remaining: the number of trials remaining i.e. that have not been called when iterating trough the sequence
         .this_n: current trials index in the entire sequence, equals the number of trials completed so far
         .this_trial: a dictionary giving the parameters of the current trial
         .finished: boolean signaling if all trials have been called
         .kind: randomization kind of sequence (`random_permutation`, `non_repeating`, `infinite`)
 """
+
     def __init__(self, conditions=2, n_reps=1, trials=None, kind=None, deviant_freq=None, label=''):
         self.label = label
         self.n_reps = int(n_reps)
@@ -230,7 +238,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
             else:
                 try:
                     self.load_json(conditions)  # import entire object from file
-                except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                except (UnicodeDecodeError, json.JSONDecodeError) as _:
                     self.load_pickle(conditions)
         else:
             if isinstance(conditions, int):
@@ -242,20 +250,20 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                 if kind is None:
                     kind = 'random_permutation' if self.n_conditions <= 2 else 'non_repeating'
                 if kind == 'random_permutation':
-                    self.trials = Trialsequence._create_random_permutation(self.n_conditions, self.n_reps)
+                    self.trials = self._create_random_permutation(self.n_conditions, self.n_reps)
                 elif kind == 'non_repeating':
-                    self.trials = Trialsequence._create_simple_sequence(self.n_conditions, self.n_reps)
+                    self.trials = self._create_simple_sequence(self.n_conditions, self.n_reps)
                 elif kind == 'infinite':
                     # implementation if infinite sequence is a bit of a hack (number of completed trials needs
                     # to be calculated as: trials.this_rep_n * trials.n_conditions + trials.this_trial_n + 1)
-                    # It's also not possible to make an infinite sequence with devaints.
+                    # It's also not possible to make an infinite sequence with deviants.
                     if deviant_freq is not None:
                         raise ValueError("Deviants are not implemented for infinite sequences!")
                     if self.n_conditions <= 2:
-                        self.trials = Trialsequence._create_random_permutation(self.n_conditions, 5)
+                        self.trials = self._create_random_permutation(self.n_conditions, 5)
                         self.n_reps = 5
                     else:
-                        self.trials = Trialsequence._create_simple_sequence(self.n_conditions, 1)
+                        self.trials = self._create_simple_sequence(self.n_conditions, 1)
                         self.n_reps = 1
                 else:
                     raise ValueError(f'Unknown kind parameter: {kind}!')
@@ -278,25 +286,20 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         return self.__dict__.__repr__()
 
     def __str__(self):
-        return f'Trialsequence, trials {"inf" if self.kind=="infinite" else self.n_trials}, remaining {"inf" if self.kind=="infinite" else self.n_remaining}, current condition {self.this_trial}'
+        return f'Trialsequence, trials {"inf" if self.kind=="infinite" else self.n_trials}, ' \
+               f'remaining {"inf" if self.kind=="infinite" else self.n_remaining}, current condition {self.this_trial}'
 
     def __next__(self):
-        """Advances to next trial and returns it. Updates attributes this_trial and this_trial_n.
-        If the trials have ended this method will raise a StopIteration error.
-        >>> trials = Trialsequence(.......)
-        >>> for eachTrial in trials:  # automatically stops when done
-        >>>     trials.print_trial_info()
-        """
-        self.this_trial_n += 1
+        """ Is called when iterating trough a sequenceAdvances to next trial and returns it. Updates attributes
+        this_trial and this_n. If the trials have ended this method will raise a StopIteration error.
+         Returns:
+             int: current element of the list in `trials` """
         self.this_n += 1
         self.n_remaining -= 1
-        if self.this_trial_n >= self.n_conditions:  # start a new repetition
-            self.this_trial_n = 0
-            self.this_rep_n += 1
         if self.n_remaining < 0:  # all trials complete
             if self.kind == 'infinite':  # finite sequence -> reset and start again
-                self.trials = Trialsequence._create_simple_sequence(# new sequence, avoid start with previous condition
-                    len(self.conditions), self.n_reps, previous=self.trials[-1])
+                # new sequence, avoid start with previous condition
+                self.trials = self._create_simple_sequence(len(self.conditions), self.n_reps, previous=self.trials[-1])
                 self.this_n = 0
                 self.n_remaining = self.n_trials - 1  # reset trial countdown to length of new trial
                 #  sequence (subtract 1 because we return the 0th trial below)
