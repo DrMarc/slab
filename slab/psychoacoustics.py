@@ -10,7 +10,8 @@ import pickle
 import zipfile
 import collections
 from contextlib import contextmanager
-from collections import Counter
+from collections import Counter, abc
+from abc import abstractmethod
 try:
     import curses
 except ImportError:
@@ -114,11 +115,9 @@ class LoadSaveMixin:
             return False
 
     def load_json(self, file_name):
-        """
-        Read JSON file and deserialize the object into self.__dict__.
+        """ Read JSON file and deserialize the object into self.__dict__.
         Attributes:
-            file_name: name of the file to read.
-        """
+            file_name: name of the file to read. """
         if isinstance(file_name, pathlib.PosixPath):
             file_name = str(file_name)
         if not os.path.isfile(file_name):
@@ -128,18 +127,30 @@ class LoadSaveMixin:
 
 
 class TrialPresentationOptionsMixin:
-    # Mixin to provide alternative forced-choice (AFC) and Same-Different trial presentation methods and
-    # response simulation to Trialsequence and Staircase.
+    """ Mixin to provide alternative forced-choice (AFC) and Same-Different trial presentation methods and
+    response simulation to Trialsequence and Staircase."""
+
+    @abstractmethod
+    def add_response(self, response):
+        pass
+
+    @abstractmethod
+    def print_trial_info(self):
+        pass
 
     def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
-
-        """ Present the target sound in random order together with the distractor sound object (or list of
-        several sounds) with isi pause (in seconds) in between, then acquire a response keypress via Key(), compare the
-        response to the target interval and record the response via add_response. If key_codes for buttons are given
-        (get with: ord('1') for instance -> ascii code of key 1 is 49), then these keys will be used as answer keys.
-        Default are codes for buttons '1' to '9'. This is a convenience function for implementing alternative forced
-        choice trials. In each trial, generate the target stimulus and distractors, then call present_afc_trial to play
-        them and record the response. Optionally call print_trial_info afterwards. """
+        """ Present the target and distractor sounds in random order and acquire a response keypress.
+        The subject has to identify at which position the target was played. The result (True if response was corect
+        or False if response was wrong) is stored in the sequence via the add_response method.
+        Arguments:
+            target (instance of slab.Sound): sound that ought to be identified in the trial
+            distractors (instance or list of slab.Sound): distractor sound(s)
+            key_codes (list of int): ascii codes for the response keys (get code for button '1': ord('1') --> 49)
+                pressing the second button in the list is equivalent to the response "the target was the second sound
+                played in this trial". Defaults to the key codes for buttons '1' to '9'
+            isi (int or float): inter stimulus interval which is the pause between the end of one sound and the start
+            of the next one.
+            print_info (bool): If true, call the print_trial_info method afterwards """
         if isinstance(distractors, list):
             stims = [target] + distractors  # assuming sound object and list of sounds
         else:
@@ -159,61 +170,32 @@ class TrialPresentationOptionsMixin:
             self.print_trial_info()
 
     def present_tone_trial(self, stimulus, correct_key_idx=0, key_codes=(range(49, 58)), print_info=True):
-        '''
-        Present a stimulus and aquire a response. The response is compared with ``correct_key_idx`` (the index of the
-        correct key in the ``key_codes`` argument) and a match is logged as True (correct response) or False (incorrect response).
+        """ Present the target and distractor sounds in random order and acquire a response keypress.
+        The result (True if response was correct or False if response was wrong) is stored in the sequence via the
+        add_response method.
         Arguments:
-            stimulus: sound to present (object with play method)
-            correct_key_idx: index of correct response key in ``key_codes``
-            key_codes: list of response key codes (the default enables the number keys 1 to 9)
-            print_info: if True, call print_trial_info
-        '''
+            stimulus (instance of slab.Sound): sound played in the trial
+            correct_key_idx: index of the key in ``key_codes`` that represents a correct response.
+                Response is correct if ``response == key_codes[correct_key_idx]``
+            key_codes (list of int): ascii codes for the response keys (get code for button '1': ord('1') --> 49)
+            print_info (bool): If true, call the print_trial_info method afterwards """
         stimulus.play()
-        with slab.Key() as key:
-            response = key.getch()
+        with slab.key() as k:
+            response = k.getch()
         response = response == key_codes[correct_key_idx]
         self.add_response(response)
         if print_info:
             self.print_trial_info()
 
-    def simulate_response(self, threshold=None, transition_width=2, intervals=1, hitrates=None):
-        '''Return a simulated response to the current condition index value by calculating the hitrate from a
-        psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
-        a continuous stimulus value.
-        Arguments:
-            threshold: midpoint/threshhold
-            transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
-            intervals: use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
-            hitrates: list or numpy array of hitrates for the different conditions, to allow custom rates instead of simulation.
-                      If given, thresh and transition_width are not used. If a single value is given, this value is used.
-        '''
-        slope = 0.5 / transition_width
-        if self.__class__.__name__ == 'Trialsequence': # check which class the mixin is in
-            current_condition = self.trials[self.this_n]
-        else:
-            current_condition = self._next_intensity
-        if hitrates is None:
-            hitrate = 1 / (1 + numpy.exp(4 * slope  * (threshold - current_condition))) # scale/4  = slope at midpoint
-        else:
-            if isinstance(hitrates, (list, numpy.ndarray)):
-                hitrate = hitrates[current_condition]
-            else:
-                hitrate = hitrates
-        hit = numpy.random.rand() < hitrate # True with probability hitrate
-        if hit or intervals == 1:
-            return hit
-        return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
 
-
-class Trialsequence(collections.abc.Iterator, LoadSave_mixin, TrialPresentationOptions_mixin):
-    """Non-adaptive trial sequences.
-    Parameters:
-        conditions: an integer, list, or flat array specifying condition indices,
-            or a list of strings or other objects (dictionaries/tuples/namedtuples)
-            specifying names or stimulus values for each condition.
-            If given an integer x, uses range(x).
-            If conditions is a string, then it is treated as the name of a previously
-            saved trial sequence object, which is then loaded.
+class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOptionsMixin):
+    """ Randomized, non-adaptive trial sequences.
+    Arguments:
+        conditions (list or int or str): defines the different stimuli appearing the sequence. If given a list,
+            every element is one condition. The elements can be anything - strings, dictionaries, objects etc.
+            Note that, if the elements are not JSON serializable, the sequence can only be saved as a pickle file.
+            If conditions is an integer i, the list of conditions is given by range(i). A string is treated as the
+            filename of a previously saved trial sequence object, which is then loaded.
         n_reps: number of repeats of each condition (total trial number = len(conditions) * n_reps)
         trials: a list of conditions, i.e. the trial sequence. Typically, this list is left empty and generated by the
             class based on the other parameters.
@@ -451,7 +433,7 @@ class Trialsequence(collections.abc.Iterator, LoadSave_mixin, TrialPresentationO
         plt.show()
 
 
-class Staircase(collections.abc.Iterator, LoadSave_mixin, TrialPresentationOptions_mixin):
+class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOptionsMixin):
     """Class to handle smoothly the selection of the next trial
     and report current values etc.
     Calls to next() will fetch the next object given to this
@@ -567,6 +549,33 @@ class Staircase(collections.abc.Iterator, LoadSave_mixin, TrialPresentationOptio
 
     def __str__(self):
         return f'Staircase {self.n_up}up-{self.n_down}down, trial {self.this_trial_n}, {len(self.reversal_intensities)} reversals of {self.n_reversals}'
+
+    def simulate_response(self, threshold=None, transition_width=2, intervals=1, hitrates=None):
+        """Return a simulated response to the current condition index value by calculating the hitrate from a
+        psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
+        a continuous stimulus value.
+        Arguments:
+            threshold: midpoint/treshhold
+            transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
+            intervals: use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
+            hitrates: list or numpy array of hitrates for the different conditions, to allow custom rates instead of simulation.
+                      If given, thresh and transition_width are not used. If a single value is given, this value is used."""
+        slope = 0.5 / transition_width
+        if self.__class__.__name__ == 'Trialsequence': # check which class the mixin is in
+            current_condition = self.trials[self.this_n]
+        else:
+            current_condition = self._next_intensity
+        if hitrates is None:
+            hitrate = 1 / (1 + numpy.exp(4 * slope  * (threshold - current_condition))) # scale/4  = slope at midpoint
+        else:
+            if isinstance(hitrates, (list, numpy.ndarray)):
+                hitrate = hitrates[current_condition]
+            else:
+                hitrate = hitrates
+        hit = numpy.random.rand() < hitrate # True with probability hitrate
+        if hit or intervals == 1:
+            return hit
+        return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
 
     def add_response(self, result, intensity=None):
         """Add a True or 1 to indicate a correct/detected trial
@@ -934,17 +943,3 @@ def load_config(config_file):
             values.append(eval(val.strip()))
         config_tuple = namedtuple('config', var_names)
         return config_tuple(*values)
-
-
-if __name__ == '__main__':
-    # Demonstration
-    tr = Trialsequence(conditions=5, n_reps=2, label='test')
-    stairs = Staircase(start_val=50, n_reversals=10, step_type='lin', step_sizes=[8, 4, 4, 2, 2, 1],
-                       min_val=20, max_val=60, n_up=1, n_down=1, n_pretrials=4)
-    for trial in stairs:
-        response = stairs.simulate_response(threshold=30, transition_width=10)
-        stairs.add_response(response)
-        stairs.print_trial_info()
-        stairs.plot()
-    print(f'reversals: {stairs.reversal_intensities}')
-    print(f'mean of reversals: {stairs.threshold()}')
