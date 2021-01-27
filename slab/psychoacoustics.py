@@ -1,7 +1,6 @@
-'''
-psychoacoustics exports classes for handling psychophysical procedures and
-measures, like trial sequences and staircases.
-'''
+""" psychoacoustics exports classes for handling psychophysical procedures and
+measures, like trial sequences and staircases."""
+
 import os
 import io
 import pathlib
@@ -14,39 +13,41 @@ from contextlib import contextmanager
 from collections import Counter
 try:
     import curses
-    have_curses = True
 except ImportError:
-    have_curses = False
+    curses = None
 import numpy
 try:
     import matplotlib.pyplot as plt
-    have_pyplot = True
 except ImportError:
-    have_pyplot = False
+    plt = None
 import slab
 
 results_folder = 'Results'
 input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard 'or 'buttonbox'
 
-class _buttonbox:
-    '''Adapter class to allow easy switching between input from the keyboard via curses and from the custom buttonbox adapter
-    (arduino device that sends a keystroke followed by a return keystroke when pressing a button on the arduino).'''
+
+class _Buttonbox:
+    """ Adapter class to allow easy switching between input from the keyboard via curses and from the custom buttonbox
+    adapter (custom arduino device that sends a keystroke followed by a return keystroke when pressing a button on
+    the arduino)."""
+
     @staticmethod
     def getch():
-        key = input() # buttonbox adapter has to return the keycode of intended keys!
-        if key:
-            return int(key)
+        input_key = input()  # buttonbox adapter has to return the keycode of intended keys!
+        if input_key:
+            return int(input_key)
+
 
 @contextmanager
-def Key():
-    '''
-    Wrapper for curses module to simplify getting a single keypress from the terminal (default) or a buttonbox.
+def key():
+    """ Wrapper for curses module to simplify getting a single keypress from the terminal (default) or a buttonbox.
     Set slab.psychoacoustics.input_method = 'buttonbox' to use a custom USB buttonbox.
-    >>> with slab.Key() as key:
-    >>>    response = key.getch()
-    '''
+    Example:
+        with slab.Key() as key:
+        response = key.getch() """
+
     if input_method == 'keyboard':
-        if not have_curses:
+        if curses is None:
             raise ImportError(
                 'You need curses to use the keypress class (pip install curses (or windows-curses))')
         stdscr = curses.initscr()
@@ -57,19 +58,33 @@ def Key():
         curses.echo()
         curses.endwin()
     else:
-        yield _buttonbox
+        yield _Buttonbox
 
 
-class LoadSave_mixin:
-    """Mixin to provide JSON and pickle loading and saving functions"""
+class LoadSaveMixin:
+    """ Mixin to provide loading and saving functions. Supports JSON the pickle format """
 
-    def save_pickle(self, file_name):
+    def save_pickle(self, file_name, overwrite=False):
+        """ Save the object as pickle file.
+        Arguments:
+            file_name (str or pathlib.Path): name of the file to create.
+            overwrite (bool): overwrite existing file with the same name, defaults to False.
+        Returns:
+            bool: True if writing was successful, False if not """
         if isinstance(file_name, pathlib.PosixPath):
             file_name = str(file_name)
+        if os.path.isfile(file_name):
+            if not overwrite:
+                print("File already exists! Select overwrite=True to save your file regardless")
+                return False
         with open(file_name, 'wb') as fp:
             pickle.dump(self.__dict__, fp, protocol=pickle.HIGHEST_PROTOCOL)
+            return True
 
     def load_pickle(self, file_name):
+        """ Read pickle file and deserialize the object into self.__dict__.
+        Attributes:
+            file_name: name of the file to read. """
         if isinstance(file_name, pathlib.PosixPath):
             file_name = str(file_name)
         if not os.path.isfile(file_name):
@@ -78,12 +93,11 @@ class LoadSave_mixin:
             self.__dict__ = pickle.load(fp)
 
     def save_json(self, file_name=None):
-
-        """
-        Save the object as JSON file.
+        # TODO: be clear about appending vs overwriting
+        """ Save the object as JSON file.
         Arguments:
-            file_name: name of the file to create or append. If `None`, returns an in-memory JSON object.
-        """
+            file_name (str or pathlib.Path): name of the file to create or append.
+                If `None`, returns an in-memory JSON object. """
         # self_copy = copy.deepcopy(self) use if reading the json file sometimes fails
         def default(i): return int(i) if isinstance(i, numpy.int64) else i
         if isinstance(file_name, pathlib.PosixPath):
@@ -94,7 +108,7 @@ class LoadSave_mixin:
             with open(file_name, 'w') as f:
                 json.dump(self.__dict__, f, indent=2, default=default)
                 return True
-        except (TypeError, ValueError) as e:  # type error caused by json dump, value error by default function
+        except (TypeError, ValueError) as _:  # type error caused by json dump, value error by default function
             print("Your sequence contains data which is not JSON serializable, use the save_pickle method instead")
         except OSError:
             return False
@@ -113,20 +127,19 @@ class LoadSave_mixin:
             self.__dict__ = json.load(f)
 
 
-class TrialPresentationOptions_mixin:
-    '''Mixin to provide alternative forced-choice (AFC) and Same-Different trial presentation methods and
-    response simulation to Trialsequence and Staircase.'''
+class TrialPresentationOptionsMixin:
+    # Mixin to provide alternative forced-choice (AFC) and Same-Different trial presentation methods and
+    # response simulation to Trialsequence and Staircase.
 
     def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
-        '''
-        Present the target sound in random order together with the distractor sound object (or list of
-        several sounds) with isi pause (in seconds) in between, then aquire a response keypress via Key(), compare the
+
+        """ Present the target sound in random order together with the distractor sound object (or list of
+        several sounds) with isi pause (in seconds) in between, then acquire a response keypress via Key(), compare the
         response to the target interval and record the response via add_response. If key_codes for buttons are given
         (get with: ord('1') for instance -> ascii code of key 1 is 49), then these keys will be used as answer keys.
         Default are codes for buttons '1' to '9'. This is a convenience function for implementing alternative forced
         choice trials. In each trial, generate the target stimulus and distractors, then call present_afc_trial to play
-        them and record the response. Optionally call print_trial_info afterwards.
-        '''
+        them and record the response. Optionally call print_trial_info afterwards. """
         if isinstance(distractors, list):
             stims = [target] + distractors  # assuming sound object and list of sounds
         else:
@@ -136,8 +149,8 @@ class TrialPresentationOptions_mixin:
             stim = stims[idx]
             stim.play()
             plt.pause(isi)
-        with Key() as key:
-            response = key.getch()
+        with key() as k:
+            response = k.getch()
         interval = numpy.where(order == 0)[0][0]
         interval_key = key_codes[interval]
         response = response == interval_key
@@ -429,7 +442,7 @@ class Trialsequence(collections.abc.Iterator, LoadSave_mixin, TrialPresentationO
 
     def plot(self, axis=None, **kwargs):
         'Plot the trial sequence as scatter plot.'
-        if not have_pyplot:
+        if not plt is None:
             raise ImportError('Plotting requires matplotlib!')
         if axis is None:
             axis = plt.subplot()
@@ -681,7 +694,7 @@ class Staircase(collections.abc.Iterator, LoadSave_mixin, TrialPresentationOptio
 
     def plot(self, axis=None, **kwargs):
         'Plot the staircase. If called after each trial, one plot is created and updated.'
-        if not have_pyplot:
+        if not plt is None:
             raise ImportError('Plotting requires matplotlib!')
         if self.intensities: # plotting only after first response
             x = numpy.arange(-self.n_pretrials, len(self.intensities)-self.n_pretrials)
