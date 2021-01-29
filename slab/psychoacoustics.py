@@ -210,7 +210,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
             is below 30%. A deviant frequency greater than 30% is not supported
         label (str): a text label for the sequence.
     Attributes:
-        .trials: The order in which the conditions are repeated in the sequence. The elements are integers referring
+        .trials: the order in which the conditions are repeated in the sequence. The elements are integers referring
              to indices in `conditions`, starting from 1. 0 represents a deviant (only present if `deviant_freq` > 0)
         .n_trials: the total number of trials in the sequence
         .conditions: list of the different unique elements in the sequence
@@ -220,6 +220,9 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         .this_trial: a dictionary giving the parameters of the current trial
         .finished: boolean signaling if all trials have been called
         .kind: randomization kind of sequence (`random_permutation`, `non_repeating`, `infinite`)
+        .data: list with the same length as the one in the `trials` attribute. On sequence generation, `data` is a
+            list of empty lists. Then , one can use the `add_response` method to append to the list belonging to the
+            current trial
 """
 
     def __init__(self, conditions=2, n_reps=1, trials=None, kind=None, deviant_freq=None, label=''):
@@ -270,7 +273,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                 if deviant_freq is not None:  # insert deviants
                     deviants = slab.Trialsequence._deviant_indices(n_trials=int(self.n_conditions * n_reps),
                                                                    deviant_freq=deviant_freq)
-                    self.trials = numpy.insert(self.trials, deviants, 0)
+                    self.trials = numpy.insert(arr=self.trials, obj=deviants, values=0)
                     self.n_conditions += 1  # add one condition for deviants
             self.trials = list(self.trials)  # convert trials to list
             self.this_n = -1  # trial index in entire sequence
@@ -280,7 +283,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
             self.n_trials = len(self.trials)
             self.n_remaining = self.n_trials
             self.kind = kind
-            self.data = [None for _ in self.trials]
+            self.data = [[] for _ in self.trials]
 
     def __repr__(self):
         return self.__dict__.__repr__()
@@ -315,54 +318,72 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         return self.this_trial
 
     def add_response(self, response):
-        'Append a response value to the list `self.data`.'
-        self.data[self.this_n] = response
+        """ Append response to the list in the `data` attribute belonging to the current trial (see Trialsequence doc).
+        Attributes:
+             response: data to append to the list. Can be anything but save_json method won't be available if
+                the content of `response` is not JSON serializable (if it's an object for example)."""
+        if self.this_n < 0:
+            print("Can't add response because trial hasn't started yet!")
+        else:
+            self.data[self.this_n] = self.data[self.this_n].append(response)
 
     def print_trial_info(self):
-        'Convenience method for printing current trial information.'
-        print(f'{self.label} | trial # {self.this_n} of {"inf" if self.kind=="infinite" else self.n_trials} ({"inf" if self.kind=="infinite" else self.n_remaining} remaining): condition {self.this_trial}, last response: {self.data[-1] if self.data else None}')
+        """ Convenience method for printing current trial information. """
+        print(f'{self.label} | trial # {self.this_n} of {"inf" if self.kind=="infinite" else self.n_trials} '
+              f'({"inf" if self.kind=="infinite" else self.n_remaining} remaining): condition {self.this_trial}, '
+              f'last response: {self.data[-1] if self.data else None}')
 
     @staticmethod
-    def _create_simple_sequence(n_conditions, n_reps, previous=1):
-        '''Create a sequence of n_conditions x n_reps trials, where each repetitions contains all conditions in random
-        order, and no condition is directly repeated across repetitions. `previous` can be set to an index in
-        `range(n_conditions)``, which ensures that the sequence does not start with this index.'''
+    def _create_simple_sequence(n_conditions, n_reps, dont_start_with=None):
+        """ Create a randomized sequence of integers without direct repetitions of any element.
+        Arguments:
+            n_conditions (int): the number of conditions in the list. The array returned contains integers from 1
+                to the value of `n_conditions`.
+            n_reps (int): number that each element is repeated. Length of the returned array is n_conditions * n_reps
+            dont_start_with (int): if not None, dont start the sequence with this integer. Can be useful if several
+                sequences are used and the final trial of the last sequence should not be the same as the first
+                element of the next sequence.
+        Returns:
+            array: randomized sequence of length n_conditions * n_reps without direct repetitions of any element
+        """
         permute = list(range(1, n_conditions+1))
-        trials = [previous]
+        if dont_start_with is not None:
+            trials = [dont_start_with]
+        else:
+            trials = []
         for _ in range(n_reps):
             numpy.random.shuffle(permute)
-            while trials[-1] == permute[0]:
-                numpy.random.shuffle(permute)
+            if len(trials) > 0:
+                while trials[-1] == permute[0]:
+                    numpy.random.shuffle(permute)
             trials += permute
-        trials = trials[1:]  # delete first entry ('previous'
+        trials = trials[1:]  # delete first entry ('dont_start_with')
         return numpy.array(trials)
 
     @staticmethod
-    def _deviant_indices(n_trials, deviant_freq=.1):
-        '''Create sequence for an odball experiment which contains two conditions - standard (0) and
-        deviant (1).
-
-        Args:
-            n_trials (int): length of the generated sequence.
-            deviant_freq (float): frequency of the deviant, should not be greater than .25
-            mindist (int): minimum number of standards between two deviants
-
+    def _deviant_indices(n_standard, deviant_freq=.1):
+        """ Create sequence for an oddball experiment which contains two conditions: standards (1) and deviants (0).
+        Arguments:
+            n_standard (int): number of standard trials, encoded as 1, in the sequence.
+            deviant_freq (float): frequency of deviants, encoded as 0, in the sequence. Also determines the minimum
+            number of standards between two deviants which is 3 if deviant_freq < .1, 2 if deviant_freq < .2 and
+            1 if deviant_freq < .3. A deviant frequency > .3 is not supported
         Returns:
-            (array): indices of the deviants
-        '''
+            array: sequence of length n_standard+(n_standard*deviant_freq) with the specified frequency of deviants """
         if deviant_freq < .1:
-            mindist = 3
+            min_dist = 3
         elif deviant_freq < .2:
-            mindist = 2
+            min_dist = 2
         elif deviant_freq < .3:
-            mindist = 1
+            min_dist = 1
         else:
             raise ValueError("Deviant frequency can't be greater than 30%!")
         # get the possible combinations of deviants and normal trials:
-        n_deviants = int(n_trials*deviant_freq)
-        indices = range(n_trials)
+        n_deviants = int(n_standard*deviant_freq)
+        indices = range(n_standard)
+        deviant_indices = numpy.random.choice(indices, n_deviants, replace=False)
         diff = 0
-        while diff < mindist:  # reshuffle until minimum distance is satisfied
+        while diff < min_dist:  # reshuffle until minimum distance is satisfied
             deviant_indices = numpy.random.choice(indices, n_deviants, replace=False)
             deviant_indices.sort()
             diff = numpy.diff(deviant_indices).min()
@@ -370,11 +391,17 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
 
     @staticmethod
     def _create_random_permutation(n_conditions, n_reps):
-        '''Create a sequence of n_conditions x n_reps trials in random order.'''
-        return list(numpy.random.permutation(numpy.tile(list(range(1, n_conditions+1)), n_reps)))
+        """ Create a completely random sequence of integers.
+        Arguments:
+            n_conditions (int): the number of conditions in the list. The array returned contains integers from 1
+                to the value of `n_conditions`.
+            n_reps (int): number that each element is repeated. Length of the returned array is n_conditions * n_reps.
+        Returns:
+            array: randomized sequence. """
+        return numpy.random.permutation(numpy.tile(list(range(1, n_conditions+1)), n_reps))
 
     def get_future_trial(self, n=1):
-        """Returns the condition for n trials into the future or past,
+        """ Returns the condition for n trials into the future or past,
         without advancing the trials. A negative n returns a previous (past)
         trial. Returns 'None' if attempting to go beyond the last trial.
         """
