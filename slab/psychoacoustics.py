@@ -235,6 +235,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                     if trial == condition:
                         trials[t] = i+1
             self.trials = trials
+        if isinstance(conditions, pathlib.Path):
+            conditions = str(conditions)
         if isinstance(conditions, str):
             if not os.path.isfile(conditions):
                 raise ValueError(f"could not load the file {conditions}")
@@ -325,7 +327,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         if self.this_n < 0:
             print("Can't add response because trial hasn't started yet!")
         else:
-            self.data[self.this_n] = self.data[self.this_n].append(response)
+            self.data[self.this_n].append(response)
 
     def print_trial_info(self):
         """ Convenience method for printing current trial information. """
@@ -366,27 +368,28 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         Arguments:
             n_standard (int): number of standard trials, encoded as 1, in the sequence.
             deviant_freq (float): frequency of deviants, encoded as 0, in the sequence. Also determines the minimum
-            number of standards between two deviants which is 3 if deviant_freq < .1, 2 if deviant_freq < .2 and
-            1 if deviant_freq < .3. A deviant frequency > .3 is not supported
+            number of standards between two deviants which is 4 if deviant_freq <= .1, 3 if deviant_freq <= .2 and
+            2 if deviant_freq <= .3. A deviant frequency > .3 is not supported
         Returns:
             array: sequence of length n_standard+(n_standard*deviant_freq) with the specified frequency of deviants """
-        if deviant_freq < .1:
+        if deviant_freq <= .1:
+            min_dist = 4
+        elif deviant_freq <= .2:
             min_dist = 3
-        elif deviant_freq < .2:
+        elif deviant_freq <= .3:
             min_dist = 2
-        elif deviant_freq < .3:
-            min_dist = 1
         else:
             raise ValueError("Deviant frequency can't be greater than 30%!")
         # get the possible combinations of deviants and normal trials:
         n_deviants = int(n_standard*deviant_freq)
         indices = range(n_standard)
         deviant_indices = numpy.random.choice(indices, n_deviants, replace=False)
-        diff = 0
-        while diff < min_dist:  # reshuffle until minimum distance is satisfied
+        deviant_indices.sort()
+        dist = numpy.diff(deviant_indices)
+        while numpy.min(dist) < min_dist:  # reshuffle until minimum distance is satisfied
             deviant_indices = numpy.random.choice(indices, n_deviants, replace=False)
             deviant_indices.sort()
-            diff = numpy.diff(deviant_indices).min()
+            dist = numpy.diff(deviant_indices)
         return deviant_indices
 
     @staticmethod
@@ -401,89 +404,119 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         return numpy.random.permutation(numpy.tile(list(range(1, n_conditions+1)), n_reps))
 
     def get_future_trial(self, n=1):
-        """ Returns the condition for n trials into the future or past,
-        without advancing the trials. A negative n returns a previous (past)
-        trial. Returns 'None' if attempting to go beyond the last trial.
-        """
+        """ Returns the condition of a trial n iterations into the future or past, without advancing the trials.
+        Arguments:
+            n (int): number of iterations into the future or past (negative numbers).
+        Returns:
+            condition or None: element of the list stored in the `conditions` attribute belonging to the trial n
+                iterations into the past/future. Returns None if attempting to go beyond the first/last trial """
         if n > self.n_remaining or self.this_n + n < 0:
             return None
         return self.conditions[self.trials[self.this_n + n]]
 
     def transitions(self):
-        'Return array (n_conditions x n_conditions) of transitions.'
+        """ Count the number of transitions between conditions.
+        Returns:
+            array: table of shape n_conditions x n_conditions where the rows represent the condition transitioning
+            from and the columns represent the condition transitioning to. For example [0, 2] shows the number of
+            transitions from condition 1 to condition 3. If the `kind` of the sequence is "non_repeating", the
+            diagonal is 0 because no condition transitions into itself """
         transitions = numpy.zeros((self.n_conditions, self.n_conditions))
         for i, j in zip(self.trials, self.trials[1:]):
-            transitions[i, j] += 1
+            print(i, j)
+            transitions[i-1, j-1] += 1
         return transitions
 
     def condition_probabilities(self):
-        'Returns list of frequencies of conditions in the order listed in .conditions'
-        probs = []
+        """ Return the frequency with which each condition appears in the sequence.
+        Returns:
+             list: list of floats floats, where every element represents the frequency of one condition.
+                The fist element is the frequency of the first condition and so on."""
+        probabilities = []
         for i in range(self.n_conditions):
             num = self.trials.count(i)
             num /= self.n_trials
-            probs.append(num)
-        return probs
+            probabilities.append(num)
+        return probabilities
 
     def response_summary(self):
-        '''Returns a tally of responses as list of lists for a finished Trialsequence.
-        The indices of the outer list are the indices of the conditions in the sequence. Each inner list contains the
-        number of responses per response key, with the response keys sorted in ascending order, the last element always
-        represents None. For example, 3 conditions with 10 repetitions each, and 2 response keys (Yes/No experiment)
-        + None returns a structure like this: [[0, 10, 0], [2, 8, 0], [9, 1, 0]], indicating that the person responded
-        10 out of 10 times No in the first condition, 2 out of 10 Yes (and 8 out of 10 No) in the second,
-        and 9 out of 10 Yes in the third condition. The third element in each sub-list is 0 meaning that there is no
-        trial in which no response was given. These values can be used to construct hit rates and psychometric functions.
-        '''
-        if not self.finished:
+        """ Generate a summary of the responses for each condition. The function counts how often a specific response
+        was given to a condition for all conditions and each possible response (including None).
+        Returns:
+            (list of lists) or (None): indices of the outer list represent the conditions in the sequence.Each inner
+            list contains the number of responses per response key, with the response keys sorted in ascending order,
+            the last element always represents None. If the sequence is not finished yet, None is returned.
+        Example:
+            import slab
+            import random
+            sequence = slab.Trialsequence(conditions=3, n_reps=10)  # a sequence with three conditions
+            # iterate trough the list and generate a random response. The response can be either yes (1), no (0) or
+            # there can be no response at all (None)
+            for trial in sequence:
+                response = random.choice([0, 1, None])
+                sequence.add_response(response)
+            sequence.response_summary()
+            # Out: [[1, 1, 7], [2, 5, 3], [4, 4, 2]]
+            # The first sublist shows that the subject responded to the first condition once with no (0),
+            # once with yes (1) and did not give a response seven times, the second and third list show
+            # prevalence of the same response keys for conditions two and three. """
+        if self.finished:
+            # list of used response key codes (add None in case it's not present):
+            response_keys = [item for sublist in self.data for item in sublist]
+            response_keys = list(set(response_keys + [None]))
+            response_keys = sorted(response_keys, key=lambda x: (x is None, x))  # sort, with 'None' at the end
+            responses = []
+            for condition in self.conditions:
+                idx = [i for i, cond in enumerate(self.trials) if cond == condition]  # indices of condition in sequence
+                # count how often each type of key was given to this condition:
+                condition_data = [self.data[i] for i in idx]
+                count = Counter([item for sublist in condition_data for item in sublist])
+                resp_1cond = []
+                for r in response_keys:
+                    resp_1cond.append(count[r])
+                responses.append(resp_1cond)
+            return responses
+        else:
             return None
-        response_keys = list(set(self.data)) + [None] # list of used response key codes (add None in case it's not present)
-        response_keys = sorted(response_keys, key=lambda x: (x is None, x)) # sort, with 'None' at the end
-        responses = []
-        for condition in self.conditions:
-            idx = [i for i, cond in enumerate(self.trials) if cond == condition] # indices of condition in sequence
-            count = Counter([self.data[i] for i in idx])
-            resp_1cond = []
-            for r in response_keys:
-                resp_1cond.append(count[r])
-            responses.append(resp_1cond)
-        return responses
 
-    def plot(self, axis=None, **kwargs):
-        'Plot the trial sequence as scatter plot.'
-        if not plt is None:
+    def plot(self, axis=None, show=True, **kwargs):
+        """ Plot the trial sequence as scatter plot.
+        Arguments:
+            axis (instance of matplotlib.pyplot.Axes): plot axis to draw on, if none a new plot is generated
+            show (bool): show the plot immediately, defaults to True
+            **kwargs: pyplot.plot keyword arguments, see matplotlib documentation"""
+        if plt is None:
             raise ImportError('Plotting requires matplotlib!')
         if axis is None:
             axis = plt.subplot()
         axis.scatter(range(self.n_trials), self.trials, **kwargs)
         axis.set(title='Trial sequence', xlabel='Trials', ylabel='Condition index')
-        plt.show()
+        if show:
+            plt.show()
 
 
 class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOptionsMixin):
-    """Class to handle smoothly the selection of the next trial
-    and report current values etc.
-    Calls to next() will fetch the next object given to this
-    handler, according to the method specified.
-    The staircase will terminate when *n_trials* AND *n_reversals* have
-    been exceeded. If *step_sizes* was an array and has been exceeded
-    before n_trials is exceeded then the staircase will continue.
-    n_up and n_down are always considered as 1 until the first reversal
-    is reached. The values entered as arguments are then used.
-    Lewitt (1971) gives the up-down values for different threshold points
-    on the psychometric function: 1-1 (0.5), 1-2 (0.707), 1-3 (0.794),
-    1-4 (0.841), 1-5 (0.891).
-    >>> stairs = Staircase(start_val=50, n_reversals=10, step_type='lin',\
-                    step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1, n_trials=10)
-    >>> print(stairs)
-    <class 'psychoacoustics.Staircase'> 1up1down, trial -1, 0 reversals of 10
-    >>> for trial in stairs:
-    ... 	response = stairs.simulate_response(30)
-    ... 	stairs.add_response(response)
-    >>> print(f'reversals: {stairs.reversal_intensities}')
-    reversals: [26, 30, 28, 30, 28, 30, 28, 30, 28, 30]
-    >>> print(f'mean of final 6 reversals: {stairs.threshold()}')
-    mean of final 6 reversals: 28.982753492378876
+    """Class to handle adaptive testing which means smoothly the selecting next trial, report current values and so on.
+    The sequence will terminate after a certain number of trials AND reverses have been exceeded.
+    Arguments:
+        start_val: initial stimulus value for the staircase
+        n_reversals (int): number of reversals needed to terminate the staircase
+        step_sizes (int or list): Size of steps in the staircase. Given an integer, the step size is constant. Given
+            a list, the step size will progress to the next entry at each reversal. If the list is exceeded before the
+            sequence was finished, it will continue with the last entry of the list as constant step size.
+        step_up_factor: allows different sizes for up and down steps to implement a Kaernbach1991 weighted
+            up-down method. step_sizes sets down steps, which are multiplied by step_up_factor to obtain up step
+            sizes. The default is 1, i.e. same size for up and down steps.
+        n_pretrials (int): number of trial at the initial stimulus value presented as before start of the staircase
+        n_up (int): number of `incorrect` (or 0) responses before the staircase level increases. Is 1, regardless of
+            specified value until the first reversal. Lewitt (1971) gives the up-down values for different threshold
+            points on the psychometric function: 1-1 (0.5), 1-2 (0.707), 1-3 (0.794), 1-4 (0.841), 1-5 (0.891).
+        n_down (int): number of `correct` (or 1) responses before the staircase level decreases (see `n_up`).
+        step_type (str): defines the change of stimulus intensity at each step of the staircase. possible inputs are
+            'lin' (adds or subtract a certain amount), 'db', and 'log' (prevents the intensity from reaching zero).
+        min_val (int or float): smallest stimulus value permitted, or -Inf for staircase without lower limit
+        max_val (int or float): largest stimulus value permitted, or Inf for staircase without upper limit
+        label (str): text label for the sequence, defaults to an empty string
     Attributes:
         .this_trial_n: number of completed trials
         .intensities: presented stimulus values
@@ -492,29 +525,17 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         .reversal_points: indices of reversal trials
         .reversal_intensities: stimulus values at the reversals (used to compute threshold)
         .finished: True/False: have we finished yet?
-    """
-
+    Examples:
+        stairs = Staircase(start_val=50, n_reversals=10, step_type='lin',
+            step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1, n_trials=10)
+        print(stairs)
+        for trial in stairs:
+            response = stairs.simulate_response(30)
+            stairs.add_response(response)
+        print(f'reversals: {stairs.reversal_intensities}')
+        print(f'mean of final 6 reversals: {stairs.threshold()}') """
     def __init__(self, start_val, n_reversals=None, step_sizes=1, step_up_factor=1, n_pretrials=0, n_up=1,
                  n_down=2, step_type='lin', min_val=-numpy.Inf, max_val=numpy.Inf, label=''):
-        """
-        Parameters
-            label: A text label, printed by print_trial_info.
-            start_val: initial stimulus value for the staircase
-            n_reversals: number of reversals needed to terminate the staircase
-            step_sizes: size of steps as a single value or a list/array. For a single value the step size is fixed.
-                For a list/array the step size will progress to the next entry at each reversal.
-                step_up_factor: allows different sizes for up and down steps to implement a Kaernbach1991 weighted
-                up-down method. step_sizes sets down steps, which are multiplied by step_up_factor to obtain up step
-                sizes. The default is 1, i.e. same size for up and down steps.
-            n_pretrials: number of pretrials at start_val presented as familiarization before the actual experiment
-            n_up: number of `incorrect` (or 0) responses before the staircase level increases
-            n_down: number of `correct` (or 1) responses before the staircase level decreases
-            step_type: `'lin', 'db', 'log'`. The type of steps that should be taken each time. 'lin' adds or subtracts
-                that amount each step, 'db' and 'log' will step by a certain number of decibels or log units
-                (prevents the stimulus value from reaching zero).
-            min_val: smallest stimulus value permitted, or -Inf for staircase without lower limit
-            max_val: largest stimulus value permitted, or Inf for staircase without upper limit
-        """
         self.label = label
         self.start_val = start_val
         self.n_up = n_up
@@ -529,9 +550,9 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         self.step_size_current = self.step_sizes[0]
         if n_reversals is None:
             if len(self.step_sizes) == 1:
-                self.n_reversals = 8 # if Staircase called without parameters, construct a short 8-reversal test
+                self.n_reversals = 8  # if Staircase called without parameters, construct a short 8-reversal test
             else:
-                self.n_reversals = len(self.step_sizes) + 1 # otherwise dependend on number of stepsizes
+                self.n_reversals = len(self.step_sizes) + 1  # otherwise dependent on number of step sizes
         elif len(self.step_sizes) > n_reversals:
             print(
                 f'Increasing number of minimum required reversals to the number of step sizes, {len(self.step_sizes)}')

@@ -1,50 +1,62 @@
-'''
+"""
 Class for reading and manipulating head-related transfer functions. Reads files in .sofa format (started before
 python implementations of the sofa conventions were available -> will be migrated to use pysofaconventions!)
-'''
+"""
 
 import copy
 import warnings
 import pathlib
 import numpy
-
 try:
     import matplotlib
-    import matplotlib.pyplot as plt
-    have_pyplot = True
+    from matplotlib import pyplot as plt
 except ImportError:
-    have_pyplot = False
+    matplotlib, plt = False, False
 try:
     from mpl_toolkits.mplot3d import Axes3D
-    have_mplot3d = True
 except ImportError:
-    have_mplot3d = False
+    Axes3D = False
 try:
     import h5netcdf
-    have_h5 = True
 except ImportError:
-    have_h5 = False
-
+    h5netcdf = False
 from slab.filter import Filter
 
 
-class HRTF():
-    '''
+class HRTF:
+    """
     Class for reading and manipulating head-related transfer functions. This is essentially a collection of two Filter
-    objects (hrtf.left and hrtf.right) with attributes (`nsources`, `nelevations`) and functions to manage them.
-
-    >>> hrtf = HRTF(data='mit_kemar_normal_pinna.sofa') # initialize from sofa file
-    >>> print(hrtf)
-    <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
-    >>> sourceidx = hrtf.cone_sources(20)
-    >>> hrtf.plot_sources(sourceidx)
-    >>> hrtf.plot_tf(sourceidx,ear='left')
-    '''
+    objects (hrtf.left and hrtf.right) #TODO: really?
+    with attributes and functions to manage them.
+    Arguments:
+        data (str | Filter | numpy.ndarray): Typically, this is the path to a file in the .sofa format.
+            The file is then loaded and the data of each source for which the transfer function was recorded is stored
+            as a Filter object in the `data` attribute. Instead of a file name, the data can be passed directly as
+            Filter or numpy array. However, this should be avoided if possible!
+        samplerate (None | float): rate at which the data was acquired, only relevant when not loading from .sofa file
+        sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
+        listener (None | list | dict): position of the listener, only relevant when not loading from .sofa file
+        verbose (bool): print out items when loading .sofa files, defaults to False
+    Attributes:
+        .n_sources (int): The number of sources in the HRTF.
+        .sources (array): spherical coordinates (azimuth, elevation, distance) of all sources.
+        .n_elevations (int): The number of elevations in the HRTF.
+        . data (list): The HRTF data. The elements of the list are instances of slab.Filter.
+        .listener (dict): a dictionary containing the position of the listener ("pos"), the point which the listener
+            is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
+        .samplerate (float): sampling rate at which the HRTF data was acquired.
+    Example:
+        from slab import DATAPATH, HRTF
+        hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
+        sourceidx = hrtf.cone_sources(20)
+        hrtf.plot_sources(sourceidx)
+        hrtf.plot_tf(sourceidx,ear='left')
+    """
     # instance properties
-    nsources = property(fget=lambda self: len(self.sources),
-                        doc='The number of sources in the HRTF.')
-    nelevations = property(fget=lambda self: len(self.elevations()),
-                           doc='The number of elevations in the HRTF.')
+    n_sources = property(fget=lambda self: len(self.sources),
+                         doc='The number of sources in the HRTF.')
+    n_elevations = property(fget=lambda self: len(self.elevations()),
+                            doc='The number of elevations in the HRTF.')
 
     def __init__(self, data, samplerate=None, sources=None, listener=None, verbose=False):
         if isinstance(data, str):
@@ -57,12 +69,11 @@ class HRTF():
             self.samplerate = HRTF._sofa_get_samplerate(f)
             self.data = []
             for idx in range(data.shape[0]):
-                # ntaps x 2 (left, right) filter
+                # n_taps x 2 (left, right) filter
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             self.listener = HRTF._sofa_get_listener(f)
             self.sources = HRTF._sofa_get_sourcepositions(f)
-        elif isinstance(data,
-                        Filter):
+        elif isinstance(data, Filter):
             # This is a hacky shortcut for casting a filterbank as HRTF. Avoid unless you know what you are doing.
             if sources is None:
                 raise ValueError('Must provide source positions when using a Filter object.')
@@ -89,13 +100,18 @@ class HRTF():
         return f'{type(self)} (\n{repr(self.data)} \n{repr(self.samplerate)})'
 
     def __str__(self):
-        return f'{type(self)} sources {self.nsources}, elevations {self.nelevations}, samples {self.data[0].nsamples}, samplerate {self.samplerate}'
+        return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations},' \
+               f'samples {self.data[0].nsamples}, samplerate {self.samplerate}'
 
     # Static methods (used in __init__)
     @staticmethod
     def _sofa_load(filename, verbose=False):
-        'Reads a SOFA file and returns a h5netcdf structure'
-        if not have_h5:
+        """ Read a SOFA file.
+        Arguments:
+            filename (str): full path to the .sofa file.
+        Returns:
+            (h5netcdf.core.File): the data from the .sofa file. """
+        if h5netcdf is False:
             raise ImportError('Reading from sofa files requires h5py and h5netcdf.')
         f = h5netcdf.File(filename, 'r')
         if verbose:
@@ -104,7 +120,13 @@ class HRTF():
 
     @staticmethod
     def _sofa_get_samplerate(f):
-        'Returns the sampling rate of the recordings'
+        """ Returns the sampling rate of the recordings. If the sampling rate is not given in Hz, the function assumes
+        it is given in kHz and multiplies by 1000 to convert to Hz.
+        Arguments:
+            f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
+        Returns:
+            (float): the sampling rate in Hz.
+        """
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
         unit = attr['Units'].decode('UTF-8')  # extract and decode Units
         if unit in ('hertz', 'Hz'):
@@ -114,7 +136,12 @@ class HRTF():
 
     @staticmethod
     def _sofa_get_sourcepositions(f):
-        'Returns an array of positions of all sound sources'
+        """ Returns an array of positions of all sound sources.
+        Arguments:
+            f (h5netcdf.core.File): data as returned by the _sofa_load method.
+        Returns:
+            (numpy.ndarray): spherical coordinates (azimuth, elevation, distance) of all sources.
+        """
         # spherical coordinates, (azi,ele,radius), azi 0..360 (0=front, 90=left, 180=back), ele -90..90
         attr = dict(f.variables['SourcePosition'].attrs.items())  # get attributes as dict
         unit = attr['Units'].decode('UTF-8').split(',')[0]  # extract and decode Units
@@ -134,49 +161,55 @@ class HRTF():
 
     @staticmethod
     def _sofa_get_listener(f):
-        '''Returns dict with listener attributes from a sofa file handle; keys: pos, view, up, viewvec, upvec.
-        Used for adding a listener vector in plot functions.'''
-        lis = {}
-        lis['pos'] = numpy.array(f.variables['ListenerPosition'], dtype='float')[0]
-        lis['view'] = numpy.array(f.variables['ListenerView'], dtype='float')[0]
-        lis['up'] = numpy.array(f.variables['ListenerUp'], dtype='float')[0]
+        """ Returns dict with listeners positional information - used for plotting.
+        Attributes:
+            f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
+        Returns:
+            (dict): position of the listener ("pos"), the point which the listener is fixating ("view")
+                the point 90° above the listener ("up") and vectors from the listener to those points. """
+        lis = {'pos': numpy.array(f.variables['ListenerPosition'], dtype='float')[0],
+               'view': numpy.array(f.variables['ListenerView'], dtype='float')[0],
+               'up': numpy.array(f.variables['ListenerUp'], dtype='float')[0]}
         lis['viewvec'] = numpy.concatenate([lis['pos'], lis['pos']+lis['view']])
         lis['upvec'] = numpy.concatenate([lis['pos'], lis['pos']+lis['up']])
         return lis
 
     @staticmethod
     def _sofa_get_FIR(f):
-        'Returns an array of FIR filters for all source positions from a sofa file handle.'
+        """ Returns an array of FIR filters for all source positions.
+        Attributes:
+            f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
+        Returns:
+            (numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
+                which data was recorded and the second dimension represents the left and right ear. """
         datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
         if datatype != 'FIR':
             warnings.warn('Non-FIR data: ' + datatype)
         return numpy.array(f.variables['Data.IR'], dtype='float')
 
-    # instance methods
     def elevations(self):
-        '''Return the list of sources.
-        Note: This currently only works as intended for HRTFs recorded in horizontal rings.
-        '''
+        """ Get all different elevations at which sources where recorded . Note: This currently only works as
+        intended for HRTFs recorded in horizontal rings.
+         Returns:
+             (list): a sorted list of source elevations."""
         return sorted(list(set(numpy.round(self.sources[:, 1]))))
 
-    def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), nbins=None, kind='waterfall',
+    def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), n_bins=None, kind='waterfall',
                 linesep=20, xscale='linear', show=True, axis=None):
-        """
-        Plots transfer functions of FIR filters at a list of source indices.
-        Args:
-            ear (str): which ear to plot ('left', 'right', 'both').
-            sourceidx (list of int): sources to plot. should typically be generated with
-                                    `hrtf.cone_sources(cone=0)` for midline sources at all elevations
+        """ Plot transfer functions of FIR filters at a list of source indices.
+        Arguments:
+            ear (str): the ear from which data is plotted. Can be 'left', 'right', or 'both'.
+            sourceidx (list of int): sources to plot. Typically be generated using the `hrtf.cone_sources` Method.
             xlim (tuple of int): frequency range of the plot
-            nbins (int) : passed to :meth:`slab.Filter.tf` and determines freqency resolution
-            kind (str): `waterfall` (as in Wightman and Kistler, 1989) and
-                        `image` plots (as in Hofman 1998) are available
+            n_bins (int) : passed to :meth:`slab.Filter.tf` and determines frequency resolution
+            kind (str): type of plot to draw. Can be `waterfall` (as in Wightman and Kistler, 1989) or
+                `image` (as in Hofman 1998).
             linesep (int): vertical distance between transfer functions in the waterfall plot
             xscale (str): sets x-axis scaling ('linear', 'log')
             show (bool): Whether to show plot or
             axis (matplotlib.axes._subplots.AxesSubplot): Axis to draw the plot on
         """
-        if not have_pyplot:
+        if matplotlib is False:
             raise ImportError('Plotting HRTFs requires matplotlib.')
         if ear == 'left':
             chan = 0
@@ -186,9 +219,9 @@ class HRTF():
             chan = [0, 1]
             if kind == 'image':
                 fig1 = self.plot_tf(sourceidx, ear='left', xlim=xlim,
-                                    linesep=linesep, nbins=nbins, kind='image', xscale=xscale)
+                                    linesep=linesep, n_bins=n_bins, kind='image', xscale=xscale)
                 fig2 = self.plot_tf(sourceidx, ear='right', xlim=xlim,
-                                    linesep=linesep, nbins=nbins, kind='image', xscale=xscale)
+                                    linesep=linesep, n_bins=n_bins, kind='image', xscale=xscale)
                 return fig1, fig2
         else:
             raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
@@ -198,12 +231,12 @@ class HRTF():
             vlines = numpy.arange(0, len(sourceidx)) * linesep
             for idx, s in enumerate(sourceidx):
                 filt = self.data[s]
-                freqs, h = filt.tf(channels=chan, nbins=nbins, show=False)
+                freqs, h = filt.tf(channels=chan, nbins=n_bins, show=False)
                 axis.plot(freqs, h + vlines[idx],
                           linewidth=0.75, color='0.0', alpha=0.7)
             ticks = vlines[::3]  # plot every third elevation
             labels = numpy.round(self.sources[sourceidx, 1]*2, decimals=-1)/2
-            # plot every third elevation label, ommit comma to save space
+            # plot every third elevation label, omit comma to save space
             labels = labels[::3].astype(int)
             axis.set(yticks=ticks, yticklabels=labels)
             axis.grid(b=True, axis='y', which='both', linewidth=0.25)
@@ -212,14 +245,14 @@ class HRTF():
             axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
                       s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
         elif kind == 'image':
-            if not nbins:
+            if not n_bins:
                 img = numpy.zeros((self.data[sourceidx[0]].ntaps, len(sourceidx)))
             else:
-                img = numpy.zeros((nbins, len(sourceidx)))
+                img = numpy.zeros((n_bins, len(sourceidx)))
             elevations = self.sources[sourceidx, 1]
             for idx, source in enumerate(sourceidx):
                 filt = self.data[source]
-                freqs, h = filt.tf(channels=chan, nbins=nbins, show=False)
+                freqs, h = filt.tf(channels=chan, nbins=n_bins, show=False)  # TODO: should every freq be drawn?
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
             plt.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
@@ -235,13 +268,15 @@ class HRTF():
             plt.show()
 
     def diffuse_field_avg(self):
-        '''
+        """
         Compute the diffuse field average transfer function, i.e. the constant non-spatial portion of a set of HRTFs.
-        The filters for all sources are averaged, which yields an unbiased average only if the sources are uniformely
-        distributed around the head. Returns the diffuse field average as FFR filter object.
-        '''  # TODO: could make the contribution of each HRTF depend on local density of sources.
+        The filters for all sources are averaged, which yields an unbiased average only if the sources are uniformly
+        distributed around the head. 
+        Returns:
+             (Filter): the diffuse field average as FFR filter object. """
+        # TODO: could make the contribution of each HRTF depend on local density of sources.
         dfa = []
-        for source in range(self.nsources):
+        for source in range(self.n_sources):
             filt = self.data[source]
             for chan in range(filt.nchannels):
                 _, h = filt.tf(channels=chan, show=False)
@@ -250,15 +285,17 @@ class HRTF():
         return Filter(dfa, fir=False, samplerate=self.samplerate)
 
     def diffuse_field_equalization(self):
-        '''
-        Returns a diffuse field equalized version of the HRTF. The resulting filters have zero mean and are of type FFR.
-        '''
+        """ Returns a diffuse field equalized version of the HRTF.
+        The resulting filters have zero mean and are of type FFR.
+        Returns:
+            (HRTF): diffuse field equalized version of the HRTF."""
+
         dfa = self.diffuse_field_avg()
         # invert the diffuse field average
         dfa.data = 1/dfa.data
         dtfs = copy.deepcopy(self)
         # apply the inverted filter to the HRTFs
-        for source in range(dtfs.nsources):
+        for source in range(dtfs.n_sources):
             filt = dtfs.data[source]
             _, h = filt.tf(show=False)
             h = 10 ** (h / 20) * dfa
@@ -266,13 +303,14 @@ class HRTF():
         return dtfs
 
     def cone_sources(self, cone=0):
-        '''
+        """
         Return indices of sources along a vertical off-axis sphere slice (`cone`). The default returns sources along the
-        fronal median plane. Note: This currently only works as intended for HRTFs recorded in horizontal rings.
-        '''
+        frontal median plane. Note: This currently only works as intended for HRTFs recorded in horizontal rings.
+        """
         cone = numpy.sin(numpy.deg2rad(cone))
         azimuth = numpy.deg2rad(self.sources[:, 0])
         elevation = numpy.deg2rad(self.sources[:, 1]-90)
+        # the points defined by x and y are the source locations projected onto the azimuth plane
         x = numpy.sin(elevation) * numpy.cos(azimuth)
         y = numpy.sin(elevation) * numpy.sin(azimuth)
         eles = self.elevations()
@@ -341,7 +379,7 @@ class HRTF():
             show (bool): Whether to show plot or
             axis (mpl_toolkits.mplot3d.axes3d.Axes3D): Axis to draw the plot on
         """
-        if not have_pyplot and not have_mplot3d:
+        if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         if axis is None:
             ax = Axes3D(plt.figure())
@@ -368,9 +406,3 @@ class HRTF():
         ax.set_zlabel('Z [m]')
         if show:
             plt.show()
-
-
-if __name__ == '__main__':
-    from slab import DATAPATH
-    hrtf = HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')
-    hrtf.data[20].tf(plot=True)
