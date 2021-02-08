@@ -187,6 +187,34 @@ class TrialPresentationOptionsMixin:
         if print_info:
             self.print_trial_info()
 
+    def simulate_response(self, threshold=None, transition_width=2, intervals=1, hitrates=None):
+        """Return a simulated response to the current condition index value by calculating the hitrate from a
+        psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
+        a continuous stimulus value.
+        Arguments:
+            threshold: midpoint/threshold
+            transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
+            intervals: use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
+            hitrates: list or numpy array of hitrates for the different conditions, to allow custom rates instead of simulation.
+                      If given, thresh and transition_width are not used. If a single value is given, this value is used."""
+        slope = 0.5 / transition_width
+        if isinstance(self, slab.psychoacoustics.Trialsequence): # check which class the mixin is in
+            current_condition = self.trials[self.this_n]
+        elif isinstance(self, slab.psychoacoustics.Staircase):
+            current_condition = self._next_intensity
+        else:
+            return None
+        if hitrates is None:
+            hitrate = 1 / (1 + numpy.exp(4 * slope * (threshold - current_condition))) # scale/4  = slope at midpoint
+        else:
+            if isinstance(hitrates, (list, numpy.ndarray)):
+                hitrate = hitrates[current_condition]
+            else:
+                hitrate = hitrates
+        hit = numpy.random.rand() < hitrate # True with probability hitrate
+        if hit or intervals == 1:
+            return hit
+        return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
 
 class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOptionsMixin):
     """ Randomized, non-adaptive trial sequences.
@@ -346,8 +374,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                 sequences are used and the final trial of the last sequence should not be the same as the first
                 element of the next sequence.
         Returns:
-            (numpy.ndarray): randomized sequence of length n_conditions * n_reps without direct repetitions of any element
-        """
+            (numpy.ndarray): randomized sequence of length n_conditions * n_reps without direct repetitions of any
+            element """
         permute = list(range(1, n_conditions+1))
         if dont_start_with is not None:
             trials = [dont_start_with]
@@ -497,7 +525,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
 
 class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOptionsMixin):
     """Class to handle adaptive testing which means smoothly the selecting next trial, report current values and so on.
-    The sequence will terminate after a certain number of trials AND reverses have been exceeded.
+    The sequence will terminate after a certain number of reverals have been exceeded.
     Arguments:
         start_val (int | float): initial stimulus value for the staircase
         n_reversals (int): number of reversals needed to terminate the staircase
@@ -527,7 +555,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         .finished: True/False: have we finished yet?
     Examples:
         stairs = Staircase(start_val=50, n_reversals=10, step_type='lin',
-            step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1, n_trials=10)  # TODO: n_trials not used
+            step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1)
         print(stairs)
         for trial in stairs:
             response = stairs.simulate_response(30)
@@ -591,34 +619,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         return self.__dict__.__repr__()
 
     def __str__(self):
-        return f'Staircase {self.n_up}up-{self.n_down}down, trial {self.this_trial_n}, {len(self.reversal_intensities)} reversals of {self.n_reversals}'
-
-    def simulate_response(self, threshold=None, transition_width=2, intervals=1, hitrates=None):
-        """Return a simulated response to the current condition index value by calculating the hitrate from a
-        psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
-        a continuous stimulus value.
-        Arguments:
-            threshold: midpoint/treshhold
-            transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
-            intervals: use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
-            hitrates: list or numpy array of hitrates for the different conditions, to allow custom rates instead of simulation.
-                      If given, thresh and transition_width are not used. If a single value is given, this value is used."""
-        slope = 0.5 / transition_width
-        if self.__class__.__name__ == 'Trialsequence': # check which class the mixin is in
-            current_condition = self.trials[self.this_n]
-        else:
-            current_condition = self._next_intensity
-        if hitrates is None:
-            hitrate = 1 / (1 + numpy.exp(4 * slope  * (threshold - current_condition))) # scale/4  = slope at midpoint
-        else:
-            if isinstance(hitrates, (list, numpy.ndarray)):
-                hitrate = hitrates[current_condition]
-            else:
-                hitrate = hitrates
-        hit = numpy.random.rand() < hitrate # True with probability hitrate
-        if hit or intervals == 1:
-            return hit
-        return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
+        return f'Staircase {self.n_up}up-{self.n_down}down, trial {self.this_trial_n},' \
+               f' {len(self.reversal_intensities)} reversals of {self.n_reversals}'
 
     def add_response(self, result, intensity=None):
         """Add a True or 1 to indicate a correct/detected trial

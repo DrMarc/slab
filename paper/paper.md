@@ -35,22 +35,6 @@ Slab can:
 * calibrate the experimental setup (loudness calibration and frequency equalization)
 * display and manipulate head-related transfer functions
 
-<<<<<<< HEAD
-# Statement of need
-Students and researchers should be able to write and understand the code that they are using. We want to make this
-possible, despite the lack of formal training and time constraints which undergrads are typically facing.
-We want to facilitate learning by providing basic building blocks and instructing researchers on how to combine them
-to experiments of various levels of complexity. Our approach differs from other software packages for running
-behavioral experiments which provide a high level graphical user interface to customize the parameters of experiments
-(@psychopy2_2019; @pychoacoustics). While there is some overlap with sound and music processing packages like librosa
-(@librosa) we only implemented the basics of sound processing and analysis. While there is a Python API for the
-spatially oriented format for acoustics, there is, to our knowledge, no package that features experimental
-manipulation of head-related transfer functions. The signal class is based on BrianHears (@brian2hears).
-
-# Audience
-Slab is directed towards students and researchers of all levels studying the perception of sound.
-Researchers and incoming students at our lab use it routinely in behavioral and neuroimaging experiments.
-=======
 Below is an example script that estimates the detection threshold for a 500-Hz pure tone using a staircase procedure. It illustrates the use of the `Staircase` class to manage the staircase. The method `present_tone_trial` is a higher-level convenience function to present a sound and acquire a response from the participant, but each of these steps can be performed separately in a line of code or two when implementing non-standard paradigms.
 ```
 # replace with moving ITD stim!
@@ -72,7 +56,6 @@ The architecture of the `Signal` class and some of the sound generation methods 
 # Audience
 Slab is directed towards students and researchers of all levels studying the perception of sound.
 Researchers and incoming students at our lab use it routinely in behavioral and neuroimaging experiments, and the package and has been used in several graduate courses psychophysics and auditory neuroscience.
->>>>>>> 75d3863ab8847f09472d8c42fba7e707ab024346
 
 # References
 see paper.bib
