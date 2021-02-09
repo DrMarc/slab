@@ -83,7 +83,7 @@ class LoadSaveMixin:
             return True
 
     def load_pickle(self, file_name):
-        """ Read pickle file and deserialize the object into self.__dict__.
+        """ Read pickle file and deserialize the object into `self.__dict__`.
         Attributes:
             file_name (str | pathlib.Path): name of the file to read. """
         if isinstance(file_name, pathlib.PosixPath):
@@ -98,7 +98,7 @@ class LoadSaveMixin:
         """ Save the object as JSON file.
         Arguments:
             file_name (str | pathlib.Path): name of the file to create or append.
-                If `None`, returns an in-memory JSON object. """
+                If None, returns an in-memory JSON object. """
         # self_copy = copy.deepcopy(self) use if reading the json file sometimes fails
         def default(i): return int(i) if isinstance(i, numpy.int64) else i
         if isinstance(file_name, pathlib.PosixPath):
@@ -115,7 +115,7 @@ class LoadSaveMixin:
             return False
 
     def load_json(self, file_name):
-        """ Read JSON file and deserialize the object into self.__dict__.
+        """ Read JSON file and deserialize the object into `self.__dict__`.
         Attributes:
             file_name (str | pathlib.Path): name of the file to read. """
         if isinstance(file_name, pathlib.PosixPath):
@@ -128,7 +128,7 @@ class LoadSaveMixin:
 
 class TrialPresentationOptionsMixin:
     """ Mixin to provide alternative forced-choice (AFC) and Same-Different trial presentation methods and
-    response simulation to Trialsequence and Staircase."""
+    response simulation to `Trialsequence` and `Staircase`."""
 
     @abstractmethod
     def add_response(self, response):
@@ -140,8 +140,8 @@ class TrialPresentationOptionsMixin:
 
     def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
         """ Present the target and distractor sounds in random order and acquire a response keypress.
-        The subject has to identify at which position the target was played. The result (True if response was corect
-        or False if response was wrong) is stored in the sequence via the add_response method.
+        The subject has to identify at which position the target was played. The result (True if response was correct
+        or False if response was wrong) is stored in the sequence via the `add_response` method.
         Arguments:
             target (instance of slab.Sound): sound that ought to be identified in the trial
             distractors (instance or list of slab.Sound): distractor sound(s)
@@ -150,7 +150,7 @@ class TrialPresentationOptionsMixin:
                 played in this trial". Defaults to the key codes for buttons '1' to '9'
             isi (int or float): inter stimulus interval which is the pause between the end of one sound and the start
             of the next one.
-            print_info (bool): If true, call the print_trial_info method afterwards """
+            print_info (bool): If true, call the `print_trial_info` method afterwards """
         if isinstance(distractors, list):
             stims = [target] + distractors  # assuming sound object and list of sounds
         else:
@@ -172,13 +172,13 @@ class TrialPresentationOptionsMixin:
     def present_tone_trial(self, stimulus, correct_key_idx=0, key_codes=(range(49, 58)), print_info=True):
         """ Present the target and distractor sounds in random order and acquire a response keypress.
         The result (True if response was correct or False if response was wrong) is stored in the sequence via the
-        add_response method.
+        `add_response` method.
         Arguments:
             stimulus (slab.Sound): sound played in the trial
             correct_key_idx (int): index of the key in `key_codes` that represents a correct response.
-                Response is correct if response == key_codes[correct_key_idx]
+                Response is correct if `response == key_codes[correct_key_idx]`
             key_codes (list of int): ascii codes for the response keys (get code for button '1': ord('1') --> 49)
-            print_info (bool): If true, call the print_trial_info method afterwards """
+            print_info (bool): If true, call the `print_trial_info` method afterwards """
         stimulus.play()
         with slab.key() as k:
             response = k.getch()
@@ -192,11 +192,15 @@ class TrialPresentationOptionsMixin:
         psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
         a continuous stimulus value.
         Arguments:
-            threshold: midpoint/threshold
-            transition_width: range of stimulus intensities over which the hitrate increases from 0.25 to 0.75
-            intervals: use 1 (default) to indicate a yes/no trial, 2 or more to indicate an AFC trial
-            hitrates: list or numpy array of hitrates for the different conditions, to allow custom rates instead of simulation.
-                      If given, thresh and transition_width are not used. If a single value is given, this value is used."""
+            threshold(None | int | float): Midpoint of the psychometric function for adaptive testing. When the
+                intensity of the current trial is equal to the `threshold` the hitrate is 50 percent.
+            transition_width (int | float): range of stimulus intensities over which the hitrate increases
+                from 0.25 to 0.75.
+            intervals (int): use 1 (default) to indicate a yes/no trial, 2 or more to indicate an alternative forced
+             choice trial. The number of choices determines the probability for a correct response by chance.
+            hitrates (None | list | numpy.ndarray): list or numpy array of hitrates for the different conditions,
+                to allow custom rates instead of simulation. If given, `threshold` and `transition_width` are not used.
+                If a single value is given, this value is used. """
         slope = 0.5 / transition_width
         if isinstance(self, slab.psychoacoustics.Trialsequence): # check which class the mixin is in
             current_condition = self.trials[self.this_n]
@@ -205,16 +209,19 @@ class TrialPresentationOptionsMixin:
         else:
             return None
         if hitrates is None:
-            hitrate = 1 / (1 + numpy.exp(4 * slope * (threshold - current_condition))) # scale/4  = slope at midpoint
+            if threshold is None:
+                raise ValueError("threshold can't be None if hitrates is None!")
+            hitrate = 1 / (1 + numpy.exp(4 * slope * (threshold - current_condition)))  # scale/4  = slope at midpoint
         else:
             if isinstance(hitrates, (list, numpy.ndarray)):
                 hitrate = hitrates[current_condition]
             else:
                 hitrate = hitrates
-        hit = numpy.random.rand() < hitrate # True with probability hitrate
+        hit = numpy.random.rand() < hitrate  # True with probability hitrate
         if hit or intervals == 1:
             return hit
-        return numpy.random.rand() < 1/intervals # still 1/intervals chance to hit the right interval
+        return numpy.random.rand() < 1/intervals  # still 1/intervals chance to hit the right interval
+
 
 class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOptionsMixin):
     """ Randomized, non-adaptive trial sequences.
@@ -324,7 +331,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
 
     def __next__(self):
         """ Is called when iterating trough a sequenceAdvances to next trial and returns it. Updates attributes
-        this_trial and this_n. If the trials have ended this method will raise a StopIteration.
+        `this_trial` and `this_n`. If the trials have ended this method will raise a StopIteration.
          Returns:
              (int): current element of the list in `trials` """
         self.this_n += 1
@@ -369,7 +376,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         Arguments:
             n_conditions (int): the number of conditions in the list. The array returned contains integers from 1
                 to the value of `n_conditions`.
-            n_reps (int): number that each element is repeated. Length of the returned array is n_conditions * n_reps
+            n_reps (int): number that each element is repeated. Length of the returned array is `n_conditions * n_reps`
             dont_start_with (int): if not None, dont start the sequence with this integer. Can be useful if several
                 sequences are used and the final trial of the last sequence should not be the same as the first
                 element of the next sequence.
@@ -445,7 +452,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
     def transitions(self):
         """ Count the number of transitions between conditions.
         Returns:
-            (numpy.ndarray): table of shape n_conditions x n_conditions where the rows represent the condition
+            (numpy.ndarray): table of shape `n_conditions` x `n_conditions` where the rows represent the condition
             transitioning from and the columns represent the condition transitioning to. For example [0, 2] shows the
             number of transitions from condition 1 to condition 3. If the `kind` of the sequence is "non_repeating",
             the diagonal is 0 because no condition transitions into itself. """
@@ -649,10 +656,11 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
                     self.correct_counter -= 1  # decrement if on a run
                 else:
                     self.correct_counter = -1  # or reset
-            self.calculatenext_intensity()
+            self.calculate_next_intensity()
 
-    def calculatenext_intensity(self):
-        'Based on current intensity, counter of correct responses, and current direction.'
+    def calculate_next_intensity(self):
+        """ Based on current intensity, counter of correct responses, and current direction.
+        TODO: description of how the current intensity is calculated"""
         if not self.reversal_intensities:  # no reversals yet
             if self.data[-1] is True:  # last answer correct
                 reversal = bool(self.current_direction == 'up')  # got it right
@@ -673,7 +681,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             self.reversal_intensities.append(self.intensities[-1])
         if len(self.reversal_intensities) >= self.n_reversals:
             self.finished = True  # we're done
-        #if reversal and self._variable_step:  # new step size if necessary
+        # if reversal and self._variable_step:  # new step size if necessary
             # if beyond the list of step sizes, use the last one
         if len(self.reversal_intensities) >= len(self.step_sizes):
             self.step_size_current = self.step_sizes[-1]
@@ -681,7 +689,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             _sz = len(self.reversal_intensities)
             self.step_size_current = self.step_sizes[_sz]
         if self.current_direction == 'up':
-            self.step_size_current *= self.step_up_factor # apply factor for weighted up/down method
+            self.step_size_current *= self.step_up_factor  # apply factor for weighted up/down method
         if not self.reversal_intensities:
             if self.data[-1] == 1:
                 self._intensity_dec()
@@ -693,7 +701,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             self._intensity_inc()  # n wrong, so going up
 
     def _intensity_inc(self):
-        'increment the current intensity and reset counter'
+        """ increment the current intensity and reset counter. """
         if self.step_type == 'db':
             self._next_intensity *= 10.0**(self.step_size_current/20.0)
         elif self.step_type == 'log':
@@ -705,7 +713,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         self.correct_counter = 0
 
     def _intensity_dec(self):
-        'decrement the current intensity and reset counter'
+        """ decrement the current intensity and reset counter. """
         if self.step_type == 'db':
             self._next_intensity /= 10.0**(self.step_size_current/20.0)
         if self.step_type == 'log':
@@ -716,43 +724,56 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         if (self.min_val is not None) and (self._next_intensity < self.min_val):
             self._next_intensity = self.min_val  # check we haven't gone out of the legal range
 
-    def threshold(self, n=0):
-        '''Returns the average (arithmetic for step_type == 'lin',
-        geometric otherwise) of the last n reversals (default: n_reversals - 1).'''
+    def threshold(self, n=0):  # TODO: why is this called "threshold", not "average"?
+        """ Returns the average of the last n reversals.
+        Arguments:
+            n (int): number of reversals to average over, if 0 use all reversals `n_reversals` - 1.
+        Returns:
+            the arithmetic (if `step_type`==='lin') or geometric mean of the `reversal_intensities`. """
         if self.finished:
             if n == 0 or n > self.n_reversals:
                 n = int(self.n_reversals) - 1
             if self.step_type == 'lin':
                 return numpy.mean(self.reversal_intensities[-n:])
             return numpy.exp(numpy.mean(numpy.log(self.reversal_intensities[-n:])))
-        return None # still running the staircase
+        return None  # still running the staircase
 
     def print_trial_info(self):
-        'Convenience method for printing current trial information.'
+        """ Convenience method for printing current trial information. s """
         print(
-            f'{self.label} | trial # {self.this_trial_n}: reversals: {len(self.reversal_points)}/{self.n_reversals}, intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)}, going {self.current_direction}, response {self.data[-1] if self.data else None}')
+            f'{self.label} | trial # {self.this_trial_n}: reversals: {len(self.reversal_points)}/{self.n_reversals},'
+            f' intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)},'
+            f'going {self.current_direction}, response {self.data[-1] if self.data else None}')
 
-    def save_csv(self, fileName):
-        'Write a csv text file with the stimulus values in the 1st line and the corresponding responses in the 2nd.'
+    def save_csv(self, filename):
+        """ Write a csv text file with the stimulus values in the 1st line and the corresponding responses in the 2nd.
+        Arguments:
+            filename (str): the name under which the csv file is saved.
+        Returns:
+            (bool): True if saving was successful, False if there are no trials to save."""
         if self.this_trial_n < 1:
-            return  # no trials to save
-        with open(fileName, 'w') as f:
-            raw_intens = str(self.intensities)
-            raw_intens = raw_intens.replace('[', '').replace(']', '')
-            f.write(raw_intens)
+            return False  # no trials to save
+        with open(filename, 'w') as f:
+            raw_intensities = str(self.intensities)
+            raw_intensities = raw_intensities.replace('[', '').replace(']', '')
+            f.write(raw_intensities)
             f.write('\n')
             responses = str(numpy.multiply(self.data, 1))  # convert to 0 / 1
             responses = responses.replace('[', '').replace(']', '')
             responses = responses.replace(' ', ', ')
             f.write(responses)
+        return True
 
     def plot(self, axis=None, **kwargs):
-        'Plot the staircase. If called after each trial, one plot is created and updated.'
-        if not plt is None:
+        """Plot the staircase. If called after each trial, one plot is created and updated.
+        Arguments:
+            axis (matplotlib.pyplot.Axes): plot axis to draw on, if none a new plot is generated
+            **kwargs: pyplot.plot keyword arguments, see matplotlib documentation """
+        if plt is None:
             raise ImportError('Plotting requires matplotlib!')
-        if self.intensities: # plotting only after first response
+        if self.intensities:  # plotting only after first response
             x = numpy.arange(-self.n_pretrials, len(self.intensities)-self.n_pretrials)
-            y = numpy.array(self.intensities) # all previously played intensities
+            y = numpy.array(self.intensities)  # all previously played intensities
             responses = numpy.array(self.data)
             if axis is None:
                 fig = plt.figure('stairs')  # figure 'stairs' is created or made current
@@ -761,12 +782,12 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             axis.plot(x, y, **kwargs)
             axis.set_xlim(-self.n_pretrials, max(20, (self.this_trial_n + 15)//10*10))
             axis.set_ylim(min(0, min(y)) if self.min_val == -numpy.Inf else self.min_val,
-                        max(y) if self.max_val == numpy.Inf else self.max_val)
+                          max(y) if self.max_val == numpy.Inf else self.max_val)
             # plot green dots at correct/yes responses
             axis.scatter(x[responses], y[responses], color='green')
             # plot red dots at correct/yes responses
             axis.scatter(x[~responses], y[~responses], color='red')
-            axis.scatter(len(self.intensities)-self.n_pretrials+1, self._next_intensity, color='grey') # grey dot for current trial
+            axis.scatter(len(self.intensities)-self.n_pretrials+1, self._next_intensity, color='grey')  # current trial
             axis.set_ylabel('Dependent variable')
             axis.set_xlabel('Trial')
             axis.set_title('Staircase')
@@ -775,8 +796,9 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             plt.draw()
             plt.pause(0.01)
 
-    def close_plot(self):
-        'Closes a staircase plot (if not drawn into a specified axis).'
+    @staticmethod
+    def close_plot():
+        """ Closes a staircase plot (if not drawn into a specified axis) - used for plotting after each trial. """
         plt.close('stairs')
 
     def _psychometric_function(self):
@@ -788,49 +810,56 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         intensities = numpy.array(self.intensities)
         responses = numpy.array(self.data)
         binned_resp = []
-        binned_intens = []
+        binned_intensities = []
         n_points = []
         intensities = numpy.round(intensities, decimals=8)
-        unique_intens = numpy.unique(intensities)
-        for this_intens in unique_intens:
-            these_resps = responses[intensities == this_intens]
-            binned_intens.append(this_intens)
-            binned_resp.append(numpy.mean(these_resps))
-            n_points.append(len(these_resps))
-        self.pf_intensities = binned_intens
+        unique_intensities = numpy.unique(intensities)
+        for this_intensity in unique_intensities:
+            these_responses = responses[intensities == this_intensity]
+            binned_intensities.append(this_intensity)
+            binned_resp.append(numpy.mean(these_responses))
+            n_points.append(len(these_responses))
+        self.pf_intensities = binned_intensities
         self.pf_percent_correct = binned_resp
         self.pf_responses_per_intensity = n_points
 
 
-class Resultsfile():
-    '''
-    A class for simplifying the typical use cases of results files, including generating the name,
+class ResultsFile:
+    """ A class for simplifying the typical use cases of results files, including generating the name,
     creating the folders, and writing to the file after each trial. Writes a JSON Lines file,
-    in which each line is a valid self-contained JSON string (http://jsonlines.org).
-    >>> Resultsfile.results_folder = 'MyResults'
-    >>> file = Resultsfile(subject='MS')
-    >>> print(file.name)
-    '''
+    in which each line is a valid self-contained JSON string (see http://jsonlines.org).
+    Arguments:
+        subject (str): determines the name of the sub-folder and files.
+        folder (None | str): folder in which all results are saved, if None use the global variable results_folder.
+    Attributes:
+        .path: full path to the results file.
+        .subject: the subject's name.
+    Example:
+        ResultsFile.results_folder = 'MyResults'
+        file = ResultsFile(subject='MS')
+        print(file.name) """
+
     name = property(fget=lambda self: self.path.name, doc='The name of the results file.')
 
-    def __init__(self, subject='test'):
+    def __init__(self, subject='test', folder=None):
         self.subject = subject
-        self.path = pathlib.Path(results_folder / pathlib.Path(subject) / pathlib.Path(subject +
-                                    datetime.datetime.now().strftime("_%Y-%m-%d-%H-%M-%S") + '.txt'))
+        if folder is None:
+            folder = results_folder
+        self.path = pathlib.Path(folder / pathlib.Path(subject) / pathlib.Path(subject +
+                                 datetime.datetime.now().strftime("_%Y-%m-%d-%H-%M-%S") + '.txt'))
         # make the Results folder and subject subfolder
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def write(self, data, tag=None):
-        '''
-        Safely write data (must be json or convertable to json [string, list, dict, ...]) to the file.
-        The file is opened just before writing and closed immediately after to avoid data loss.
-        Call this method at the end of each trial to save the response and trial state.
-        A tag (any string) can be prepended. If None is provided, the current time is used.
-        '''
+        """ Safely write data to the file which is opened just before writing and closed immediately after to avoid
+        data loss. Call this method at the end of each trial to save the response and trial state.
+        Arguments:
+            data (any): data to save must be JSON serializable [string, list, dict, ...])
+            tag (str): The tag is prepended as a key. If None is provided, the current time is used. """
         try:
-            data = json.loads(data) # if payload is already json, parse it into python object
+            data = json.loads(data)  # if payload is already json, parse it into python object
         except (json.JSONDecodeError, TypeError):
-            pass # if payload is not json - all good, will be encoded later
+            pass  # if payload is not json - all good, will be encoded later
         if tag is None or tag == 'time':
             tag = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         with open(self.path, 'a') as file:
@@ -838,14 +867,17 @@ class Resultsfile():
             file.write('\n')
 
     @staticmethod
-    def read_file(file_path, tag=None):
-        '''
-        Returns a list of objects saved in a results file at file_path.
-        If a tag is given, then only the objects saved with that tag are returned.
-        Objects are dictionaries with the tag as key and the saved data as value.
-        '''
+    def read_file(filename, tag=None):
+        """ Read a results file and return the content.
+        Arguments:
+            filename (str):
+            tag (None | str):
+        Returns:
+            (list | dict): The content of the file. If tag is None, the whole file is returned, else only the
+                dictionaries with that tag as a key are returned. The content will be a list of dictionaries or a
+                dictionary if there is only a single element. """
         content = []
-        with open(file_path) as file:
+        with open(filename) as file:
             if tag is None:
                 for line in file:
                     content.append(json.loads(line))
@@ -854,52 +886,50 @@ class Resultsfile():
                     jwd = json.loads(line)
                     if tag in jwd:
                         content.append(jwd[tag])
-        if len(content) == 1: # if only one item in list
-            content = content[0] # get rid of the list
+        if len(content) == 1:  # if only one item in list
+            content = content[0]  # get rid of the list
         return content
 
     def read(self, tag=None):
-        '''
-        Returns a list of objects saved in the current results file.
-        If a tag is given, then only the objects saved with that tag are returned.
-        Objects are dictionaries with the tag as key and the saved data as value.
-        '''
-        return Resultsfile.read_file(self.path, tag)
+        """ Wrapper for the read_file method. """
+        return ResultsFile.read_file(self.path, tag)
 
     @staticmethod
     def previous_file(subject=None):
-        '''
-        Returns the name of the most recently used resultsfile for a given `subject`.
+        """ Returns the name of the most recently used results file for a given subject.
         Intended for extracting information from a previous file when running partial experiments.
-        '''
+        Arguments:
+            subject (str): the subject name name under which the file is stored.
+        Returns:
+            (pathlib.Path): full path to the most recent results file."""
         path = pathlib.Path(results_folder) / pathlib.Path(subject)
         files = [f for f in path.glob(subject + '*') if f.is_file()]
         files.sort()
         return files[-1]
 
     def clear(self):
-        'Clears the file by erasing all content.'
+        """ Clears the file by erasing all content. """
         with open(self.path, 'w') as file:
             file.write('')
 
 
 class Precomputed(list):
-    '''
-    Class for randomly playing pre-computed sound stimuli without direct repetition.
-    `sounds` can be a list of Sound objects, a function, or an iterable. This class simplifies generation and presentation
-    of pre-computed sound stimuli and is typically used when stimulus generation takes too long to happen in each trial.
-    In this case, a list of stimuli is precomputed and a random stimulus from the list is presented in each trial,
-    ideally without direct repetition. The class allows easy generation of such stimulus lists (type `slab.Precomputed`)
-    and keeps track of the previously presented stimulus. The list has a play method which automatically selects an
-    element other than the previous one for playing, and can be used like an :meth:`slab.Sound` object.
+    """ This class is a list of pre-computed sound stimuli which simplifies their generation and presentation. It is
+    typically used when stimulus generation takes too long to happen in each trial. In this case, a list of stimuli is
+    precomputed and a random stimulus from the list is presented in each trial, ideally without direct repetition.
+    The Precomputed list has a play method which automatically selects an
+    element other than the previous one for playing, and can be used like an `slab.Sound` object.
+    Arguments:
+        sounds (list | callable | iterator): sequence of Sound objects (each must have a play method).
+        n: only used if sounds is a callable, calls it n times to make the stimuli.
     Attributes:
-        sounds: sequence (list|callable|iterator) of stimulus objects (each must have a play method)
-        n: only used if list is a callable, calls it n times to make the stimuli
-    >>> stims = slab.Precomputed(sound_list) # using a pre-made list
-    >>> stims = slab.Precomputed(lambda: slab.Sound.pinknoise(), n=10) # using a lambda function to make 10 examples of pink noise
-    >>> stims = slab.Precomputed( (slab.Sound.vowel(vowel=v) for v in ['a','e','i']) ) # using a generator
-    >>> stims.play() # playing a sound from the list
-    '''
+        .sequence: a list of all the elements that have been played already.
+    Examples:
+        stims = slab.Precomputed(sound_list) # using a pre-made list
+        # using a lambda function to make 10 examples of pink noise
+        stims = slab.Precomputed(lambda: slab.Sound.pinknoise(), n=10)
+        stims = slab.Precomputed( (slab.Sound.vowel(vowel=v) for v in ['a','e','i']) ) # using a generator
+        stims.play() # playing a sound from the list """
 
     def __init__(self, sounds, n=10):
         if isinstance(sounds, (list, tuple)):  # a list was passed, use as is
@@ -909,8 +939,8 @@ class Precomputed(list):
             for _ in range(int(n)):
                 list.append(self, sounds())
         elif isinstance(sounds, str):  # string is interpreted as name of a zip file containing the sounds
-            with zipfile.ZipFile(sounds) as zip:
-                files = zip.namelist()
+            with zipfile.ZipFile(sounds) as zipped:
+                files = zipped.namelist()
                 if files:
                     list.__init__(self, [])
                     for file in files:
@@ -921,11 +951,11 @@ class Precomputed(list):
         else:
             raise TypeError('Unknown type for list argument.')
         if not all(hasattr(sound, 'play') for sound in self):
-            raise TypeError('Cannot play all of the provided items.') # all items in list need to have a play method
-        self.sequence = [] # keep a list of indices of played stimuli, in case needed for later analysis
+            raise TypeError('Cannot play all of the provided items.')  # all items in list need to have a play method
+        self.sequence = []  # keep a list of indices of played stimuli, in case needed for later analysis
 
     def play(self):
-        'Play a random, but never the previous, stimulus from the list.'
+        """ Play a random, but never the previous, stimulus from the list. """
         if self.sequence:
             previous = self.sequence[-1]
         else:
@@ -937,47 +967,61 @@ class Precomputed(list):
         self[idx].play()
 
     def random_choice(self, n=1):
-        'Returns a list of n random sounds with replacement.'
+        """ Pick (without replacement) random elements from the list.
+         Arguments:
+             n (int): number of elements to pick.
+        Returns:
+            (list): list of n random elements."""
         idxs = numpy.random.randint(0, len(self), size=n)
         return [self[i] for i in idxs]
 
-    def write(self, fname):
-        'Writes the Precomputed object to disk as a zip file containing all sounds as wav files.'
-        with zipfile.ZipFile(fname, mode='a') as zip_file: # open an empty zip file in 'append' mode
+    def write(self, filename):
+        """ Save the Precomputed object as a zip file containing all sounds as wav files.
+        Arguments:
+            filename (str | pathlib.Path): full path to under which the file is saved. """
+        with zipfile.ZipFile(filename, mode='a') as zip_file:  # open an empty zip file in 'append' mode
             for idx, sound in enumerate(self):
-                f = io.BytesIO() # open a virtual file (file-like memory buffer)
-                sound.write(f) # write sound to virtual file
-                f.seek(0) # rewind the file so we can read it from start
+                f = io.BytesIO()  # open a virtual file (file-like memory buffer)
+                sound.write(f)  # write sound to virtual file
+                f.seek(0)  # rewind the file so we can read it from start
                 zip_file.writestr(f's_{idx}.wav', f.read())
                 f.close()
 
     @staticmethod
-    def read(fname):
-        'Reads a zip file containing wav files and returns them as Precomputed object.'
+    def read(filename):
+        """ Read a zip file containing wav files.
+        Arguments:
+            filename (str | pathlib.Path): full path to the file to be read.
+        Returns:
+            (slab.Precomputed): the file content."""
+
         stims = Precomputed([])
-        with zipfile.ZipFile(fname, 'r') as zip:
-            files = zip.namelist()
+        with zipfile.ZipFile(filename, 'r') as zipped:
+            files = zipped.namelist()
             for file in files:
-                wav_bytes = zip.read(file)
+                wav_bytes = zipped.read(file)
                 stims.append(slab.Sound.read(io.BytesIO(wav_bytes)))
         return stims
 
 
-def load_config(config_file):
-    '''
-    Reads a text file with python variable assignments and returns a namedtuple with the variable names and values.
-    Contents of example.txt:
-    >>> cat example.txt
+def load_config(filename):
+    """
+    Reads a text file with variable assignments.
+    Arguments:
+        filename (str | pathlib.Path): full path to the file to be read.
+    Returns:
+        (collections.namedtuple): a tuple containing the variables and values defined in the text file.
+    Example:
+    # assuming there is a file named "example.txt" with the folloeing content:
     samplerate = 32000
     pause_duration = 30
     speeds = [60,120,180]
-    Then call load_config to parse the file into a named tuple:
-    >>> conf = load_config('example.txt')
-    >>> conf.speeds
-    [60, 120, 180]
-    '''
+    # call load_config to parse the file into a named tuple:
+    conf = load_config('example.txt')
+    conf.speeds
+    Out: [60, 120, 180] """
     from collections import namedtuple
-    with open(config_file, 'r') as f:
+    with open(filename, 'r') as f:
         lines = f.readlines()
     if lines:
         var_names = []
