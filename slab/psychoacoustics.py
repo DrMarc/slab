@@ -407,16 +407,16 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         Arguments:
             n_standard (int): number of standard trials, encoded as 1, in the sequence.
             deviant_freq (float): frequency of deviants, encoded as 0, in the sequence. Also determines the minimum
-            number of standards between two deviants which is 4 if deviant_freq <= .1, 3 if deviant_freq <= .2 and
-            2 if deviant_freq <= .3. A deviant frequency > .3 is not supported.
+            number of standards between two deviants which is 3 if deviant_freq <= .1, 2 if deviant_freq <= .2 and
+            1 if deviant_freq <= .3. A deviant frequency > .3 is not supported.
         Returns:
             (numpy.ndarray): sequence of length n_standard+(n_standard*deviant_freq) with deviants. """
         if deviant_freq <= .1:
-            min_dist = 4
-        elif deviant_freq <= .2:
             min_dist = 3
-        elif deviant_freq <= .3:
+        elif deviant_freq <= .2:
             min_dist = 2
+        elif deviant_freq <= .3:
+            min_dist = 1
         else:
             raise ValueError("Deviant frequency can't be greater than 30%!")
         # get the possible combinations of deviants and normal trials:
