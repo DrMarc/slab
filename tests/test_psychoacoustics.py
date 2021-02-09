@@ -50,6 +50,7 @@ def test_sequence():
                     if count > 100:
                         break
 
+
 def test_deviants():
     for i in range(100):
         conditions = 4
@@ -100,9 +101,9 @@ def test_precomputed():
 
 def test_results():
     slab.psychoacoustics.results_folder = PATH
-    results = slab.Resultsfile(subject="MrPink")
+    results = slab.ResultsFile(subject="MrPink")
     data = [1, 2, 3]
     results.write(data)
     results.read()
-    results = slab.Resultsfile.read_file(slab.Resultsfile.previous_file(subject="MrPink"))
+    results = slab.ResultsFile.read_file(slab.ResultsFile.previous_file(subject="MrPink"))
     results.clear()

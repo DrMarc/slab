@@ -263,13 +263,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
     def __init__(self, conditions=2, n_reps=1, trials=None, kind=None, deviant_freq=None, label=''):
         self.label = label
         self.n_reps = int(n_reps)
-        if trials is not None:
-            self.conditions = list(set(trials))
-            for i, condition in enumerate(self.conditions):  # encode conditions as integers 1 to n_conditions in trials
-                for t, trial in enumerate(trials):
-                    if trial == condition:
-                        trials[t] = i+1
-            self.trials = trials
         if isinstance(conditions, pathlib.Path):
             conditions = str(conditions)
         if isinstance(conditions, str):
@@ -308,10 +301,19 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                 else:
                     raise ValueError(f'Unknown kind parameter: {kind}!')
                 if deviant_freq is not None:  # insert deviants
-                    deviants = slab.Trialsequence._deviant_indices(n_trials=int(self.n_conditions * n_reps),
+                    deviants = slab.Trialsequence._deviant_indices(n_standard=int(self.n_conditions * n_reps),
                                                                    deviant_freq=deviant_freq)
                     self.trials = numpy.insert(arr=self.trials, obj=deviants, values=0)
                     self.n_conditions += 1  # add one condition for deviants
+            else:  # make a sequence from a given list of trials
+                self.conditions = list(set(trials))
+                for i, condition in enumerate(
+                        self.conditions):  # encode conditions as integers 1 to n_conditions in trials
+                    for t, trial in enumerate(trials):
+                        if trial == condition:
+                            trials[t] = i + 1
+                self.trials = trials
+                self.n_conditions = len(self.conditions)
             self.trials = list(self.trials)  # convert trials to list
             self.this_n = -1  # trial index in entire sequence
             self.this_trial = []  # condition of current trial
@@ -339,7 +341,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         if self.n_remaining < 0:  # all trials complete
             if self.kind == 'infinite':  # finite sequence -> reset and start again
                 # new sequence, avoid start with previous condition
-                self.trials = self._create_simple_sequence(len(self.conditions), self.n_reps, previous=self.trials[-1])
+                self.trials = self._create_simple_sequence(len(self.conditions), self.n_reps,
+                                                           dont_start_with=self.trials[-1])
                 self.this_n = 0
                 self.n_remaining = self.n_trials - 1  # reset trial countdown to length of new trial
                 #  sequence (subtract 1 because we return the 0th trial below)
@@ -394,7 +397,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                 while trials[-1] == permute[0]:
                     numpy.random.shuffle(permute)
             trials += permute
-        trials = trials[1:]  # delete first entry ('dont_start_with')
+        if dont_start_with is not None: # delete first entry ('dont_start_with')
+            trials = trials[1:]
         return numpy.array(trials)
 
     @staticmethod
