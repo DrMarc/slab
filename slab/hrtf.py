@@ -260,7 +260,7 @@ class HRTF:
             elevations = self.sources[sourceidx, 1]
             for idx, source in enumerate(sourceidx):
                 filt = self.data[source]
-                freqs, h = filt.tf(channels=chan, nbins=n_bins, show=False)  # TODO: should every freq be drawn?
+                freqs, h = filt.tf(channels=chan, nbins=n_bins, show=False)
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
             contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
@@ -282,7 +282,7 @@ class HRTF:
         """
         Compute the diffuse field average transfer function, i.e. the constant non-spatial portion of a set of HRTFs.
         The filters for all sources are averaged, which yields an unbiased average only if the sources are uniformly
-        distributed around the head. 
+        distributed around the head.
         Returns:
              (Filter): the diffuse field average as FFR filter object. """
         # TODO: could make the contribution of each HRTF depend on local density of sources.
