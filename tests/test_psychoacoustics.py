@@ -2,10 +2,12 @@ import slab
 from itertools import zip_longest
 import tempfile
 import numpy
+from matplotlib import pyplot as plt
 import random
 from pathlib import Path
 DIR = tempfile.TemporaryDirectory()
 PATH = Path(DIR.name)
+plt.ioff()
 # NOTE: Everything involving pressing a key is currently untested because curses does not run within pytest
 
 
@@ -80,8 +82,9 @@ def test_staircase():
             r2 = stairs2.simulate_response(2)
             stairs2.add_response(r2)
             # stairs2.print_trial_info()
-    stairs1.plot()
-    stairs2.plot()
+    fig, ax = plt.subplots(2)
+    stairs1.plot(axis=ax[0], show=False)
+    stairs2.plot(axis=ax[1], show=False)
     # adaptive staircase
     stairs = slab.Staircase(start_val=10, n_reversals=18, step_sizes=[4, 1])
     for stimulus_value in stairs:

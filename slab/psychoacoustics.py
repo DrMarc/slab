@@ -768,7 +768,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             f.write(responses)
         return True
 
-    def plot(self, axis=None, **kwargs):
+    def plot(self, axis=None, show=True, **kwargs):
         """Plot the staircase. If called after each trial, one plot is created and updated.
         Arguments:
             axis (matplotlib.pyplot.Axes): plot axis to draw on, if none a new plot is generated
@@ -798,7 +798,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             if self.finished:
                 axis.hlines(self.threshold(), min(x), max(x), 'r')
             plt.draw()
-            plt.pause(0.01)
+            if show:
+                plt.pause(0.01)
 
     @staticmethod
     def close_plot():
