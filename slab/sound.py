@@ -61,8 +61,7 @@ class Sound(Signal):
 
     **Generating sounds**
 
-    All sound generating methods can be used with durations arguments in samples (int) or seconds (float).
-    One can also set the number of channels by setting the keyword argument nchannels to the desired value.
+    All sound generating methods can be used with durations arguments in samples (int) or seconds (float). The number of channels can be set with the keyword argument nchannels.
 
     **Plotting**
 
@@ -574,10 +573,10 @@ class Sound(Signal):
 
     def am(self, frequency=10, depth=1, phase=0):
         """
-        Apply an amplitude modulation to the sound by multplication with a sine funnction
+        Apply an amplitude modulation to the sound by multplication with a sine function.
         Args:
             frequency (int): frequency of the modulating sine function in Hz
-            depth (int, float): amplitude of the modulating sine function
+            depth (int, float): modulation depth/index of the modulating sine function
             phase (int, float): initial phase of the modulating sine function
         Returns:
             slab.Sound: amplitude modulated copy of the instance
