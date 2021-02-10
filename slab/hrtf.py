@@ -14,8 +14,10 @@ except ImportError:
     matplotlib, plt = False, False
 try:
     from mpl_toolkits.mplot3d import Axes3D
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
 except ImportError:
     Axes3D = False
+    make_axes_locatable = False
 try:
     import h5netcdf
 except ImportError:
@@ -206,7 +208,7 @@ class HRTF:
                 `image` (as in Hofman 1998).
             linesep (int): vertical distance between transfer functions in the waterfall plot
             xscale (str): sets x-axis scaling ('linear', 'log')
-            show (bool): Whether to show plot or
+            show (bool): If True, show the plot immediately
             axis (matplotlib.axes._subplots.AxesSubplot): Axis to draw the plot on
         """
         if matplotlib is False:
@@ -218,15 +220,21 @@ class HRTF:
         elif ear == 'both':
             chan = [0, 1]
             if kind == 'image':
-                fig1 = self.plot_tf(sourceidx, ear='left', xlim=xlim,
+                if axis is not None and not isinstance(axis, list):
+                    raise ValueError("Axis must be a list of length two when plotting left and right ear!")
+                elif axis is None:
+                    axis = [None, None]
+                fig1 = self.plot_tf(sourceidx, ear='left', xlim=xlim, axis=axis[0], show=show,
                                     linesep=linesep, n_bins=n_bins, kind='image', xscale=xscale)
-                fig2 = self.plot_tf(sourceidx, ear='right', xlim=xlim,
+                fig2 = self.plot_tf(sourceidx, ear='right', xlim=xlim, axis=axis[1], show=show,
                                     linesep=linesep, n_bins=n_bins, kind='image', xscale=xscale)
                 return fig1, fig2
         else:
             raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
         if not axis:
             fig, axis = plt.subplots()
+        else:
+            fig = axis.figure
         if kind == 'waterfall':
             vlines = numpy.arange(0, len(sourceidx)) * linesep
             for idx, s in enumerate(sourceidx):
@@ -255,8 +263,11 @@ class HRTF:
                 freqs, h = filt.tf(channels=chan, nbins=n_bins, show=False)  # TODO: should every freq be drawn?
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
-            plt.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
-            plt.colorbar()
+            contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
+            divider = make_axes_locatable(axis)
+            cax = divider.append_axes('right', size='5%', pad=0.05)
+            fig.colorbar(contour, cax, orientation="vertical")
+
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
         axis.autoscale(tight=True)
