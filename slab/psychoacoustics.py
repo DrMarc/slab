@@ -94,11 +94,10 @@ class LoadSaveMixin:
             self.__dict__ = pickle.load(fp)
 
     def save_json(self, file_name=None):
-        # TODO: be clear about appending vs overwriting
-        """ Save the object as JSON file.
+        """ Save the object as JSON file. If the file exists, it is overwritten.
         Arguments:
             file_name (str | pathlib.Path): name of the file to create or append.
-                If None, returns an in-memory JSON object. """
+                If None or 'stdout', returns an in-memory JSON object. """
         # self_copy = copy.deepcopy(self) use if reading the json file sometimes fails
         def default(i): return int(i) if isinstance(i, numpy.int64) else i
         if isinstance(file_name, pathlib.PosixPath):
@@ -728,7 +727,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         if (self.min_val is not None) and (self._next_intensity < self.min_val):
             self._next_intensity = self.min_val  # check we haven't gone out of the legal range
 
-    def threshold(self, n=0):  # TODO: why is this called "threshold", not "average"?
+    def threshold(self, n=0):
         """ Returns the average of the last n reversals.
         Arguments:
             n (int): number of reversals to average over, if 0 use all reversals `n_reversals` - 1.
@@ -747,7 +746,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         print(
             f'{self.label} | trial # {self.this_trial_n}: reversals: {len(self.reversal_points)}/{self.n_reversals},'
             f' intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)},'
-            f'going {self.current_direction}, response {self.data[-1] if self.data else None}')
+            f' going {self.current_direction}, response {self.data[-1] if self.data else None}')
 
     def save_csv(self, filename):
         """ Write a csv text file with the stimulus values in the 1st line and the corresponding responses in the 2nd.
