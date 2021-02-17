@@ -212,16 +212,18 @@ class Signal:
         'Returns generator that yields channel data as objects of the calling class.'
         return (self.channel(i) for i in range(self.n_channels))
 
-    def resize(self, L):  # TODO: should this return a new instance for consistency?
+    def resize(self, duration):
         'Extends or contracts the length of the data in the object in place to have L samples.'
-        L = Signal.in_samples(L, self.samplerate)
-        if L == len(self.data):
+        duration = Signal.in_samples(duration, self.samplerate)
+        resized = copy.deepcopy(self)
+        if duration == len(self.data):
             pass  # already correct size
-        elif L < len(self.data):
-            self.data = self.data[:L, :]
-        else:
-            padding = numpy.zeros((L - len(self.data), self.n_channels))
-            self.data = numpy.concatenate((self.data, padding))
+        elif duration < len(self.data):  # cut the data
+            resized.data = self.data[:duration, :]
+        else:  # pad with zeros
+            padding = numpy.zeros((duration - len(self.data), self.n_channels))
+            resized.data = numpy.concatenate((self.data, padding))
+        return resized
 
     def resample(self, samplerate):
         'Returns a resampled version of the sound. Requires scipy.signal.'
