@@ -7,9 +7,9 @@ def test_properties():
     sound = slab.Sound(numpy.ones([10, 2]), samplerate=10)
     sound = sound.repeat(n=5)
     assert sound.samplerate == 10
-    assert sound.nsamples == 50
+    assert sound.n_samples == 50
     assert sound.duration == 5.0
-    assert sound.nchannels == 2
+    assert sound.n_channels == 2
 
 
 def test_tone():

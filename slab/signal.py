@@ -18,12 +18,12 @@ class Signal:
     '''
     Base class for Signal data (sounds and filters).
 
-    Provides duration, nsamples, times, nchannels properties,
+    Provides duration, n_samples, times, n_channels properties,
     slicing, and conversion between samples and times.
     This class is intended to be subclassed. See Sound class for an example.
 
     Arguments:
-        data: samples of the signal. If it is an array, it should have shape `(nsamples, nchannels)``. If it is
+        data: samples of the signal. If it is an array, it should have shape `(n_samples, n_channels)``. If it is
             a function, it should be a function f(t). If its a sequence, the items in the sequence can be functions,
             arrays or Signal objects. The output will be a multi-channel Signal with channels corresponding to Signals
             for each element of the sequence.
@@ -40,9 +40,9 @@ class Signal:
 
     >>> sig.duration
     1.0
-    >>> sig.nsamples
+    >>> sig.n_samples
     10
-    >>> sig.nchannels
+    >>> sig.n_channels
     2
     >>> len(sig.times)
     10
@@ -68,14 +68,14 @@ class Signal:
     '''
 
     # instance properties
-    nsamples = property(fget=lambda self: self.data.shape[0], fset=lambda self, l: self.resize(l),
-                        doc='The number of samples in the Signal. Setting calls resize.')
+    n_samples = property(fget=lambda self: self.data.shape[0], fset=lambda self, l: self.resize(l),
+                         doc='The number of samples in the Signal. Setting calls resize.')
     duration = property(fget=lambda self: self.data.shape[0] / self.samplerate,
                         doc='The length of the Signal in seconds.')
     times = property(fget=lambda self: numpy.arange(self.data.shape[0], dtype=float) / self.samplerate,
                      doc='An array of times (in seconds) corresponding to each sample.')
-    nchannels = property(fget=lambda self: self.data.shape[1],
-                         doc='The number of channels in the Signal.')
+    n_channels = property(fget=lambda self: self.data.shape[1],
+                          doc='The number of channels in the Signal.')
 
     # __methods (class creation, printing, and slice functionality)
     def __init__(self, data, samplerate=None):
@@ -106,7 +106,7 @@ class Signal:
         return f'{type(self)} (\n{repr(self.data)}\n{repr(self.samplerate)})'
 
     def __str__(self):
-        return f'{type(self)} duration {self.duration}, samples {self.nsamples}, channels {self.nchannels}, samplerate {self.samplerate}'
+        return f'{type(self)} duration {self.duration}, samples {self.n_samples}, channels {self.n_channels}, samplerate {self.samplerate}'
 
     def __getitem__(self, key):
         return self.data.__getitem__(key)
@@ -157,7 +157,7 @@ class Signal:
         return new
 
     def __len__(self):
-        return self.nsamples
+        return self.n_samples
 
     # static methods (belong to the class, but can be called without creating an instance)
     @staticmethod
@@ -210,9 +210,9 @@ class Signal:
 
     def channels(self):
         'Returns generator that yields channel data as objects of the calling class.'
-        return (self.channel(i) for i in range(self.nchannels))
+        return (self.channel(i) for i in range(self.n_channels))
 
-    def resize(self, L):
+    def resize(self, L):  # TODO: should this return a new instance for consistency?
         'Extends or contracts the length of the data in the object in place to have L samples.'
         L = Signal.in_samples(L, self.samplerate)
         if L == len(self.data):
@@ -220,7 +220,7 @@ class Signal:
         elif L < len(self.data):
             self.data = self.data[:L, :]
         else:
-            padding = numpy.zeros((L - len(self.data), self.nchannels))
+            padding = numpy.zeros((L - len(self.data), self.n_channels))
             self.data = numpy.concatenate((self.data, padding))
 
     def resample(self, samplerate):
@@ -232,8 +232,8 @@ class Signal:
         else:
             out = copy.deepcopy(self)
             new_nsamples = int(numpy.rint(samplerate*self.duration))
-            new_signal = numpy.zeros((new_nsamples, self.nchannels))
-            for chan in range(self.nchannels):
+            new_signal = numpy.zeros((new_nsamples, self.n_channels))
+            for chan in range(self.n_channels):
                 new_signal[:, chan] = scipy.signal.resample(
                     self.channel(chan), new_nsamples).flatten()
             out.data = new_signal
@@ -284,16 +284,16 @@ class Signal:
     def delay(self, duration=1, channel=0, filter_length=2048):
         '''
         Delays one `channel` by `duration` (in seconds if float, or samples if int). If duration is a vector with
-        self.nsamples entries, then each sample is delayed by the corresponsding number of seconds. This option is used
+        self.n_samples entries, then each sample is delayed by the corresponsding number of seconds. This option is used
         by the :meth:`Binaural.itd_ramp`. `filter_length` determines the accuracy of the reconstruction when
         using fractional sample delays and is 2048, or the signal length for shorter signals.
         '''
-        if channel >= self.nchannels:
+        if channel >= self.n_channels:
             raise ValueError('Channel must be smaller than number of channels in signal!')
         if filter_length % 2:
             raise ValueError('Filter_length must be even!')
-        if self.nsamples < filter_length:  # reduce the filter_length to the signal length of short signals
-            filter_length = self.nsamples-1 if self.nsamples % 2 else self.nsamples  # make even
+        if self.n_samples < filter_length:  # reduce the filter_length to the signal length of short signals
+            filter_length = self.n_samples - 1 if self.n_samples % 2 else self.n_samples  # make even
         centre_tap = int(filter_length / 2)
         t = numpy.array(range(filter_length))
         if isinstance(duration, (int, float, numpy.int64, numpy.float64)):  # just a constant delay
@@ -308,7 +308,7 @@ class Signal:
                 tap_weight = window * numpy.sinc(x-centre_tap)
             self.data[:, channel] = numpy.convolve(self.data[:, channel], tap_weight, mode='same')
         else:  # dynamic delay
-            if len(duration) != self.nsamples:
+            if len(duration) != self.n_samples:
                 ValueError('Duration shorter or longer than signal!')
             duration *= self.samplerate  # assuming vector in seconds, convert to samples
             padding = numpy.zeros(centre_tap)

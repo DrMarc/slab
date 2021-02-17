@@ -25,9 +25,9 @@ class Filter(Signal):
 
     '''
     # instance properties
-    nfilters = property(fget=lambda self: self.nchannels, doc='The number of filters in the bank.')
-    ntaps = property(fget=lambda self: self.nsamples, doc='The number of filter taps.')
-    nfrequencies = property(fget=lambda self: self.nsamples, doc='The number of frequency bins.')
+    nfilters = property(fget=lambda self: self.n_channels, doc='The number of filters in the bank.')
+    ntaps = property(fget=lambda self: self.n_samples, doc='The number of filter taps.')
+    nfrequencies = property(fget=lambda self: self.n_samples, doc='The number of frequency bins.')
     frequencies = property(fget=lambda self: numpy.fft.rfftfreq(self.ntaps*2-1, d=1/self.samplerate)
                            if not self.fir else None, doc='The frequency axis of the filter.')
 
@@ -118,16 +118,16 @@ class Filter(Signal):
         if self.fir:
             if not have_scipy:
                 raise ImportError('Applying FIR filters requires Scipy.')
-            if self.nfilters == sig.nchannels:  # filter each channel with corresponding filter
+            if self.nfilters == sig.n_channels:  # filter each channel with corresponding filter
                 for i in range(self.nfilters):
                     out.data[:, i] = scipy.signal.filtfilt(
                         self.data[:, i], [1], out.data[:, i], axis=0)
-            elif (self.nfilters == 1) and (sig.nchannels > 1):  # filter each channel
+            elif (self.nfilters == 1) and (sig.n_channels > 1):  # filter each channel
                 for i in range(self.nfilters):
                     out.data[:, i] = scipy.signal.filtfilt(
                         self.data.flatten(), [1], out.data[:, i], axis=0)
-            elif (self.nfilters > 1) and (sig.nchannels == 1):  # apply all filters in bank to signal
-                out.data = numpy.empty((sig.nsamples, self.nfilters))
+            elif (self.nfilters > 1) and (sig.n_channels == 1):  # apply all filters in bank to signal
+                out.data = numpy.empty((sig.n_samples, self.nfilters))
                 for filt in range(self.nfilters):
                     out.data[:, filt] = scipy.signal.filtfilt(
                         self[:, filt], [1], sig.data, axis=0).flatten()
@@ -136,22 +136,22 @@ class Filter(Signal):
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
         else:  # FFT filter
             sig_rfft = numpy.fft.rfft(sig.data, axis=0)
-            sig_freq_bins = numpy.fft.rfftfreq(sig.nsamples, d=1/sig.samplerate)
+            sig_freq_bins = numpy.fft.rfftfreq(sig.n_samples, d=1 / sig.samplerate)
             filt_freq_bins = self.frequencies
             # interpolate the FFT filter bins to match the length of the fft of the signal
-            if self.nfilters == sig.nchannels:  # filter each channel with corresponding filter
-                for chan in range(sig.nchannels):
+            if self.nfilters == sig.n_channels:  # filter each channel with corresponding filter
+                for chan in range(sig.n_channels):
                     _filt = numpy.interp(sig_freq_bins, filt_freq_bins, self[:, chan])
-                    out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt, sig.nsamples)
-            elif (self.nfilters == 1) and (sig.nchannels > 1):  # filter each channel
+                    out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt, sig.n_samples)
+            elif (self.nfilters == 1) and (sig.n_channels > 1):  # filter each channel
                 _filt = numpy.interp(sig_freq_bins, filt_freq_bins, self.data.flatten())
-                for chan in range(sig.nchannels):
-                    out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt, sig.nsamples)
-            elif (self.nfilters > 1) and (sig.nchannels == 1):  # apply all filters in bank to signal
-                out.data = numpy.empty((sig.nsamples, self.nfilters))
+                for chan in range(sig.n_channels):
+                    out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt, sig.n_samples)
+            elif (self.nfilters > 1) and (sig.n_channels == 1):  # apply all filters in bank to signal
+                out.data = numpy.empty((sig.n_samples, self.nfilters))
                 for filt in range(self.nfilters):
                     _filt = numpy.interp(sig_freq_bins, filt_freq_bins, self[:, filt])
-                    out.data[:, filt] = numpy.fft.irfft(sig_rfft.flatten() * _filt, sig.nsamples)
+                    out.data[:, filt] = numpy.fft.irfft(sig_rfft.flatten() * _filt, sig.n_samples)
             else:
                 raise ValueError(
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
@@ -217,7 +217,7 @@ class Filter(Signal):
                 If True, allows reconstruction of original bandwidth when collapsing subbands.
 
         >>> sig = Sound.pinknoise(samplerate=44100)
-        >>> fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_cutoff=100, samplerate=sig.samplerate)
+        >>> fbank = Filter.cos_filterbank(length=sig.n_samples, bandwidth=1/10, low_cutoff=100, samplerate=sig.samplerate)
         >>> fbank.tf(plot=True)
         >>> sig_filt = fbank.apply(sig)
         """
@@ -259,7 +259,7 @@ class Filter(Signal):
     def collapse_subbands(subbands, filter_bank=None):
         if not filter_bank:
             filter_bank = Filter.cos_filterbank(
-                length=subbands.nsamples, samplerate=subbands.samplerate)
+                length=subbands.n_samples, samplerate=subbands.samplerate)
         if subbands.samplerate != filter_bank.samplerate:
             raise ValueError('Signal and filter bank need to have the same samplerate!')
         subbands_rfft = numpy.fft.rfft(subbands.data, axis=0)
@@ -292,12 +292,12 @@ class Filter(Signal):
         '''
         if not have_scipy:
             raise ImportError('Generating equalizing filter banks requires Scipy.')
-        if target.nchannels > 1:
+        if target.n_channels > 1:
             raise ValueError("The target sound must have only one channel!")
-        if bool(target.nsamples % 2): # number of samples must be even:
-            target.resize(target.nsamples+1)
-        if bool(signal.nsamples % 2):
-            signal.resize(signal.nsamples+1)
+        if bool(target.n_samples % 2): # number of samples must be even:
+            target.resize(target.n_samples + 1)
+        if bool(signal.n_samples % 2):
+            signal.resize(signal.n_samples + 1)
         if target.samplerate > signal.samplerate: # resample higher to lower rate if necessary
             target = target.resample(signal.samplerate)
         elif target.samplerate < signal.samplerate:

@@ -20,7 +20,7 @@ class Binaural(Sound):
         Binaural.right: right (1st) channel
 
     >>> sig = Binaural.whitenoise()
-    >>> sig.nchannels
+    >>> sig.n_channels
     2
     >>> all(sig.left - sig.right)
     False
@@ -45,13 +45,13 @@ class Binaural(Sound):
 
     def __init__(self, data, samplerate=None):
         if isinstance(data, (Sound, Signal)):
-            if data.nchannels != 2:
+            if data.n_channels != 2:
                 data.copychannel(2)
             self.data = data.data
             self.samplerate = data.samplerate
         elif isinstance(data, (list, tuple)):
             if isinstance(data[0], (Sound, Signal)):
-                if data[0].nsamples != data[1].nsamples:
+                if data[0].n_samples != data[1].n_samples:
                     raise ValueError('Sounds must have same number of samples!')
                 if data[0].samplerate != data[1].samplerate:
                     raise ValueError('Sounds must have same samplerate!')
@@ -60,11 +60,11 @@ class Binaural(Sound):
                 super().__init__(data, samplerate)
         elif isinstance(data, str):
             super().__init__(data, samplerate)
-            if self.nchannels != 2:
+            if self.n_channels != 2:
                 self.copychannel(2) # duplicate channel if monaural file
         else:
             super().__init__(data, samplerate)
-            if self.nchannels != 2: # last check that it is a 2-channel sound
+            if self.n_channels != 2: # last check that it is a 2-channel sound
                 ValueError('Binaural sounds must have two channels!')
 
     def itd(self, duration=0.001, estimate=False):
@@ -87,7 +87,7 @@ class Binaural(Sound):
             max_lag = Sound.in_samples(duration, self.samplerate)
             xcorr = numpy.correlate(self.data[:,0], self.data[:,1], 'full')
             lags = numpy.arange(-max_lag, max_lag + 1)
-            xcorr = xcorr[self.nsamples - 1 - max_lag:self.nsamples + max_lag]
+            xcorr = xcorr[self.n_samples - 1 - max_lag:self.n_samples + max_lag]
             idx = numpy.argmax(xcorr)
             return lags[idx]
         new = copy.deepcopy(self)  # so that we can return a new signal
@@ -109,7 +109,7 @@ class Binaural(Sound):
         max_lag = Sound.in_samples(duration, self.samplerate)
         xcorr = numpy.correlate(self.data[:,0], self.data[:,1], 'full')
         lags = numpy.arange(-max_lag, max_lag + 1)
-        xcorr = xcorr[self.nsamples - 1 - max_lag:self.nsamples + max_lag]
+        xcorr = xcorr[self.n_samples - 1 - max_lag:self.n_samples + max_lag]
         idx = numpy.argmax(xcorr)
         return lags[idx]
 
@@ -141,12 +141,12 @@ class Binaural(Sound):
         '''
         new = copy.deepcopy(self)
         # make the ITD ramps
-        left_ramp = numpy.linspace(-from_itd/2, -to_itd/2, self.nsamples)
-        right_ramp = numpy.linspace(from_itd/2, to_itd/2, self.nsamples)
-        if self.nsamples >= 8192:
+        left_ramp = numpy.linspace(-from_itd / 2, -to_itd / 2, self.n_samples)
+        right_ramp = numpy.linspace(from_itd / 2, to_itd / 2, self.n_samples)
+        if self.n_samples >= 8192:
             filter_length = 1024
-        elif self.nsamples >= 512:
-            filter_length = self.nsamples//16 * 2  # 1/8th of nsamples, always even
+        elif self.n_samples >= 512:
+            filter_length = self.n_samples // 16 * 2  # 1/8th of n_samples, always even
         else:
             ValueError('Signal too short! (min 512 samples)')
         new.delay(duration=left_ramp, channel=0, filter_length=filter_length)
@@ -165,8 +165,8 @@ class Binaural(Sound):
         '''
         new = self.ild(0)  # set ild to zero
         # make ramps
-        left_ramp = numpy.linspace(-from_ild/2, -to_ild/2, self.nsamples)
-        right_ramp = numpy.linspace(from_ild/2, to_ild/2, self.nsamples)
+        left_ramp = numpy.linspace(-from_ild / 2, -to_ild / 2, self.n_samples)
+        right_ramp = numpy.linspace(from_ild / 2, to_ild / 2, self.n_samples)
         left_ramp = 10**(left_ramp/20.)
         right_ramp = 10**(right_ramp/20.)
         # multiply channels with ramps
@@ -301,7 +301,7 @@ class Binaural(Sound):
         ils = ils[1:, :]  # the rest is the filter
         # interpolate levels at azimuth
         levels = [numpy.interp(azimuth, azis, ils[:, i]) for i in range(ils.shape[1])]
-        fbank = Filter.cos_filterbank(length=self.nsamples, samplerate=self.samplerate)
+        fbank = Filter.cos_filterbank(length=self.n_samples, samplerate=self.samplerate)
         subbands_left = fbank.apply(self.left)
         subbands_right = fbank.apply(self.right)
         # change subband levels:
