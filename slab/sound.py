@@ -593,6 +593,7 @@ class Sound(Signal):
 
     @staticmethod
     def crossfade(*sounds, overlap=0.01):
+        # TODO: write a new test for this
         """ Crossfade two sounds.
         Arguments:
             sound1 and sound2 (slab.Sound): sounds to crossfade
@@ -614,24 +615,24 @@ class Sound(Signal):
         n_total = sum([sound.n_samples for sound in sounds]) - overlap * (len(sounds)-1)
         # give each sound an offset and onset ramp and add silence to them. The length of the silence added to the
         # beginning and end of the sound is equal to the length of the sounds that come before or after minus overlaps
-        previous = []
+        n_previous = 0
         for i, sound in enumerate(sounds):
+            n_samples = sound.n_samples
             if i == 0:
-                sound = sound.ramp(overlap, when="offset")  # for the first sound only add offset ramp
-                sound.resize(n_total)
-                sounds[i] = sound
+                sound = sound.ramp(duration=overlap, when="offset")  # for the first sound only add offset ramp
+                sounds[i] = sound.resize(n_total)
             else:
                 if i == len(sounds)-1:
-                    sound = sound.ramp(overlap, when="onset")  # for the first sound only add onset ramp
+                    sound = sound.ramp(duration=overlap, when="onset")  # for the first sound only add onset ramp
                 else:
-                    sound = sound.ramp(overlap, when="both")  # for all other sounds add both
-                n_silence_before = sum([sound.n_samples for sound in previous]) - overlap * len(previous)
-                n_silence_after = n_total - n_silence_before - sound.n_samples - overlap
-                sounds[i] = Sound.sequence(
+                    sound = sound.ramp(duration=overlap, when="both")  # for all other sounds add both
+                n_silence_before = n_previous - overlap * i
+                n_silence_after = n_total - n_silence_before - sound.n_samples
+                sounds[i] = Sound.sequence(  # TODO: BUg when one of the sounds is empty
                     Sound.silence(n_silence_before, samplerate=sound.samplerate, n_channels=sound.n_channels),
                     sound,
                     Sound.silence(n_silence_after, samplerate=sound.samplerate, n_channels=sound.n_channels))
-            previous.append(sound)
+            n_previous += n_samples
         sound = sum(sounds)
         return sound
 
