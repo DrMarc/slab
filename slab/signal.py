@@ -29,35 +29,20 @@ class Signal:
             for each element of the sequence.
         samplerate: samplerate of the signal; will use the default (for an array or function) or the samplerate of the
             data (for a filename)
+    Attributes:
+        .duration
+        .n_samples
+        .n_channels
+        .times
+    Examples:
+        import slab, numpy
+        sig = slab.Signal(numpy.ones([10,2]),samplerate=10)  # create a signal
 
-    >>> import slab
-    >>> import numpy
-    >>> sig = slab.Signal(numpy.ones([10,2]),samplerate=10)
-    >>> print(sig)
-    <class 'slab.signals.Signal'> duration 1.0, samples 10, channels 2, samplerate 10
+        # Signal implements __getitem__ and __setitem___ and thus supports slicing. Slicing returns numpy.ndarrays or
+        # floats, not Signal objects. You can also set values using slicing:
 
-    **Properties**
-
-    >>> sig.duration
-    1.0
-    >>> sig.n_samples
-    10
-    >>> sig.n_channels
-    2
-    >>> len(sig.times)
-    10
-
-    **Slicing**
-
-    Signal implements __getitem__ and __setitem___ and thus supports slicing. Slicing returns numpy.ndarrays or floats,
-    not Signal objects. You can also set values using slicing:
-
-    >>> sig[:5] = 0
-
-    will set the first 5 samples to zero. You can also select a subset of channels:
-
-    >>> sig[:,1]
-    array([0., 0., 0., 0., 0., 1., 1., 1., 1., 1.])
+        sig[:5] = 0  # set the first 5 samples to 0
+        sig[:,1]  # select the data from the second channel
 
     would be data in the second channel. To extract a channel as a Signal or subclass object use sig.channel(1).
     Signals support arithmatic operations (add, sub, mul, truediv, neg ['-sig' inverts phase]):
@@ -100,7 +85,8 @@ class Signal:
         if len(self.data.shape) == 1:
             self.data.shape = (len(self.data), 1)
         elif self.data.shape[1] > self.data.shape[0]:
-            self.data = self.data.T
+            if not len(data) == 0:  # dont transpose if data is an empty array
+                self.data = self.data.T
 
     def __repr__(self):
         return f'{type(self)} (\n{repr(self.data)}\n{repr(self.samplerate)})'
