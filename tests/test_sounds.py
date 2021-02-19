@@ -52,3 +52,22 @@ def test_manipulations():
         sound.spectral_feature(feature=feat)
     sound.crest_factor()
     sound.onset_slope()
+
+
+def test_crossfade():
+    import itertools
+    samplerate = 44100
+    noise_durations = [0.1, 0.5, 1.0]
+    vowel_durations = [0.1, 0.5, 1.0]
+    overlaps = [0.0, 0.1]
+    combinations = itertools.product(noise_durations, vowel_durations, overlaps)
+    for noise_dur, vowel_dur, overlap in combinations:
+        noise = slab.Sound.whitenoise(duration=noise_dur, samplerate=samplerate)
+        vowel = slab.Sound.vowel(duration=vowel_dur, samplerate=samplerate)
+        expected_n_samples = int(noise.n_samples + vowel.n_samples*2 - ((samplerate*overlap)*2))
+        noise2vowel = slab.Sound.crossfade(vowel, noise, vowel, overlap=overlap)
+        assert noise2vowel.n_samples == expected_n_samples
+        if overlap == 0:  # crossfade with overlap 0 should be the same as sequence
+            noise2vowel_seq = slab.Sound.sequence(vowel, noise, vowel)
+            assert all(noise2vowel.data == noise2vowel_seq.data)
+
