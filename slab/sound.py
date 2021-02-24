@@ -971,25 +971,28 @@ class Sound(Signal):
     def spectral_feature(self, feature='centroid', mean='rms', frame_duration=None, rolloff=0.85):
         """ Computes one of several features of the spectrogram of a sound for each channel.
         Arguments:
+            # TODO: every feature should only be described briefly, computational details go in the documentation
             feature (str): the kind of feature to compute, options are:
                 "centroid" which is the center of mass of the short-term spectrum,
                 "fwhm" which is the width of a Gaussian of the same variance as the spectrum around the centroid,
-                "flux" which is a measure of how quickly the power spectrum of a signal is changing,
-                "flatness", which measures how tone-like a sound is, as opposed to being noise-like, and
-                "rolloff", which is the frequency at which the spectrum rolls off.
+                "flux" which is a measure of how quickly the power spectrum of a signal is changing, by
+                comparing the power spectrum for one frame against the power spectrum from the previous frame.
+                Returns the root-mean-square over the entire stimulus of the change in power spectrum between
+                adjacent time windows, measured as Euclidean distance.
+                "flatness", which measures how tone-like a sound is, as opposed to being noise-like
+                It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean.
+                (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" I
+                EEE Signal Processing Letters, 2004, Vol. 11.).
+                "rolloff", which is the frequency at which the spectrum rolls off and is typically used to find a
+                suitable low-cutoff frequency that retains most of the signal power (given as fraction in `rolloff`)
             mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms"
-                (root means square), "average" or None. If None, a new Signal with the feature value at each sample
+                (root means square), "average" or None. If None, a new signal with the feature value at each sample
                 is generated.
-            frame_duration (None):
-            rolloff (float):
+            frame_duration (None):  # TODO: add parameter description
+            rolloff (float):  # TODO: add parameter description
         Returns:
-            ():
-        # TODO: i think the detailed explanation of what is computed for each feature should be in the docs and here we should just have one sentence per feature
-        `flux` is a measure of how quickly the power spectrum of a signal is changing, calculated by comparing the power spectrum for one frame against the power spectrum from the previous frame. Returns the root-mean-square over the entire stimulus of the change in power spectrum between adjacent time windows, measured as Euclidean distance.
-        `flatness` measures how tone-like a sound is, as opposed to being noise-like.
-        It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean. (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" IEEE Signal Processing Letters, 2004, Vol. 11.)
-        `rolloff` is the frequency at which the spectrum rolls off and is typically used to find a suitable low-cutoff
-        frequency that retains most of the signal power (given as fraction in `rolloff`). """
+            (list | slab.Signal): The mean feature for each channel in a list or a new signal with the feature value
+                at each sample. """
         if not frame_duration:
             if mean is not None:
                 frame_duration = int(self.n_samples / 2)  # long frames if not averaging
@@ -1032,15 +1035,15 @@ class Sound(Signal):
             out_all = Signal(data=out_all, samplerate=self.samplerate)  # cast as Signal
         return out_all
 
-    def vocode(self, bandwidth=1 / 3):
-        '''
-        Returns a noise vocoded version of the sound by computing the envelope in different frequency subbands,
+    def vocode(self, bandwidth=1/3):
+        """ Returns a noise vocoded version of the sound by computing the envelope in different frequency subbands,
         filling these envelopes with noise, and collapsing the subbands into one sound. This removes most spectral
         information but retains temporal information in a speech signal.
-
         Arguments:
-            bandwidth: width of the subbands in octaves
-        '''
+            bandwidth (float): width of the subbands in octaves.
+        Returns:
+            (slab.Sound): a vocoded copy of the sound. """
+
         fbank = Filter.cos_filterbank(length=self.n_samples, bandwidth=bandwidth,
                                       low_cutoff=30, pass_bands=True, samplerate=self.samplerate)
         subbands = fbank.apply(self.channel(0))
@@ -1054,11 +1057,11 @@ class Sound(Signal):
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
 
     def crest_factor(self):
-        '''
-        The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
+        """ The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
         and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB.
         Numerically identical to the peak-to-average power ratio.
-        '''
+        Returns:
+            (float | numpy.nan):  the crest factor or NaN if there are no peaks in the signal."""
         jwd = self.data - numpy.mean(self.data)
         if numpy.any(jwd):  # if not all elements are zero
             crest = numpy.abs(jwd).max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
@@ -1066,39 +1069,39 @@ class Sound(Signal):
         return numpy.nan
 
     def onset_slope(self):
-        '''
-        Returns the centroid of a histogram of onset slopes as a measure of how many
+        """ Compute the centroid of a histogram of onset slopes as a measure of how many
         quick intensity increases the sound has. These onset-like features make the
         sound easier to localize via envelope ITD.
-        '''
+        Returns:
+            (float): the histograms centroid or 0 if there are no onsets in the signal."""
         env = self.envelope(kind='dB')  # get envelope
         diffs = numpy.diff(env.data, axis=0) * self.samplerate  # compute db change per sec
         diffs[diffs < 0] = 0  # keep positive changes (onsets)
         if diffs.max() == 0:
-            return 0
+            return 0.0
         # compute histogram of differences
         hist, bins = numpy.histogram(diffs, range=(1, diffs.max()), bins=1000)
         bin_centers = (bins[:-1] + bins[1:]) / 2
-        norm = hist / hist.sum()  # normalize histogram so that it summs to 1
+        norm = hist / hist.sum()  # normalize histogram so that it sums to 1
         return numpy.sum(bin_centers * norm)  # compute centroid of histogram
 
     def frames(self, duration=1024):
-        '''
-        Returns a generator that steps through the sound in overlapping, windowed frames.
-        Get the frame center times by calling `frametimes`. The frames have the same class as the object.
-
+        """ A generator that steps through the sound in overlapping, windowed frames.
+        Get the frame center times by calling Sound's `frametimes` method.
         Arguments:
-            duration: half-length of the returned frames in samples or seconds
-
-        >>> windows = sig.frames()
-        >>> for w in windows:
-        >>>		process(w) # process windowed frame here
-        '''
+            duration (int | float): half of the length of the returned frames in samples (int) or seconds (float)
+        Returns:
+            (generator): the generator object that yields frames which are of the same type as the object.
+        Examples:
+            sound = slab.Sound.vowel()
+            windows = sound.frames()
+            for window in windows:  # get the flatness of each frame
+                print(window.spectral_feature("flatness")) """
         frame = copy.deepcopy(self)
         if scipy is False:
             raise ImportError('Need scipy for time window processing.')
         window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
-        # step_dur optimal for Gaussian windows
+        # step duration optimal for Gaussian windows
         step_nsamp = numpy.floor(window_nsamp / numpy.sqrt(numpy.pi) / 8).astype(int)
         # make the window, Gaussian filter needs a minimum of 6σ - 1 samples.
         window_sigma = numpy.ceil((window_nsamp + 1) / 6)
@@ -1107,13 +1110,17 @@ class Sound(Signal):
         idx = 0
         while idx + window_nsamp / 2 < self.n_samples:  # loop through windows, yield each one
             frame.data = self.data[idx:min(self.n_samples, idx + window_nsamp), :]
-            frame.resize(window_nsamp)  # in case the last window is too short
+            frame = frame.resize(window_nsamp)  # in case the last window is too short
             frame *= window
             yield frame
             idx += step_nsamp
 
     def frametimes(self, duration=1024):
-        'Returns the time points at the frame centers constructed by the `frames` method.'
+        """ Returns the time points at the frame centers constructed by the `frames` method.
+        Arguments:
+            duration (int | float): half of the length of the returned frames in samples (int) or seconds (float)
+        Returns:
+            (numpy.ndarray): the center of each frame in seconds. """
         window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
         step_nsamp = numpy.floor(window_nsamp / numpy.sqrt(numpy.pi) / 8).astype(int)
         samplepoints = []
