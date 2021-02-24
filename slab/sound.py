@@ -593,20 +593,22 @@ class Sound(Signal):
 
     @staticmethod
     def crossfade(*sounds, overlap=0.01):
-        # TODO: write a new test for this
         """ Crossfade two sounds.
         Arguments:
-            sound1 and sound2 (slab.Sound): sounds to crossfade
+            *sounds (instances of slab.Sound): sounds to crossfade
             overlap (float | int): duration of the overlap between the cross-faded sounds in seconds (given a float)
                 or in samples (given an int).
         Returns:
-            (slab.Sound):
+            (slab.Sound): A single sound that contains all input sounds cross-faded. The duration will be the
+                sum of the input sound's durations minus the overlaps.
         Examples:
             noise = Sound.whitenoise(duration=1.0)
             vowel = Sound.vowel()
             noise2vowel = Sound.crossfade(vowel, noise, vowel, overlap=0.4)
             noise2vowel.play() """
         sounds = list(sounds)
+        if any([sound.duration < overlap for sound in sounds]):
+            raise ValueError('The overlap can not be longer then the signal.')
         if len(set([sound.n_channels for sound in sounds])) != 1:
             raise ValueError('Cannot crossfade sounds with unequal numbers of channels.')
         if len(set([sound.samplerate for sound in sounds])) != 1:
@@ -628,7 +630,7 @@ class Sound(Signal):
                     sound = sound.ramp(duration=overlap, when="both")  # for all other sounds add both
                 n_silence_before = n_previous - overlap * i
                 n_silence_after = n_total - n_silence_before - sound.n_samples
-                sounds[i] = Sound.sequence(  # TODO: BUg when one of the sounds is empty
+                sounds[i] = Sound.sequence(
                     Sound.silence(n_silence_before, samplerate=sound.samplerate, n_channels=sound.n_channels),
                     sound,
                     Sound.silence(n_silence_after, samplerate=sound.samplerate, n_channels=sound.n_channels))
@@ -637,41 +639,44 @@ class Sound(Signal):
         return sound
 
     def pulse(self, pulse_frequency=4, duty=0.75, rf_time=0.05):
-        """
-        Apply a pulse envelope to the sound with a `pulse_frequency` and `duty` cycle (in place).
-        Args:
-            pulse_frequency (int): description
-            duty (float, int): duty cycle in s
-            rf(float): rise/fall time of the pulse in milliseconds
+        # TODO: pulse_frequency=3 causes ValueError
+        """ Apply a pulse envelope to the sound.
+        with a `pulse_frequency` and `duty` cycle (in place).
+        Arguments:
+            pulse_frequency (int): the frequency of pulses in the modified sound in Hz.
+            duty (float): ratio between the pulse duration and period, values must be between 1 (always high) and
+                0 (always low). When using values close to 0, the `rf_time` has to be low as well, otherwise the
+                ramps would be longer than the signal.
+            rf_time (float): rise/fall time of the pulse in milliseconds
         Returns:
-            slab.Sound: pulsed copy of the instance
-        """
+            slab.Sound: pulsed copy of the instance. """
         sound = copy.deepcopy(self)
         pulse_period = 1 / pulse_frequency
         n_pulses = round(sound.duration / pulse_period)  # number of pulses in the stimulus
         pulse_period = sound.duration / n_pulses  # period in s, fits into stimulus duration
         pulse_samples = Sound.in_samples(pulse_period * duty, sound.samplerate)
         fall_samples = Sound.in_samples(rf_time, sound.samplerate)  # 5ms rise/fall time
-        fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * (fall_samples))) ** 2
+        if pulse_samples - 2 * fall_samples:
+            raise ValueError(f"The pulse duration {pulse_samples} is shorter than the combined ramps, each with"
+                             f"duration {fall_samples}. Reduce ´pulse_frequency´ or `rf_time`!")
+        fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * fall_samples)) ** 2
         pulse = numpy.concatenate((1 - fall, numpy.ones(pulse_samples - 2 * fall_samples), fall))
         pulse = numpy.concatenate(
             (pulse, numpy.zeros(Sound.in_samples(pulse_period, sound.samplerate) - len(pulse))))
         envelope = numpy.tile(pulse, n_pulses)
         envelope = envelope[:, None]  # add an empty axis to get to the same shape as sound.data
-        # if data is 2D (>1 channel) broadcase the envelope to fit
+        # if data is 2D (>1 channel) broadcast the envelope to fit
         sound.data *= numpy.broadcast_to(envelope, sound.data.shape)
         return sound
 
     def am(self, frequency=10, depth=1, phase=0):
-        """
-        Apply an amplitude modulation to the sound by multplication with a sine function.
-        Args:
+        """ Apply an amplitude modulation to the sound by multiplication with a sine function.
+        Arguments:
             frequency (int): frequency of the modulating sine function in Hz
             depth (int, float): modulation depth/index of the modulating sine function
             phase (int, float): initial phase of the modulating sine function
         Returns:
-            slab.Sound: amplitude modulated copy of the instance
-        """
+            slab.Sound: amplitude modulated copy of the instance. """
         sound = copy.deepcopy(self)
         envelope = (1 + depth * numpy.sin(2 * numpy.pi * frequency * sound.times + phase))
         envelope = envelope[:, None]
@@ -679,18 +684,14 @@ class Sound(Signal):
         return sound
 
     def filter(self, frequency=100, kind='hp'):
-        """
-        Convenient wrapper for the Filter class for a standard low-, high-, bandpass,
-        and bandstop filter.
+        """ Convenient wrapper for the Filter class for a standard low-, high-, bandpass, and bandstop filter.
         Args:
             frequency (int, tuple): cutoff frequency in Hz. Integer for low- and highpass filters,
-                                    tuple eith lowe cutoff and upper cutoff for bandpass and -stop.
+                                    tuple with lower and upper cutoff for bandpass and -stop.
             kind (str): type of filter, can be "lp" (lowpass), "hp" (highpass)
                         "bp" (bandpass) or "bs" (bandstop)
         Returns:
-            slab.Sound: filtered copy of the instance
-
-        """
+            slab.Sound: filtered copy of the instance. """
         sound = copy.deepcopy(self)
         n = min(1000, self.n_samples)
         filt = Filter.band(
@@ -699,11 +700,10 @@ class Sound(Signal):
         return sound
 
     def aweight(self):
-        '''
-        Returns A-weighted sound. A-weighting is applied to instrument-recorded sounds
+        """ Returns A-weighted sound. A-weighting is applied to instrument-recorded sounds
         to account for the relative loudness of different frequencies perceived by the
-        human ear. See: https://en.wikipedia.org/wiki/A-weighting'''
-        if not have_scipy:
+        human ear. See: https://en.wikipedia.org/wiki/A-weighting. """
+        if scipy is False:
             raise ImportError('Applying a-weighting requires Scipy.')
         f1 = 20.598997
         f2 = 107.65265
@@ -724,10 +724,16 @@ class Sound(Signal):
 
     @staticmethod
     def record(duration=1.0, samplerate=None):
-        '''Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.
-        Uses SoundCard module if installed [recommended], otherwise uses SoX (duration must be in sec in this case).
-        '''
-        if have_soundcard:
+        """ Record from inbuilt microphone. Uses SoundCard module if installed [recommended], otherwise uses SoX.
+        Arguments:
+            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+                Note that duration has to be in seconds when using SoX
+            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+                Note that most sound cards can only record at 44100 Hz samplerate.
+        Returns:
+            (slab.Sound): 
+            """
+        if soundcard is not False:
             samplerate = Sound.get_samplerate(samplerate)
             duration = Sound.in_samples(duration, samplerate)
             mic = soundcard.default_microphone()
@@ -738,50 +744,61 @@ class Sound(Signal):
             try:
                 subprocess.call(
                     ['sox', '-d', '-r', str(samplerate), str(_tmpdir / 'tmp.wav'), 'trim', '0', str(duration)])
-            except:
+            except FileNotFoundError:
                 raise ImportError(
-                    'Recording whithout SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all OR pip install SoundCard.')
+                    'Recording without SoundCard module requires SoX.\n'
+                    'Install: sudo apt-get install sox libsox-fmt-all OR pip install SoundCard.')
             time.sleep(duration)
             out = Sound('tmp.wav')
         return out
 
-    def play(self, sleep=False):
-        'Plays the sound through the default device.'
-        if have_soundcard:
+    def play(self, sleep=None):
+        """Plays the sound through the default device. If the soundcard module is installed it is used
+        to play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via the
+        `play_file` method.
+        Arguments:
+            sleep (int | float | None): time to sleep after presenting the sound in seconds."""
+        if soundcard is not False:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
             self.write(_tmpdir / 'tmp.wav', normalise=False)
             Sound.play_file(_tmpdir / 'tmp.wav')
-        if sleep:  # all current play methods are blocking, there is no reason to sleep!
+        if sleep:  # all current play methods are blocking, there is no reason to sleep!  # TODO: so remove it?
             time.sleep(self.duration)
 
     @staticmethod
-    def play_file(fname):
-        fname = str(fname)  # in case it is a pathlib.Path object, get the name string
+    def play_file(filename):
+        """ Play a .wav file using the OS-specific mechanism for Windows, Linux or Mac.
+        Arguments:
+             filename (str | pathlib.Path): full path to the .wav file to be played. """
         from platform import system
+        if isinstance(filename, pathlib.Path):
+            filename = str(filename)
         system = system()
         if system == 'Windows':
             import winsound
-            winsound.PlaySound(fname, winsound.SND_FILENAME)
+            winsound.PlaySound(filename, winsound.SND_FILENAME)
         elif system == 'Darwin':  # MacOS
             import subprocess
-            subprocess.call(['afplay', fname])
+            subprocess.call(['afplay', filename])
         else:  # Linux
             import subprocess
             try:
-                subprocess.call(['sox', fname, '-d'])
-            except:
+                subprocess.call(['sox', filename, '-d'])
+            except FileNotFoundError:
                 raise NotImplementedError(
-                    'Playing from files on Linux without SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all or pip install SoundCard')
+                    'Playing from files on Linux without SoundCard module requires SoX. '
+                    'Install: sudo apt-get install sox libsox-fmt-all or pip install SoundCard')
 
     def waveform(self, start=0, end=None, show=True, axis=None, **kwargs):
-        '''
-        Plots the waveform of the sound.
-
+        """ Plot the waveform of the sound.
         Arguments:
-            start, end: time or sample limits; if unspecified, shows the full waveform
-        '''
-        if not have_pyplot:
+            start (int | float): start of the plot in seconds (float) or samples (int), defaults to 0
+            end (int | float | None): the end of the plot in seconds (float) or samples (int), defaults to None.
+            show (bool): whether to show the plot right after drawing.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            ** kwargs: keyword arguments for the plot, see documentation of matplotlib.pyplot.plot for details. """
+        if matplotlib is False:
             raise ImportError('Plotting waveforms requires matplotlib.')
         start = self.in_samples(start, self.samplerate)
         if end is None:
@@ -805,18 +822,20 @@ class Sound(Signal):
 
     def spectrogram(self, window_dur=0.005, dyn_range=120, upper_frequency=None, other=None, show=True, axis=None,
                     **kwargs):
-        '''
-        Plots a spectrogram of the sound.
-
+        """ Plot a spectrogram of the sound or return the computed values.
         Arguments:
-            window_dur: Duration of time window for short-term FFT (*0.005sec*)
-            dyn_range: Dynamic range in dB to plot (*120*)
-            other: If a sound object is given, subtract the waveform and plot the difference spectrogram.
-        If plot is False, returns the values returned by :func:`scipy.signal.spectrogram`, namely
-        freqs, times, power where power is a 2D array of powers, freqs are the corresponding frequencies,
-        and times are the time bins.
-        '''
-        if not have_scipy:
+            window_dur: duration of time window for short-term FFT, defaults to 0.005 seconds.
+            dyn_range: dynamic range in dB to plot, defaults to 120.
+            upper_frequency (int | float | None): The upper frequency limit of the plot. If None use the maximum.
+            other (slab.Sound): if a sound object is given, subtract the waveform and plot the difference spectrogram.
+            show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
+                passed, no plot will be created.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            **kwargs: keyword arguments for the plot. See documentation for matplotlib.pyplot.imshow.
+        Returns:
+            (None | tuple): If `show == True` or an axis was passed, a plot is drawn and nothing is returned. Else,
+                a tuple is returned which contains frequencies, time bins and a 2D array of powers. """
+        if scipy is False:
             raise ImportError('Computing spectrograms requires Scipy.')
         if self.n_channels > 1:
             raise ValueError('Can only compute spectrograms for mono sounds.')
@@ -827,20 +846,20 @@ class Sound(Signal):
         # set default for step_dur optimal for Gaussian windows.
         step_dur = window_dur / numpy.sqrt(numpy.pi) / 8
         # convert window & step durations from seconds to numbers of samples
-        window_nsamp = Sound.in_samples(window_dur, self.samplerate) * 2
-        step_nsamp = Sound.in_samples(step_dur, self.samplerate)
+        window_n_samples = Sound.in_samples(window_dur, self.samplerate) * 2
+        step_n_samples = Sound.in_samples(step_dur, self.samplerate)
         # make the window. A Gaussian filter needs a minimum of 6σ - 1 samples, so working
-        # backward from window_nsamp we can calculate σ.
-        window_sigma = (window_nsamp + 1) / 6
-        window = scipy.signal.windows.gaussian(window_nsamp, window_sigma)
+        # backward from window_n_samples we can calculate σ.
+        window_sigma = (window_n_samples + 1) / 6
+        window = scipy.signal.windows.gaussian(window_n_samples, window_sigma)
         # convert step size into number of overlapping samples in adjacent analysis frames
-        noverlap = window_nsamp - step_nsamp
+        n_overlap = window_n_samples - step_n_samples
         # compute the power spectral density
         freqs, times, power = scipy.signal.spectrogram(
-            x, mode='psd', fs=self.samplerate, scaling='density', noverlap=noverlap, window=window,
-            nperseg=window_nsamp)
+            x, mode='psd', fs=self.samplerate, scaling='density', noverlap=n_overlap, window=window,
+            nperseg=window_n_samples)
         if show or (axis is not None):
-            if not have_pyplot:
+            if matplotlib is False:
                 raise ImportError('Ploting spectrograms requires matplotlib.')
             p_ref = 2e-5  # 20 μPa, the standard reference pressure for sound in air
             power = 10 * numpy.log10(power / (p_ref ** 2))  # logarithmic power for plotting
@@ -854,17 +873,23 @@ class Sound(Signal):
             axis.imshow(power, origin='lower', aspect='auto',
                         cmap=cmap, extent=extent, vmin=vmin, vmax=None, **kwargs)
             axis.set(title='Spectrogram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
-        if show:
-            plt.show()
+            if show:
+                plt.show()
         else:
             return freqs, times, power
 
-    def cochleagram(self, bandwidth=1 / 5, show=True, axis=None, **kwargs):
-        '''
-        Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
-        (*1/5* th octave) and applying a cube-root compression to the resulting envelopes.
-        If show is False, returns the envelopes.
-        '''
+    def cochleagram(self, bandwidth=1/5, show=True, axis=None, **kwargs):
+        """ Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
+        and applying a cube-root compression to the resulting envelopes.
+        Arguments:
+            bandwidth (float): filter bandwidth in octaves. # TODO: concise explanation of what bandwidth does
+            show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
+                passed, no plot will be created
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            **kwargs: keyword arguments for the plot. See documentation for matplotlib.pyplot.imshow.
+        Returns:
+            (None | numpy.ndarray): If `show == True` or an axis was passed, a plot is drawn and nothing is returned.
+                Else, an array with the envelope is returned. """
         fbank = Filter.cos_filterbank(bandwidth=bandwidth, low_cutoff=20,
                                       high_cutoff=None, samplerate=self.samplerate)
         freqs = fbank.filter_bank_center_freqs()
@@ -873,7 +898,7 @@ class Sound(Signal):
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         envs = envs.data ** (1 / 3)  # apply non-linearity (cube-root compression)
         if show or (axis is not None):
-            if not have_pyplot:
+            if not matplotlib is False:
                 raise ImportError('Plotting cochleagrams requires matplotlib.')
             cmap = matplotlib.cm.get_cmap('Greys')
             if axis is None:
@@ -890,17 +915,19 @@ class Sound(Signal):
             return envs
 
     def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, axis=None, show=True, **kwargs):
-        '''
-        Returns the spectrum of the sound and optionally plots it.
-
+        """ Compute the spectrum of the sound.
         Arguments:
-            low_cutoff/high_cutoff: If these are left unspecified, it shows the full spectrum, otherwise it shows
+            low_cutoff (int | float):
+            high_cutoff (int | float | None): If these are left unspecified, it shows the full spectrum, otherwise it shows
                 only between `low` and `high` in Hz.
-            log_power: If True it returns the log of the power.
-            show: Whether to plot the output.
-                If show=False, returns `Z, freqs`, where `Z` is a 1D array of powers
-                and `freqs` are the corresponding frequencies.
-        '''
+            log_power (bool): whether to compute the log of the power.
+            show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
+                passed, no plot will be created.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            **kwargs: keyword arguments for the plot. see documentation for matplotlib.pyplot.semilogx.
+        Returns:
+            If show=False, returns `Z, freqs`, where `Z` is a 1D array of powers
+                and `freqs` are the corresponding frequencies.n"""
         freqs = numpy.fft.rfftfreq(self.n_samples, d=1 / self.samplerate)
         sig_rfft = numpy.zeros((len(freqs), self.n_channels))
         for chan in range(self.n_channels):
@@ -923,7 +950,7 @@ class Sound(Signal):
             Z[Z < 1e-20] = 1e-20  # no zeros because we take logs
             Z = 10 * numpy.log10(Z)
         if show or (axis is not None):
-            if not have_pyplot:
+            if matplotlib is False:
                 raise ImportError('Plotting spectra requires matplotlib.')
             if axis is None:
                 _, axis = plt.subplots()
@@ -942,27 +969,27 @@ class Sound(Signal):
             return Z, freqs
 
     def spectral_feature(self, feature='centroid', mean='rms', frame_duration=None, rolloff=0.85):
-        '''
-        Computes one of several features of the spectrogram of a sound and returns either a
-        new Signal with the feature value at each sample, or the average (*rms* or mean) feature value over all samples.
-        Available features:
-        `centroid` is the centre of mass of the short-term spectrum, and 'fwhm' is the width of a Gaussian of the same variance as the spectrum around the centroid.
-
-        >>> sig = Sound.tone(frequency=500, n_channels=2)
-        >>> round(sig.spectral_feature(feature='centroid')[0])
-        500.0
-
+        """ Computes one of several features of the spectrogram of a sound for each channel.
+        Arguments:
+            feature (str): the kind of feature to compute, options are:
+                "centroid" which is the center of mass of the short-term spectrum,
+                "fwhm" which is the width of a Gaussian of the same variance as the spectrum around the centroid,
+                "flux" which is a measure of how quickly the power spectrum of a signal is changing,
+                "flatness", which measures how tone-like a sound is, as opposed to being noise-like, and
+                "rolloff", which is the frequency at which the spectrum rolls off.
+            mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms"
+                (root means square), "average" or None. If None, a new Signal with the feature value at each sample
+                is generated.
+            frame_duration (None):
+            rolloff (float):
+        Returns:
+            ():
+        # TODO: i think the detailed explanation of what is computed for each feature should be in the docs and here we should just have one sentence per feature
         `flux` is a measure of how quickly the power spectrum of a signal is changing, calculated by comparing the power spectrum for one frame against the power spectrum from the previous frame. Returns the root-mean-square over the entire stimulus of the change in power spectrum between adjacent time windows, measured as Euclidean distance.
-
-        >>> sig = Sound.tone()
-        >>> numpy.testing.assert_allclose(sig.spectral_feature(feature='flux'), desired=0, atol=1e-04)
-
         `flatness` measures how tone-like a sound is, as opposed to being noise-like.
         It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean. (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" IEEE Signal Processing Letters, 2004, Vol. 11.)
-
-        `rolloff` is the frequency at which the spectrum rolles off and is typically used to find a suitable low-cutoff
-        frequency that retains most of the signal power (given as fraction in `rolloff`).
-        '''
+        `rolloff` is the frequency at which the spectrum rolls off and is typically used to find a suitable low-cutoff
+        frequency that retains most of the signal power (given as fraction in `rolloff`). """
         if not frame_duration:
             if mean is not None:
                 frame_duration = int(self.n_samples / 2)  # long frames if not averaging
@@ -1068,7 +1095,7 @@ class Sound(Signal):
         >>>		process(w) # process windowed frame here
         '''
         frame = copy.deepcopy(self)
-        if not have_scipy:
+        if scipy is False:
             raise ImportError('Need scipy for time window processing.')
         window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
         # step_dur optimal for Gaussian windows
