@@ -33,6 +33,7 @@ try:  # try getting a previously set calibration intensity from file
     _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
 except FileNotFoundError:
     _calibration_intensity = 0  #: Difference between rms intensity and measured output intensity in dB
+# TODO: should there be a warning if the setup is not level-calibrated?
 
 
 class Sound(Signal):
@@ -77,7 +78,6 @@ class Sound(Signal):
         return numpy.array(levels)
 
     def _set_level(self, level):
-        # TODO: display a warning if the setup is not level-calibrated
         """ Sets level in dB SPL (RMS) assuming array is in Pascals.
         Arguments:
             level (float | int | numpy.ndarray): the level in dB. Given a single float or int, all channels will be
@@ -639,7 +639,6 @@ class Sound(Signal):
         return sound
 
     def pulse(self, pulse_frequency=4, duty=0.75, rf_time=0.05):
-        # TODO: pulse_frequency=3 causes ValueError
         """ Apply a pulse envelope to the sound.
         with a `pulse_frequency` and `duty` cycle (in place).
         Arguments:
@@ -1132,17 +1131,20 @@ class Sound(Signal):
 
 
 def calibrate(intensity=None, make_permanent=False):
-    '''
-    Calibrate the presentation intensity of a setup. Enter the calibration intensity, if you know it.
-    If None, plays a 1kHz tone. Please measure actual intensity with a sound level meter and appropriate
-    coupler. Set make_permanent to True to save a calibration file in slab.DATAPATH that is loaded on import.
-    '''
+    """ Calibrate the presentation intensity of a setup. The calibration intensity determines the relationship
+    between the amplitude of a signal and it's level.
+    Arguments:
+        intensity (int | float | None): the difference between the actual intensity of the output and the intensity indicated
+            by the sound's `level` attribute (For example: If `level` is 80 dB and you record 60 dB, the value of
+            `intensity` should be -20). If None, a 1 kHz tone is played for five seconds after which you will be
+            prompted to input the measured intensity.
+        make_permanent (bool): If True, save a calibration file in slab.DATAPATH that is loaded on import. """
     global _calibration_intensity
     if intensity is None:
         tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
         print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
         tone.play()  # play it
-        intensity = input('Enter measured intensity in dB: ')  # ask for measured intesnity
+        intensity = input('Enter measured intensity in dB: ')  # ask for measured intensity
         intensity = intensity - tone.level  # subtract measured from rms intensity
     # set and save
     _calibration_intensity = intensity
@@ -1151,19 +1153,17 @@ def calibrate(intensity=None, make_permanent=False):
 
 
 def apply_to_path(path='.', method=None, kwargs={}, out_path=None):
-    '''
-    Apply a function to all wav files in a given directory.
+    """ Apply a function to all wav files in a given directory.
 
     Arguments:
-        path: input path (str or pathlib.Path) from which wav files are collected for processing
-        method: callable function to be applied to each file
-        kwargs: dictionary of keyword arguments and values passed to the function.
-        out_path: if is supplied, sounds are saved with their original file name in this directory
-
-    >>> slab.apply_to_path('.', slab.Sound.spectral_feature, {'feature':'fwhm'})
-    >>> slab.apply_to_path('.', slab.Sound.ramp, out_path='./modified')
-    >>> slab.apply_to_path('.', slab.Sound.ramp, kwargs={'duration':0.3}, out_path='./test')
-    '''
+        path (str | pathlib.Path): path to the folder from which wav files are collected for processing.
+        method (callable): function to be applied to each file.
+        kwargs (dict): dictionary of keyword arguments and values passed to the function.
+        out_path (str | pathlib.Path): if is supplied, sounds are saved with their original file name in this directory.
+    Examples:
+        slab.apply_to_path('.', slab.Sound.spectral_feature, {'feature':'fwhm'})
+        slab.apply_to_path('.', slab.Sound.ramp, out_path='./modified')
+        slab.apply_to_path('.', slab.Sound.ramp, kwargs={'duration':0.3}, out_path='./test') """
     if not callable(method):
         raise ValueError('Method must be callable.')
     if isinstance(path, str):
