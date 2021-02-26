@@ -242,6 +242,7 @@ class Signal:
 
     def envelope(self, envelope=None, times=None, kind='gain'):
         '''
+        This method allows setting and getting the envelope of a Signal.
         If `envelope` is None, returns the Hilbert envelope of a signal as new Signal. If envelope is a list or numpy
         array, returns a new object of the same type, with the signal data multiplied by the envelope. The envelope is
         linearely interpolated to the same length as the signal. The kind parameter ('gain' or 'dB') determines the unit
