@@ -78,8 +78,8 @@ class Binaural(Sound):
         resolution of the ITD calculation is 1/samplerate seconds.
 
         >>> sig = Binaural.whitenoise()
-        >>> _ = sig.itd(0.001) # delay left channel by 1 sample
-        >>> lateral = sig.itd(-1) # delay right channel by 1ms
+        >>> _ = sig.itd(0.001) # delay left channel by 1 ms
+        >>> lateral = sig.itd(-1) # delay right channel by 1 sample
         >>> itd = lateral.itd(estimate=True) # returns -1
         '''
         duration = Sound.in_samples(duration, self.samplerate)
@@ -99,19 +99,6 @@ class Binaural(Sound):
             channel = 0  # left
         new.delay(duration=abs(duration), channel=channel)
         return new
-
-    def calc_itd(self, duration=0.001):
-        '''
-        Compute the interaural time difference in samples between the left and right channels of the sounds up to a maximum
-        difference given by the `duration` argument in seconds or samples. The temporal resolution of the ITD calculation
-        is 1/samplerate seconds.
-        '''
-        max_lag = Sound.in_samples(duration, self.samplerate)
-        xcorr = numpy.correlate(self.data[:,0], self.data[:,1], 'full')
-        lags = numpy.arange(-max_lag, max_lag + 1)
-        xcorr = xcorr[self.nsamples - 1 - max_lag:self.nsamples + max_lag]
-        idx = numpy.argmax(xcorr)
-        return lags[idx]
 
     def ild(self, dB):
         '''
