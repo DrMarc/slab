@@ -90,7 +90,7 @@ class Binaural(Sound):
             xcorr = xcorr[self.nsamples - 1 - max_lag:self.nsamples + max_lag]
             idx = numpy.argmax(xcorr)
             return lags[idx]
-        new = copy.deepcopy(self)  # so that we can return a new signal
+        new = copy.deepcopy(self)  # new signal to return
         if duration == 0:
             return new  # nothing needs to be shifted
         if duration < 0:  # negative itds by convention shift to the left (i.e. delay right channel)
@@ -213,8 +213,9 @@ class Binaural(Sound):
 
     def externalize(self, hrtf=None):
         '''
-        Convolve the sound object in place with a smoothed HRTF (KEMAR if no :class:`slab.HRTF` object is supplied) to
+        Return the sound convolved with a smoothed HRTF (KEMAR if no :class:`slab.HRTF` object is supplied) to
         evoke the impression of an external sound source without adding directional information.
+        The HRTF at zero azimuth and elevation is used and this diection has to be present in the HRTF object.
         See Kulkarni & Colburn (1998) for why that works.
         '''
         if not hrtf:
@@ -224,13 +225,14 @@ class Binaural(Sound):
             0][0]  # get HRTF for [0,0] direction
         if not idx_frontal.size: # idx_frontal is empty
             raise ValueError('No frontal direction [0,0] found in HRTF.')
-        _, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, show=False)  # get low-res spectrum
+        _, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, show=False)  # get low-res version of HRTF spectrum
         resampled_signal = copy.deepcopy(self)
-        resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate) # resample to fit hrtf rate
-        filt = Filter(10**(h/20), fir=False, samplerate=hrtf.data[0].samplerate)
+        # if signal and HRTF has different samplerates, resample the signal, apply the HRTF, and resample back:
+        resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate) # resample to hrtf rate
+        filt = Filter(10**(h/20), fir=False, samplerate=hrtf.data[0].samplerate) #
         filtered_signal = filt.apply(resampled_signal)
         filtered_signal = filtered_signal.resample(self.samplerate)
-        self.data = filtered_signal.data # copy the filtered data over
+        return filtered_signal
 
     @staticmethod
     def _make_level_spectrum_filter(hrtf=None):
