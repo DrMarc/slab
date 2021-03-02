@@ -35,20 +35,24 @@ Slab can:
 * calibrate the experimental setup (loudness calibration and frequency equalization)
 * display and manipulate head-related transfer functions
 
-Below is an example script that estimates the detection threshold for a 500-Hz pure tone using a staircase procedure. It illustrates the use of the `Staircase` class to manage the staircase. The method `present_tone_trial` is a higher-level convenience function to present a sound and acquire a response from the participant, but each of these steps can be performed separately in a line of code or two when implementing non-standard paradigms.
+Below is an example script that estimates the detection threshold for asmall change in the location of a sound source (minimum audible angle) with an amplitude-modulated pink noise and a staircase procedure. It illustrates the use of the `Binaural` and `Staircase` classes. The method `present_afc_trial` is a higher-level convenience function to present several sounds and acquire a response from the participant, but each of these steps can be performed separately in a line of code or two when implementing non-standard paradigms.
 ```
-# replace with moving ITD stim!
-stimulus = slab.Sound.tone(frequency=500, duration=0.5)
-stairs = slab.Staircase(start_val=50, n_reversals=18)
-for level in stairs:
-    stimulus.level = level
-    stairs.present_tone_trial(stimulus)
+# 1up-2down staircase, starting at 20˚ separation:
+stairs = slab.Staircase(start_val=20, min_val=0, n_reversals=18)
+for angle in stairs:
+    midline = slab.Binaural.pinknoise(duration=0.25) # generate fresh noises
+    midline =  midline.am() # apply amplitude modulation
+    midline = midline.ramp()
+    itd = slab.Binaural.azimuth_to_itd(angle, head_radius=10) # get ITD equivalent to current angle
+    stimulus_left = midline.itd(itd) # apply the itd
+    midline = midline.externalize() # apply a smoothed head-related transfer function to evoke an externalized percept
+    stimulus_left = stimulus_left.externalize()
+    stairs.present_afc_trial(target=stimulus_left, distractors=[midline]*2) # 3 alternatives (target and 2 distractors)
 print(stairs.threshold(n=14))
 ```
 
-# -> update docs for worked examples
 # Statement of need
-Slab was written to address our own need for a Python package that allows incoming students to implement their own experiments with clean and maintainable code. Students and researchers should be able to write and understand the code that they are using. Several students have now learned Python and completed their theses using slab, and we think the package may be useful to others in the same situation. Our approach differs from existing software packages for running behavioral experiments, which provide a high level graphical user interface to customize the parameters of pre-made experiments (@psychopy2; @pychoacoustics). In our experience, this leads to very little generalizable learning of Python and experimental control. Slab facilitates this learning by providing basic building blocks, implemented concisely in pure Python , that can be used to construct experiments of various levels of complexity.
+Slab was written to address our own need for a Python package that allows incoming students to implement their own experiments with clean and maintainable code. Students and researchers should be able to write and understand the code that they are using. Several students have now learned Python and completed their theses using slab, and we think the package may be useful to others in the same situation. Our approach differs from existing software packages for running behavioral experiments, which provide a high level graphical user interface to customize the parameters of pre-made experiments (@psychopy2; @pychoacoustics). In our experience, this leads to very little generalizable learning of Python and experimental control. Slab facilitates this learning by providing basic building blocks, implemented concisely in pure Python, that can be used to construct experiments of various levels of complexity.
 There is some overlap with librosa (@librosa), a Python package for music analysis, but that package focusses on feature extraction and does not support psychoacoustic experimentation.
 Slab is also one of very few that features manipulation of head-related transfer functions and a simple API for reading a standard file format (SOFA) for such data. There is overlap with more recent implementations of the complete SOFA API (@pysofaconventions, @python-sofa), but these packages provide no methods for typical experimental manipulations of head-related transfer functions. We will likely use `pysofaconventions` internally for handling SOFA files within `slab` in the near future.
 The architecture of the `Signal` class and some of the sound generation methods in the `Sound` class are inspired on the 1.4 version of Brian.hears (@brian2hears), but we made several simplifications based on learning reports from students. For instance, signal objects do not implement buffering and do not inherit from Numpy arrays (@numpy) directly, because these features significantly hindered students' understanding of the code.
