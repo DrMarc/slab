@@ -32,12 +32,12 @@ Slab represents sounds as [Numpy](https://www.numpy.org) arrays and provides cla
 ```python
     sig = slab.Sound.pinknoise(nchannels=2) # make a pink noise
     sig.duration
-	out: 1.0
-	sig.nsamples
-	out: 8000
-	sig2 = sig.resample(samplerate=4000) # resample to 4 kHz
-	env = sig2.envelope() # returns a new signal containing the lowpass Hilbert envelopes of both channels
-	sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
+    out: 1.0
+    sig.nsamples
+    out: 8000
+    sig2 = sig.resample(samplerate=4000) # resample to 4 kHz
+    env = sig2.envelope() # returns a new signal containing the lowpass Hilbert envelopes of both channels
+    sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
 ```
 
 **Sound**: Inherits from Signal and provides methods for generating, manipulating, displaying, and analysing sound stimuli. Can compute descriptive sound features and apply manipulations to all sounds in a folder.
@@ -48,15 +48,15 @@ Slab represents sounds as [Numpy](https://www.numpy.org) arrays and provides cla
     vowel.spectrogram() # plot the spectrogram
     vowel.spectrum(low=100, high=4000, log_power=True) # plot a band-limited spectrum
     vowel.waveform(start=0, end=.1) # plot the waveform
-	vowel.write('vowel.wav') # save the sound to a WAV file
-	vocoded_vowel = vowel.vocode() # run a vocoding algorithm
-	vowel.spectral_feature(feature='centroid') # compute the spectral centroid of the sound in Hz
+    vowel.write('vowel.wav') # save the sound to a WAV file
+    vocoded_vowel = vowel.vocode() # run a vocoding algorithm
+    vowel.spectral_feature(feature='centroid') # compute the spectral centroid of the sound in Hz
 ```
 
 **Binaural**: Inherits from Sound and provides methods for generating and manipulating binaural sounds, including advanced interaural time and intensity manipulation. Binaural sounds have left and a right channel properties.
 ```python
     sig = slab.Binaural.pinknoise()
-	sig.pulse() # make a 2-channel pulsed pink noise
+    sig = sig.pulse() # make a 2-channel pulsed pink noise
     sig.nchannels
     out: 2
     right_lateralized = sig.itd(duration=600e-6) # add an interaural time difference of 600 microsec, right channel leading
@@ -64,24 +64,24 @@ Slab represents sounds as [Numpy](https://www.numpy.org) arrays and provides cla
     # This is achieved by sinc interpolation of one channel with a dynamic delay:
     moving = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
     lateralized = sig.at_azimuth(azimuth=-45) # add frequency- and headsize-dependent ITD and ILD corresponding to a sound at 45 deg
-	external = lateralized.externalize() # add a low resolution HRTF filter that results in the percept of an externalized source (i.e. outside of the head), defaults to the KEMAR HRTF recordings, but any HRTF can be supplied
+    external = lateralized.externalize() # add a low resolution HRTF filter that results in the percept of an externalized source (i.e. outside of the head), defaults to the KEMAR HRTF recordings, but any HRTF can be supplied
 ```
 
 **Filter**: Inherits from Signal and provides methods for generating, measuring, and manipulating FIR and FFT filters, filter banks, and transfer functions.
 ```python
     filt = Filter.rectangular_filter(frequency=15000, kind='hp') # make a highpass filter
-	filt.tf() # plot the transfer function
-	sig_filt = filt.apply(sig) # apply it to a signal
-	# applying a whole filterbank is equally easy:
-	fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_cutoff=100) # make a cosine filter bank
-	fbank.tf() # plot the transfer function of all filters in the bank
-	subbands = fbank.apply(sig) # make a multi-channel signal containing the passbands of the filters in the filter bank
-	# the subbands could now be manipulated and then combined with the collapse_subbands method
-	fbank.filter_bank_center_freqs() # return the centre frequencies of the filters in the filter bank
-	fbank = equalizing_filterbank(target, measured) # generates an inverse filter bank for equalizing the differences
-	# between measured signals (single- or multi-channel Sound object) and a target signal. Used for equalizing loudspeakers,
-	microphones, or speaker arrays.
-	fbank.save('equalizing_filters.npy') # saves the filter bank as .npy file.
+    filt.tf() # plot the transfer function
+    sig_filt = filt.apply(sig) # apply it to a signal
+    # applying a whole filterbank is equally easy:
+    fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_cutoff=100) # make a cosine filter bank
+    fbank.tf() # plot the transfer function of all filters in the bank
+    subbands = fbank.apply(sig) # make a multi-channel signal containing the passbands of the filters in the filter bank
+    # the subbands could now be manipulated and then combined with the collapse_subbands method
+    fbank.filter_bank_center_freqs() # return the centre frequencies of the filters in the filter bank
+    fbank = equalizing_filterbank(target, measured) # generates an inverse filter bank for equalizing the differences
+    # between measured signals (single- or multi-channel Sound object) and a target signal. Used for equalizing loudspeakers,
+    microphones, or speaker arrays.
+    fbank.save('equalizing_filters.npy') # saves the filter bank as .npy file.
 ```
 
 **HRTF**: Inherits from Filter, reads .sofa format HRTFs and provides methods for manipulating, plotting, and applying head-related transfer functions.
@@ -92,7 +92,7 @@ Slab represents sounds as [Numpy](https://www.numpy.org) arrays and provides cla
     sourceidx = hrtf.cone_sources(20) # select sources on a cone of confusion at 20 deg from midline
     hrtf.plot_sources(sourceidx) # plot the sources in 3D, highlighting the selected sources
     hrtf.plot_tf(sourceidx,ear='left') # plot transfer functions of selected sources in a waterfall plot
-	hrtf.diffuse_field_equalization() # apply diffuse field equalization to remove non-spatial components of the HRTF
+    hrtf.diffuse_field_equalization() # apply diffuse field equalization to remove non-spatial components of the HRTF
 ```
 
 **Psychoacoustics**: A collection of classes for working trial sequences, adaptive staircases, forced-choice procedures, stimulus presentation and response recording from the keyboard and USB button boxes, handling of precomputed stimulus lists, results files, and experiment configuration files.
@@ -103,7 +103,7 @@ Slab represents sounds as [Numpy](https://www.numpy.org) arrays and provides cla
         response = stairs.simulate_response(30) # simulate a response from a participant using a psychometric function
         print(f'trial # {stairs.this_trial_n}: intensity {trial}, response {response}')
         stairs.add_response(response) # logs the response and advances the staircase
-		stairs.plot() # updates a plot of the staircase in each trial to keep an eye on the performance of the listener
+        stairs.plot() # updates a plot of the staircase in each trial to keep an eye on the performance of the listener
     stairs.reversal_intensities # returns a list of stimulus values at the reversal points of the staircase
     stairs.threshold() # computes and returns the final threshold
     stairs.save_json('stairs.json') # the staircase object can be saved as a human readable json file
@@ -122,7 +122,7 @@ Slab represents sounds as [Numpy](https://www.numpy.org) arrays and provides cla
     stims = slab.Precomputed([stim1, stim2, stim3, stim4, stim5]) # or use a list of sound objects, or a list comprehension
     stims.play() # play a random instance
     stims.play() # play another one, guaranteed to be different from the previous one
-	stims.sequence # the sequence of instances played so far
+    stims.sequence # the sequence of instances played so far
     stims.save('stims.zip') # save the sounds as zip file
     stims = slab.Precomputed.read('stims.zip') # reloads the file into a Precomputed object
 ```
