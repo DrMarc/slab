@@ -73,8 +73,8 @@ class Binaural(Sound):
         If `estimate` is False, returns a binaural sound object with one channel delayed with respect to the other
         channel by `duration`, which can be the number of samples or a length of time in seconds. Negative durations
         delay the right channel (virtual sound source moves to the left).
-        If `estimate` is True, compute the interaural time difference in samples between the left and right channels of
-        the sounds up to a maximum difference given by the `duration` argument in seconds or samples. The temporal
+        If `estimate` is True, computes the interaural time difference in samples between the left and right channel of
+        the sound up to a maximum difference given by the `duration` argument in seconds or samples. The temporal
         resolution of the ITD calculation is 1/samplerate seconds.
 
         >>> sig = Binaural.whitenoise()
@@ -100,16 +100,21 @@ class Binaural(Sound):
         new.delay(duration=abs(duration), channel=channel)
         return new
 
-    def ild(self, dB):
+    def ild(self, dB=0, estimate=False):
         '''
         Returns a sound object with one channel attenuated with respect to the other channel by dB. Negative dB values
         attenuate the right channel (virtual sound source moves to the left). The mean intensity of the signal
-        is kept constant.
+        is kept constant
+        If `estimate` is True, computes the interaural level difference in dB between the left and right channel
+        (equivalent to sound.left.level - sound.right.level).
 
         >>> sig = Binaural.whitenoise()
         >>> _ = sig.ild(3) # attenuate left channel by 3 dB
         >>> _ = sig.ild(-3) # attenuate right channel by 3 dB
         '''
+        if estimate:
+            ild = self.left.level - self.right.level
+            return ild
         new = copy.deepcopy(self)  # so that we can return a new signal
         level = numpy.mean(self.level)
         new_levels = (level + dB/2, level - dB/2)
