@@ -2,7 +2,7 @@ import slab
 import numpy
 import pathlib
 import tempfile
-
+import scipy.signal
 tmpdir = pathlib.Path(tempfile.gettempdir())
 
 
@@ -21,7 +21,7 @@ def test_sound_generation():
         assert sound1.duration == sound2.duration
         # test if saving the file and initializing from string / path works. The reading and writing of data
         # is tested in more detail in test_read_write()
-        sound = slab.Sound(numpy.random.randn(1000, 2), samplerate=numpy.random.randint(100,1000))
+        sound = slab.Sound(numpy.random.randn(1000, 2), samplerate=numpy.random.randint(100, 1000))
         sound.write(tmpdir/"sound.wav", normalise=False)
         loaded1 = slab.Sound(tmpdir/"sound.wav")
         loaded2 = slab.Sound(str(tmpdir/"sound.wav"))
@@ -30,59 +30,38 @@ def test_sound_generation():
 
 
 def test_read_write():
-    pass
-
-
-def test_properties():
-    slab.calibrate(intensity=80, make_permanent=False)
-    sound = slab.Sound(numpy.ones([10, 2]), samplerate=10)
-    sound = sound.repeat(n=5)
-    assert sound.samplerate == 10
-    assert sound.n_samples == 50
-    assert sound.duration == 5.0
-    assert sound.n_channels == 2
+    for _ in range(100):
+        for normalize in [True, False]:
+            sound = slab.Sound(numpy.random.randn(1000, 2), samplerate=numpy.random.randint(100, 1000))
+            if normalize is False:
+                sound.data = sound.data / sound.data.max()
+            sound.write(tmpdir / "sound.wav", normalise=True)
+            loaded = slab.Sound(tmpdir/"sound.wav")
+            loaded.level = sound.level
+            numpy.testing.assert_almost_equal(sound.data, loaded.data, decimal=4)
 
 
 def test_tone():
-    sound = slab.Sound.multitone_masker()
-    sound = slab.Sound.clicktrain()
-    # sound = slab.Sound.dynamicripple() --> does not work
-    sound = slab.Sound.chirp()
-    sound = slab.Sound.tone()
-    sound = slab.Sound.harmoniccomplex(f0=200, amplitude=[0, -10, -20, -30])
-    sound.level = 80
+    for freq in range(50, 200000, 100):
+        sound = slab.Sound.tone(duration=numpy.random.randint(1000, 5000), frequency=freq)
+        Z, freqs = sound.spectrum(show=False)
+        numpy.testing.assert_almost_equal(freqs[numpy.where(Z == Z.max())[0][0]], freq, decimal=0)
+    for freq in range(50, 5000, 100):
+        harmonic = slab.Sound.harmoniccomplex(duration=numpy.random.randint(1000, 5000), f0=freq, samplerate=44100)
+        Z, freqs = harmonic.spectrum(show=False)
+        peaks = scipy.signal.find_peaks(Z.flatten())[0]
+        peak_freqs = freqs[peaks]
+        peak_freqs = peak_freqs/freq
+        numpy.testing.assert_almost_equal(peak_freqs, numpy.linspace(1, len(peaks), len(peaks)), decimal=0)
 
 
-def test_vowel():
-    vowel = slab.Sound.vowel(vowel='a', duration=.5, samplerate=8000)
-    vowel.ramp()
-    vowel.spectrogram(dyn_range=50, show=False)
-    vowel.spectrum(low=100, high=4000, log_power=True, show=False)
-    vowel.waveform(start=0, end=.1, show=False)
-    vowel.cochleagram(show=False)
-    vowel.vocode()
-
-
-def test_noise():
-    sound = slab.Sound.erb_noise()
-    sound = slab.Sound.powerlawnoise()
-    sound = slab.Sound.irn()
-    sound = slab.Sound.whitenoise(normalise=True)
-    assert max(sound) <= 1
-    assert min(sound) >= -1
-
-
-def test_manipulations():
-    sound1 = slab.Sound.pinknoise()
-    sound2 = slab.Sound.pinknoise()
-    sound1.pulse()
-    sound1.am()
-    sound2.aweight()
-    sound = slab.Sound.crossfade(sound1, sound2, overlap=0.01)
-    for feat in ['centroid', 'fwhm', 'flux', 'rolloff', 'flatness']:
-        sound.spectral_feature(feature=feat)
-    sound.crest_factor()
-    sound.onset_slope()
+def test_powerlawnoise():
+    for _ in range(100):
+        centroids =[]
+        for alpha in numpy.linspace(.5, 1., 5):
+            sound = slab.Sound.powerlawnoise(alpha=alpha, samplerate=44100)
+            centroids.append(sound.spectral_feature("centroid"))
+        assert all([centroids[i] > centroids[i+1] for i in range(len(centroids)-1)])
 
 
 def test_crossfade():

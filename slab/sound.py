@@ -200,12 +200,12 @@ class Sound(Signal):
         if isinstance(phase, str) and phase == 'schroeder':
             n = numpy.linspace(1, n_harmonics, n_harmonics, endpoint=True)
             phases = numpy.pi * n * (n + 1) / n_harmonics
-        out = Sound.tone(f0, duration, phase=phases[0], samplerate=samplerate, nchannels=n_channels)
+        out = Sound.tone(f0, duration, phase=phases[0], samplerate=samplerate, n_channels=n_channels)
         lvl = out.level
         out.level += amplitudes[0]
         for i in range(1, n_harmonics):
             tmp = Sound.tone(frequency=freqs[i], duration=duration,
-                             phase=phases[i], samplerate=samplerate, nchannels=n_channels)
+                             phase=phases[i], samplerate=samplerate, n_channels=n_channels)
             tmp.level = lvl + amplitudes[i]
             out += tmp
         return out
@@ -1047,7 +1047,7 @@ class Sound(Signal):
         fbank = Filter.cos_filterbank(length=self.n_samples, bandwidth=bandwidth,
                                       low_cutoff=30, pass_bands=True, samplerate=self.samplerate)
         subbands = fbank.apply(self.channel(0))
-        envs = subbands.envelope()
+        envs = subbands.get_envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         noise = Sound.whitenoise(duration=self.n_samples,
                                  samplerate=self.samplerate)  # make white noise
