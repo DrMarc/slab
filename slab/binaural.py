@@ -1,10 +1,5 @@
-'''
-Class for binaural sounds (i.e. with 2 channels).
-'''
-
 import copy
 import numpy
-
 from slab.sound import Sound
 from slab.signal import Signal
 from slab.filter import Filter
@@ -12,19 +7,30 @@ from slab.hrtf import HRTF
 
 
 class Binaural(Sound):
-    '''
-    Class for working with binaural sounds, including ITD and ILD manipulation. Binaural inherits all signal generation functions from the Sound class, but returns binaural signals. Recasting an object of class sound or signal with 1 or 3+ channels calls Sound.copychannel to return a binaural sound with two channels identical to the first channel of the original signal.
-
+    """
+    Class for working with binaural sounds, including ITD and ILD manipulation. Binaural inherits all signal
+    generation functions  from the Sound class, but returns binaural signals. Recasting an object of class sound or
+    signal with 1 or 3+ channels calls Sound.copychannel to return a binaural sound with two channels identical
+    to the first channel of the original signal.
+    Arguments:
+        data (slab.Signal | numpy.ndarray | list):
+        samplerate (int)
+    Attributes:
+        .left: the first data channel, containing the sound for the left ear.
+        .right: the second data channel, containing the sound for the right ear
+        .data: the data-array of the Sound object which has the shape `n_samples` x `n_channels`.
+        .n_channels: the number of channels in `data`. Must be 2 for a binaural sound.
+        .n_samples: the number of samples in `data`. Equals `duration` * `samplerate`.
+        .duration: the duration of the sound in seconds. Equals `n_samples` / `samplerate`.
     Properties:
-        Binaural.left: left (0th)channel
-        Binaural.right: right (1st) channel
 
-    >>> sig = Binaural.whitenoise()
-    >>> sig.n_channels
-    2
-    >>> all(sig.left - sig.right)
+    Examples:
+    sig = Binaural.whitenoise()
+    sig.n_channels
+    Out: 2
+    all(sig.left - sig.right)
     False
-    '''
+    """
     # instance properties
     def _set_left(self, other):
         if isinstance(other, Sound):
@@ -45,9 +51,12 @@ class Binaural(Sound):
 
     def __init__(self, data, samplerate=None):
         if isinstance(data, (Sound, Signal)):
-            if data.n_channels != 2:
-                data.copychannel(2)
-            self.data = data.data
+            if data.n_channels == 1:  # if there is only one channel, duplicate it.
+                self.data = numpy.tile(data.data, 2)
+            elif data.n_channels == 2:
+                self.data = data.data
+            else:
+                raise ValueError("Data must have one or two channel!")
             self.samplerate = data.samplerate
         elif isinstance(data, (list, tuple)):
             if isinstance(data[0], (Sound, Signal)):
@@ -60,12 +69,14 @@ class Binaural(Sound):
                 super().__init__(data, samplerate)
         elif isinstance(data, str):
             super().__init__(data, samplerate)
-            if self.n_channels != 2:
-                self.copychannel(2) # duplicate channel if monaural file
+            if self.n_channels == 1:
+                self.data = numpy.tile(self.data, 2)  # duplicate channel if monaural file
         else:
             super().__init__(data, samplerate)
-            if self.n_channels != 2: # last check that it is a 2-channel sound
-                ValueError('Binaural sounds must have two channels!')
+            if self.n_channels == 1:
+                self.data = numpy.tile(self.data, 2)  # duplicate channel if monaural file
+        if self.n_channels != 2:
+            ValueError('Binaural sounds must have two channels!')
 
     def itd(self, duration=0.001, estimate=False):
         '''

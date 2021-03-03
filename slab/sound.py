@@ -34,6 +34,7 @@ try:  # try getting a previously set calibration intensity from file
 except FileNotFoundError:
     _calibration_intensity = 0  #: Difference between rms intensity and measured output intensity in dB
 # TODO: should there be a warning if the setup is not level-calibrated?
+# TODO: it would be useful if we test the signal for clipping
 
 
 class Sound(Signal):
@@ -41,9 +42,9 @@ class Sound(Signal):
     `slab.Signal`. Instances of Sound can be created by either loading a file, passing an array of values and a
     samplerate or by using one of the sound-generating methods of the class (all of the @staticmethods).
     Arguments:
-        data(numpy.ndarray | str | pathlib.Path): given an array, an instance of `Sound` with the value of data as
-            `data` and the value of samplerate as `samplerate`. A string or Path must point to a .wav. The data and
-            samplerate is loaded from the file and used to create an instance of `Sound`.
+        data ( str | pathlib.Path | numpy.ndarray | slab.Signal | list): Given a string or Path pointing to the
+            .wav file, the `data` and `samplerate` will be loaded from the file. Given and array, and instance of
+            a `Signal` or a list, the data will be passed to the super class (see documentation of slab.Signal).
         samplerate(int | float): must only be defined when creating a `Sound` from an array.
     Attributes:
         .data: the data-array of the Sound object which has the shape `n_samples` x `n_channels`.
