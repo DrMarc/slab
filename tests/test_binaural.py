@@ -77,4 +77,5 @@ def test_ild_ramp():
 def test_externalize():
     sound = slab.Binaural.whitenoise()
     external = sound.externalize()
-    pass
+
+
