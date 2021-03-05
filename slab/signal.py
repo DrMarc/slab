@@ -250,7 +250,7 @@ class Signal:
         else:  # apply the envelope to the signal
             return self._apply_envelope(apply_envelope, times, kind)
 
-    def _get_envelope(self, kind='gain'):
+    def _get_envelope(self, kind):
         if scipy is False:
             raise ImportError('Calculating envelopes requires scipy.signal.')
         else:
@@ -265,7 +265,7 @@ class Signal:
                 raise ValueError('Kind must be either "gain" or "dB"!')
             return Signal(envs, samplerate=self.samplerate)
 
-    def _apply_envelope(self, envelope, times=None, kind="gain"):
+    def _apply_envelope(self, envelope, times, kind):
         new = copy.deepcopy(self)
         if times is None:
             times = numpy.linspace(0, 1, len(envelope)) * self.duration

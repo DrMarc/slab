@@ -67,11 +67,11 @@ class TestSoundMethods(unittest.TestCase):
 
     def test_envelope(self):
         sig = slab.Sound.tone()
-        _ = sig.get_envelope(kind="gain")  # TODO: check that the Hilbert envelope works properly
-        _ = sig.get_envelope(kind="dB")
+        _ = sig.envelope(kind="gain")  # TODO: check that the Hilbert envelope works properly
+        _ = sig.envelope(kind="dB")
         for i in range(100):
             env = numpy.array([numpy.random.randn(), numpy.random.randn(), numpy.random.randn()])
-            sig = sig.apply_envelope(envelope=env)
+            sig = sig.envelope(apply_envelope=env)
             self.assertEqual(sig.data.max(), numpy.abs(env).max())
 
     def test_delay(self):

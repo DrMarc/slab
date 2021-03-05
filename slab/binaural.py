@@ -70,14 +70,29 @@ class Binaural(Sound):
         if self.n_channels != 2:
             ValueError('Binaural sounds must have two channels!')
 
-    def get_itd(self, max_lag=0.001):
-        """ Compute the sounds interaural time difference. The temporal resolution is 1/samplerate seconds.
+    def itd(self, duration=None, max_lag=0.001):
+        """ Either estimate the interaural time difference of the sound or generate a new sound with the specified
+            interaural time difference. The resolution for computing the ITD is 1/samplerate seconds. A negative
+            ITD value means that the right channel is delayed, meaning the sound source is to the left.
         Arguments:
-            max_lag (float): Maximum allowed ITD. Defaults to 1 millisecond which is outside the physiologically plausible
-                range for humans.
+            duration (None| int | float): Given None, the instance's ITD is computed. Given another value, a new sound
+                with the desired interaural time difference in samples (given an integer) or seconds (given a float)
+                is generated.
+            max_lag (float): Maximum possible value for ITD estimation. Defaults to 1 millisecond which is barely
+                outside the physiologically plausible range for humans. Is ignored if `duration` is specified.
         Returns:
-            (int): The interaural time difference in samples. Negative number imply a delay the right channel which
-                means the sound source is perceived to the left. """
+             (int | slab.Binaural): The interaural time difference in samples or a copy of the instance with the
+                specified interaural time difference.
+        Examples:
+            sound = slab.Binaural.whitenoise()
+            lateral = sound.itd(duration=0.0005)  # generate a sound with 0.5 ms ITD
+            lateral.itd()  # estimate the ITD of the sound """
+        if duration is None:
+            return self._get_itd(max_lag)
+        else:
+            return self._apply_itd(duration)
+
+    def _get_itd(self, max_lag):
         max_lag = Sound.in_samples(max_lag, self.samplerate)
         xcorr = numpy.correlate(self.data[:,0], self.data[:,1], 'full')
         lags = numpy.arange(-max_lag, max_lag + 1)
@@ -85,13 +100,7 @@ class Binaural(Sound):
         idx = numpy.argmax(xcorr)
         return lags[idx]
 
-    def apply_itd(self, duration):
-        """ Generate a sound with a given interaural time difference.
-        Arguments:
-            duration (int | float): the desired interaural time difference in samples (given an integer) or seconds
-                (given a float). Negative durations delay the right channel (virtual sound source moves to the left)
-        Returns:
-            (slab.Binaural): a copy of the instance with the specified interaural time difference. """
+    def _apply_itd(self, duration):
         if duration == 0:
             return self  # nothing needs to be shifted
         if duration < 0:  # negative itds by convention shift to the left (i.e. delay right channel)
@@ -100,22 +109,25 @@ class Binaural(Sound):
             channel = 0  # left
         return self.delay(duration=abs(duration), channel=channel)
 
-    def itd(self, duration=0.001, estimate=False):
-        """ Either calculate the itd of a sound or generate a new one with the given itd"""
-        duration = Sound.in_samples(duration, self.samplerate)
-        if estimate:
-            return self.get_itd()
-        else:
-            return self.apply_itd(duration=duration)
-
-    def apply_ild(self, dB):
-        """ Returns a sound object with one channel attenuated with respect to the other channel by dB. Negative dB
-        values attenuate the right channel (virtual sound source moves to the left). The mean intensity of the signal
-        is kept constant.
+    def ild(self, dB=None):
+        """ Either estimate the interaural level difference of the sound or generate a new sound with the specified
+            interaural level difference. Negative ILD value means that the left channel is louder than the right channel,
+            meaning that the sound source is to the left.
+        Arguments:
+            dB (None | int | float): If None, estimate the sound's ITD. Given a value, a new sound is generated with
+                the desired interaural level difference in decibels.
+        Returns:
+            (float | slab.Binaural): The sound's aural level difference or a new instance with the specified ILD.
         Examples:
             sig = Binaural.whitenoise()
             lateral_right = sig.ild(3) # attenuate left channel by 3 dB
             lateral_left = sig.ild(-3) # attenuate right channel by 3 dB """
+        if dB is None:
+            return self.right.level - self.left.level
+        else:
+            return self._apply_ild(dB)
+
+    def _apply_ild(self, dB):
         new = copy.deepcopy(self)  # so that we can return a new signal
         level = numpy.mean(self.level)
         new_levels = (level + dB/2, level - dB/2)
@@ -164,7 +176,7 @@ class Binaural(Sound):
             sig = Binaural.whitenoise()
             moving = sig.ild_ramp(from_ild=-10, to_ild=10)
             move.play() """
-        new = self.apply_ild(0)  # set ild to zero
+        new = self.ild(0)  # set ild to zero
         # make ramps
         left_ramp = numpy.linspace(-from_ild / 2, -to_ild / 2, self.n_samples)
         right_ramp = numpy.linspace(from_ild / 2, to_ild / 2, self.n_samples)
