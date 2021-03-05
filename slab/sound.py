@@ -547,7 +547,7 @@ class Sound(Signal):
 
     def pulse(self, pulse_frequency=4, duty=0.75, rf_time=0.05):
         """
-        Apply a pulse envelope to the sound with a `pulse_frequency` and `duty` cycle (in place).
+        Apply a pulse envelope to the sound with a `pulse_frequency` and `duty` cycle.
         Args:
             pulse_frequency (int): description
             duty (float, int): duty cycle in s
