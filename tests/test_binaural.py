@@ -1,5 +1,6 @@
 import slab
 import numpy
+from copy import deepcopy
 
 
 def test_itd():
@@ -17,6 +18,7 @@ def test_ild():
         ild = numpy.random.uniform(-10, 10)
         lateral = sound.apply_ild(ild)
         numpy.testing.assert_almost_equal(numpy.diff(lateral.level)*-1, ild, decimal=5)
+
 
 def test_azimuth_to_itd_ild():
     for _ in range(100):
@@ -44,3 +46,35 @@ def test_at_azimuth():
             assert numpy.abs(itd - lateral.get_itd()) <= 1
             ild = slab.Binaural.azimuth_to_ild(azimuth)
             numpy.testing.assert_almost_equal(ild, numpy.diff(lateral.level)*-1, decimal=0)
+
+
+def test_itd_ramp():
+    for _ in range(10):
+        sound = slab.Binaural.whitenoise()
+        from_itd = numpy.random.uniform(-0.001, 0.)
+        to_itd = numpy.random.uniform(0.001, 0.)
+        moving = sound.itd_ramp(from_itd=from_itd, to_itd=to_itd)
+        start, stop = deepcopy(moving), deepcopy(moving)
+        start.data = start.data[0:200, :]
+        stop.data = stop.data[-201:-1, :]
+        assert numpy.abs(start.get_itd() - slab.Sound.in_samples(from_itd, 8000)) <= 1
+        assert numpy.abs(stop.get_itd() - slab.Sound.in_samples(to_itd, 8000)) <= 1
+
+
+def test_ild_ramp():
+    for _ in range(100):
+        sound = slab.Binaural.whitenoise()
+        from_ild = numpy.random.uniform(-10, 0.)
+        to_ild = numpy.random.uniform(10, 0.)
+        moving = sound.ild_ramp(from_ild=from_ild, to_ild=to_ild)
+        start, stop = deepcopy(moving), deepcopy(moving)
+        start.data = start.data[0:200, :]
+        stop.data = stop.data[-201:-1, :]
+        numpy.testing.assert_almost_equal(numpy.diff(start.level), from_ild, decimal=0)
+        numpy.testing.assert_almost_equal(numpy.diff(stop.level), to_ild, decimal=0)
+
+
+def test_externalize():
+    sound = slab.Binaural.whitenoise()
+    external = sound.externalize()
+    pass

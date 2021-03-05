@@ -123,40 +123,48 @@ class Binaural(Sound):
         return new
 
     def itd_ramp(self, from_itd=-6e-4, to_itd=6e-4):
-        '''
-        Returns a sound object with a linearly increasing or decreasing interaural time difference. This is achieved by
-        sinc interpolation of one channel with a dynamic delay. The resulting virtual sound source moves to the left or
-        right. `from_itd` and `to_itd` are the itd values at the beginning and end of the sound.The defaults (-0.6ms to
-        0.6ms) produce a sound moving from left to right.
-
-        >>> sig = Binaural.whitenoise()
-        >>> _ = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
-        '''
+        """ Generate a sound with a linearly increasing or decreasing interaural time difference.
+        This is achieved by sinc interpolation of one channel with a dynamic delay. The resulting virtual sound source
+        moves to the left or right.
+        Arguments:
+            from_itd (float): interaural time difference in seconds at the start of the sound.
+                Negative numbers correspond to sources to the left of the listener.
+            to_itd (float): interaural time difference in seconds at the end of the sound.
+        Returns:
+            (slab.Binaural): a copy of the instance wit the desired ITD ramp.
+        Examples:
+            sig = Binaural.whitenoise()
+            moving = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
+            moving.play() """
         new = copy.deepcopy(self)
         # make the ITD ramps
-        left_ramp = numpy.linspace(-from_itd / 2, -to_itd / 2, self.n_samples)
-        right_ramp = numpy.linspace(from_itd / 2, to_itd / 2, self.n_samples)
+        left_ramp = numpy.linspace(from_itd / 2, to_itd / 2, self.n_samples)
+        right_ramp = numpy.linspace(-from_itd / 2, -to_itd / 2, self.n_samples)
         if self.n_samples >= 8192:
             filter_length = 1024
         elif self.n_samples >= 512:
             filter_length = self.n_samples // 16 * 2  # 1/8th of n_samples, always even
         else:
             ValueError('Signal too short! (min 512 samples)')
-        new.delay(duration=left_ramp, channel=0, filter_length=filter_length)
-        new.delay(duration=right_ramp, channel=1, filter_length=filter_length)
+        new = new.delay(duration=left_ramp, channel=0, filter_length=filter_length)
+        new = new.delay(duration=right_ramp, channel=1, filter_length=filter_length)
         return new
 
     def ild_ramp(self, from_ild=-50, to_ild=50):
-        '''
-        Returns a sound object with a linearly increasing or decreasing interaural level difference. The resulting
-        virtual sound source moves to the left or right. `from_ild` and `to_ild` are the itd values at the beginning and
-        end of the sound. Any existing ILD is removed! The defaults (-50 to 50dB) produce a sound moving from left to right.
-
-        >>> sig = Binaural.whitenoise()
-        >>> move = sig.ild_ramp(from_ild=-10, to_ild=10)
-        >>> move.play()
-        '''
-        new = self.ild(0)  # set ild to zero
+        """ Generate a sound with a linearly increasing or decreasing interaural level difference. The resulting
+        virtual sound source moves to the left or right.
+        Arguments:
+            from_ild (int | float): interaural level difference in decibels at the start of the sound.
+                Negative numbers correspond to sources to the left of the listener.
+            to_ild (int | float): interaural level difference in decibels at the end of the sound.
+        Returns:
+            (slab.Binaural): a copy of the instance with the desired ILD ramp. Any previously existing level difference
+                is removed.
+        Examples:
+            sig = Binaural.whitenoise()
+            moving = sig.ild_ramp(from_ild=-10, to_ild=10)
+            move.play() """
+        new = self.apply_ild(0)  # set ild to zero
         # make ramps
         left_ramp = numpy.linspace(-from_ild / 2, -to_ild / 2, self.n_samples)
         right_ramp = numpy.linspace(from_ild / 2, to_ild / 2, self.n_samples)
@@ -204,8 +212,7 @@ class Binaural(Sound):
         Returns:
             (float): The interaural level difference for a sound source at a given azimuth in decibels.
         Examples:
-            ild = slab.Binaural.azimuth_to_ild(-90) # ILD equivalent to 90 deg leftward source using KEMAR HRTF
-        """
+            ild = slab.Binaural.azimuth_to_ild(-90) # ILD equivalent to 90 deg leftward source using KEMAR HRTF.d """
         ils = Binaural._make_level_spectrum_filter(hrtf=hrtf)
         freqs = ils[1:, 0]  # get vector of frequencies in ils filter bank
         azis = ils[0, 1:]  # get vector of azimuths in ils filter bank
@@ -224,36 +231,36 @@ class Binaural(Sound):
         return out.apply_ild(dB=ild)
 
     def externalize(self, hrtf=None):
-        '''
-        Return the sound convolved with a smoothed HRTF (KEMAR if no :class:`slab.HRTF` object is supplied) to
-        evoke the impression of an external sound source without adding directional information.
-        The HRTF at zero azimuth and elevation is used and this diection has to be present in the HRTF object.
-        See Kulkarni & Colburn (1998) for why that works.
-        '''
+        """ Convolve the sound with a smoothed HRTF to evoke the impression of an external sound source without adding
+         directional information, see Kulkarni & Colburn (1998) for why that works.
+        Arguments:
+            hrtf (None | slab.HRTF): The HRTF to use. If None use the one from the MIT KEMAR mannequin. The sound
+                source at zero azimuth and elevation is used for convolution so it has to be present in the HRTF.
+        Returns:
+            (slab.Binaural): externalized copy of the instance. """  # TODO: is this working properly?
         if not hrtf:
             from slab import DATAPATH
             hrtf = HRTF(DATAPATH+'mit_kemar_normal_pinna.sofa')  # load the hrtf file
-        idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[
-            0][0]  # get HRTF for [0,0] direction
+        # get HRTF for [0,0] direction:
+        idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[0][0]
         if not idx_frontal.size: # idx_frontal is empty
             raise ValueError('No frontal direction [0,0] found in HRTF.')
         _, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, show=False)  # get low-res version of HRTF spectrum
         resampled_signal = copy.deepcopy(self)
         # if signal and HRTF has different samplerates, resample the signal, apply the HRTF, and resample back:
-        resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate) # resample to hrtf rate
-        filt = Filter(10**(h/20), fir=False, samplerate=hrtf.data[0].samplerate) #
+        resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate)  # resample to hrtf rate
+        filt = Filter(10**(h/20), fir=False, samplerate=hrtf.data[0].samplerate)
         filtered_signal = filt.apply(resampled_signal)
         filtered_signal = filtered_signal.resample(self.samplerate)
         return filtered_signal
 
     @staticmethod
     def _make_level_spectrum_filter(hrtf=None):
-        '''
-        Generate a level spectrum from the horizontal recordings in a :class:`slab.HRTF` file. The defaut
+        """ Generate a level spectrum from the horizontal recordings in a HRTF. The defaut
         :meth:`slab.Filter.cos_filterbank` is used and the same filter bank has to be used when applying
-        the level spectrum to a sound.
-        '''
+        the level spectrum to a sound. """
         from slab import DATAPATH
+        save_standard = False
         if not hrtf:
             try:
                 ils = numpy.load(DATAPATH + 'KEMAR_interaural_level_spectrum.npy')
@@ -281,7 +288,7 @@ class Binaural(Sound):
             noise_bank_right = fbank.apply(noise_filt.right)
             ils[1:, n+1] = noise_bank_right.level - noise_bank_left.level
             ils[0, n+1] = azi[sort[n]]  # first entry is the angle
-        if save_standard:
+        if save_standard is True:
             numpy.save(DATAPATH + 'KEMAR_interaural_level_spectrum.npy', ils)
         return ils
 

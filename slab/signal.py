@@ -231,12 +231,26 @@ class Signal:
             out.samplerate = samplerate
             return out
 
-    def get_envelope(self, kind='gain'):
-        """ Compute the Hilbert envelope.
+    def envelope(self, apply_envelope=None, times=None, kind='gain'):
+        """ Either apply an envelope to a signal or, if no `apply_envelope` was specified, compute the Hilbert envelope
+        of the signal.
         Arguments:
+            apply_envelope (None | numpy.ndarray): data to multiply with the signal. the envelope is linearly
+                interpolated to be the same length as the signal. If None, compute the signal's Hilbert envelope
+            times (None | numpy.ndarray | list): If None a vector linearly spaced from 0 to the duration of the signal
+                is used. If time points (in seconds, clamped to the the signal duration) for the amplitude values
+                in envelope are supplied, then the interpolation is piecewise linear between pairs of time and envelope
+                 valued (must have same length).
             kind (str): determines the unit of the envelope value
         Returns:
-            (slab.Signal): the envelope as a new signal. """
+            (slab.Signal): Either a copy of the instance with the specified envelope applied or the signal's
+                Hilbert envelope. """
+        if apply_envelope is None:  # get the signals envelope
+            return self._get_envelope(kind)
+        else:  # apply the envelope to the signal
+            return self._apply_envelope(apply_envelope, times, kind)
+
+    def _get_envelope(self, kind='gain'):
         if scipy is False:
             raise ImportError('Calculating envelopes requires scipy.signal.')
         else:
@@ -251,18 +265,7 @@ class Signal:
                 raise ValueError('Kind must be either "gain" or "dB"!')
             return Signal(envs, samplerate=self.samplerate)
 
-    def apply_envelope(self, envelope, times=None, kind="gain"):
-        """ Apply an envelope by multiplying it with the signal data.
-        Arguments:
-            envelope (list | numpy.ndarray | list): data to multiply with the signal. the envelope is linearly
-                interpolated to be the same length as the signal.
-            times (None | numpy.ndarray | list): If None a vector linearly spaced from 0 to the duration of the signal
-                is used. If time points (in seconds, clamped to the the signal duration) for the amplitude values
-                in envelope are supplied, then the interpolation is piecewise linear between pairs of time and envelope
-                 valued (must have same length).
-            kind (str): determines the unit of the envelope value.
-        Returns:
-            (slab.Signal): a new instance of the same class with the data multiplied by the envelope. """
+    def _apply_envelope(self, envelope, times=None, kind="gain"):
         new = copy.deepcopy(self)
         if times is None:
             times = numpy.linspace(0, 1, len(envelope)) * self.duration
@@ -280,7 +283,6 @@ class Signal:
         return new
 
     def delay(self, duration=1, channel=0, filter_length=2048):
-        # TODO: return a new copy of self
         """ Add a delay to one channel.
         Arguments:
             duration (int | float | array-like): duration of the delay in seconds (given a float) or samples (given
