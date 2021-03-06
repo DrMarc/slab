@@ -231,6 +231,7 @@ class Binaural(Sound):
         if not idx_frontal.size: # idx_frontal is empty
             raise ValueError('No frontal direction [0,0] found in HRTF.')
         _, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, show=False)  # get low-res version of HRTF spectrum
+        h[0] = 1 # avoids low-freq attenuation in KEMAR HRTF (unproblematic for other HRTFs)
         resampled_signal = copy.deepcopy(self)
         # if signal and HRTF has different samplerates, resample the signal, apply the HRTF, and resample back:
         resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate) # resample to hrtf rate
