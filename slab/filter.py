@@ -1,38 +1,40 @@
-'''
-Class for HRTFs, filterbanks, and microphone/speaker transfer functions
-'''
-
 import copy
 import numpy
 
 try:
     import matplotlib.pyplot as plt
-    have_pyplot = True
 except ImportError:
-    have_pyplot = False
+    plt = False
 try:
     import scipy.signal
-    have_scipy = True
 except ImportError:
-    have_scipy = False
+    scipy = False
 
 from slab.signal import Signal  # getting the base class
 
 
 class Filter(Signal):
-    '''
-    Class for generating and manipulating filterbanks and transfer functions.
-
-    '''
+    """ Class for generating and manipulating filter banks and transfer functions. Filters can be either finite impulse
+    response (FIR) or Fourier filters.
+    Arguments:
+        data (numpy.ndarray | slab.Signal | list): samples of the filter. If it is an array, the first dimension
+            should represent the number of samples and the second one the number of channels. If it's an object,
+            it must have a .data attribute containing an array. If it's a list, the elements can be arrays or objects.
+            The output will be a multi-channel signal with each channel corresponding to an element of the list.
+        samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+        fir (bool): weather this is a finite impulse filter (True) or a Fourier filter (False),
+    Attributes:
+    Examples. """
     # instance properties
-    nfilters = property(fget=lambda self: self.n_channels, doc='The number of filters in the bank.')
-    ntaps = property(fget=lambda self: self.n_samples, doc='The number of filter taps.')
-    nfrequencies = property(fget=lambda self: self.n_samples, doc='The number of frequency bins.')
-    frequencies = property(fget=lambda self: numpy.fft.rfftfreq(self.ntaps*2-1, d=1/self.samplerate)
+    # TODO: this might be confusing because the filter still has the attributes n_channels and n_samples
+    n_filters = property(fget=lambda self: self.n_channels, doc='The number of filters in the bank.')
+    n_taps = property(fget=lambda self: self.n_samples, doc='The number of filter taps.')
+    n_frequencies = property(fget=lambda self: self.n_samples, doc='The number of frequency bins.')
+    frequencies = property(fget=lambda self: numpy.fft.rfftfreq(self.n_taps * 2 - 1, d=1 / self.samplerate)
                            if not self.fir else None, doc='The frequency axis of the filter.')
 
     def __init__(self, data, samplerate=None, fir=True):
-        if fir and not have_scipy:
+        if fir and scipy is False:
             raise ImportError('FIR filters require scipy.')
         super().__init__(data, samplerate)
         self.fir = fir
@@ -42,41 +44,49 @@ class Filter(Signal):
 
     def __str__(self):
         if self.fir:
-            return f'{type(self)}, filters {self.nfilters}, FIR: taps {self.ntaps}, samplerate {self.samplerate}'
-        return f'{type(self)}, filters {self.nfilters}, FFT: freqs {self.nfrequencies}, samplerate {self.samplerate}'
+            return f'{type(self)}, filters {self.n_filters}, FIR: taps {self.n_taps}, samplerate {self.samplerate}'
+        return f'{type(self)}, filters {self.n_filters}, FFT: freqs {self.n_frequencies}, samplerate {self.samplerate}'
 
     @staticmethod
-    def band(frequency=100, gain=None, kind='hp', samplerate=None, length=1000, fir=True):
-        '''
-        Design simple passband or stopband filters, or filters with a transfer function set by frequency/gain pairs.
-
+    def band(kind='hp', frequency=100, gain=None, samplerate=None, length=1000, fir=True):
+        """ Generate simple passband or stopband filters, or filters with a transfer function defined by  pairs
+        of `frequency` and `gain` values.
         Arguments:
-            frequency: edge frequency in Hz or tuple of frequencies for bp and bs. If
-            kind: 'lp' (lowpass), 'hp' (highpass), 'bp' (bandpass), 'bs' (bandstop, notch)
-            samplerate: samplerate of the filter (defaults to the rate set with slab.set_default_samplerate)
-            length: number of taps or frequency bins of the filter
-            fir: whether to design a FIR or an FFR filter (FIR filters require Scipy)
-
-        >>> sig = Sound.whitenoise()
-        >>> filt = Filter(f=3000, kind='lp', fir=False)
-        >>> sig = filt.apply(sig)
-        >>> _ = sig.spectrum()
-        '''
+            kind: The type of filter to generate. Can be 'lp' (lowpass), 'hp' (highpass), 'bp' (bandpass)
+                or 'bs' (bandstop/notch). If `gain` is specified the `kind` argument is ignored.
+            frequency (int | float | tuple | list): For a low- or highpass filter, a single integer or float value must
+                be given which is the filters edge frequency in Hz. a bandpass or -stop filter takes a tuple of two
+                values which are the filters lower and upper edge frequencies. Given a list of values and a list of
+                equal length as `gain` the resulting filter will have the specified gain at each frequency.
+            gain (None | list): Must be None when generating an lowpass, highpass, bandpass or bandstop filter. For
+                generating a custom filter, define a list of the same length as `frequency` with values between
+                1.0 (no suppression at that frequency) and 0.0 (maximal suppression at that frequency).
+            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            length (int): The number of samples in the filter
+            fir: If true generate a finite impulse response filter, else generate a Fourier filter.
+        Returns:
+            (slab.Filter): a filter with the specified properties
+        Examples:
+            filt = slab.Filter.band(frequency=3000, kind='lp')  # lowpass filter
+            filt = slab.Filter.band(frequency=(100, 2000), kind='bs')  # bandstop filter
+            filt = slab.Filter.band(frequency=[100, 1000, 3000, 6000], gain=[0., 1., 0., 1.])  # custom filter """
         samplerate = Filter.get_samplerate(samplerate)
         if fir:  # design a FIR filter
-            if not have_scipy:
+            if scipy is False:
                 raise ImportError('Generating FIR filters requires Scipy.')
-            if gain is None: # design band filter
+            if gain is None:  # design band filter
                 if kind in ['lp', 'bs']:
                     pass_zero = True
                 elif kind in ['hp', 'bp']:
                     pass_zero = False
-                if kind in ['hp', 'bs'] and not length % 2: # high at nyquest requires odd n_taps
+                if kind in ['hp', 'bs'] and not length % 2:  # high at nyquist requires odd n_taps
                     filt = scipy.signal.firwin(length-1, frequency, pass_zero=pass_zero, fs=samplerate)
-                    filt = numpy.append(filt, 0) # extend to original length
+                    filt = numpy.append(filt, 0)  # extend to original length
                 else:
                     filt = scipy.signal.firwin(length, frequency, pass_zero=pass_zero, fs=samplerate)
             else:
+                if not (isinstance(gain, list) and isinstance(frequency, list)):
+                    raise ValueError("Gain and frequency must be lists for generating custom filters!")
                 dc = dc_gain = []
                 if frequency[0] != 0:
                     dc = dc_gain = [0]
@@ -84,7 +94,8 @@ class Filter(Signal):
                 if frequency[-1] != samplerate/2:
                     nyq = [samplerate/2]
                     nyq_gain = [0]
-                filt = scipy.signal.firwin2(numtaps=length, freq=dc+frequency+nyq, gain=dc_gain+gain+nyq_gain, fs=samplerate)
+                filt = scipy.signal.firwin2(numtaps=length, freq=dc+frequency+nyq, gain=dc_gain+gain+nyq_gain,
+                                            fs=samplerate)
         else:  # FFR filter
             df = (samplerate/2) / (length-1)
             if gain is None:
@@ -99,36 +110,43 @@ class Filter(Signal):
                     filt[:round(frequency[0]/df)] = 1
                     filt[round(frequency[1]/df):] = 1
             else:
-                freqs = numpy.arange(0, (samplerate/2)+df, df) # frequency bins
-                filt = numpy.interp(freqs, [0] + frequency + [samplerate/2], [0] + gain + [0])
+                freqs = numpy.arange(0, (samplerate/2)+df, df)  # frequency bins
+                filt = numpy.interp(freqs, numpy.array([0] + frequency + [samplerate/2]), numpy.array([0] + gain + [0]))
         return Filter(data=filt, samplerate=samplerate, fir=fir)
 
     def apply(self, sig):
-        '''
-        Apply the filter to signal `sig`. If signal and filter have the same number of channels,
+        """ Apply the filter to a signal. If signal and filter have the same number of channels,
         each filter channel will be applied to the corresponding channel in the signal.
-        If the filter has multiple channels and the signal only 1, each filter is applied to othe same signal.
+        If the filter has multiple channels and the signal only 1, each filter is applied to the same signal.
         In that case the filtered signal wil contain the same number of channels as the filter with every
         channel being a copy of the original signal with one filter channel applied. If the filter has only
         one channel and the signal has multiple channels, the same filter is applied to each signal channel.
-        '''
+        Arguments:
+            sig (slab.Signal): The signal to be filtered, must be an instance of `slab.Signal` or of another class
+                that inherits from it, like `slab.Sound`.
+        Returns:
+            (slab.Signal): a filtered copy of `sig`.
+        Examples:
+            filt = slab.Filter.band(frequency=(100, 1500), kind='bp')  # bandpass filter
+            sound = slab.Sound.whitenoise()  # generate sound
+            filtered_sound = filt.apply(sound)  # apply the filter to the sound """
         if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
             raise ValueError('Filter and signal have different sampling rates.')
         out = copy.deepcopy(sig)
         if self.fir:
-            if not have_scipy:
+            if scipy is False:
                 raise ImportError('Applying FIR filters requires Scipy.')
-            if self.nfilters == sig.n_channels:  # filter each channel with corresponding filter
-                for i in range(self.nfilters):
+            if self.n_filters == sig.n_channels:  # filter each channel with corresponding filter
+                for i in range(self.n_filters):
                     out.data[:, i] = scipy.signal.filtfilt(
                         self.data[:, i], [1], out.data[:, i], axis=0)
-            elif (self.nfilters == 1) and (sig.n_channels > 1):  # filter each channel
-                for i in range(self.nfilters):
+            elif (self.n_filters == 1) and (sig.n_channels > 1):  # filter each channel
+                for i in range(self.n_filters):
                     out.data[:, i] = scipy.signal.filtfilt(
                         self.data.flatten(), [1], out.data[:, i], axis=0)
-            elif (self.nfilters > 1) and (sig.n_channels == 1):  # apply all filters in bank to signal
-                out.data = numpy.empty((sig.n_samples, self.nfilters))
-                for filt in range(self.nfilters):
+            elif (self.n_filters > 1) and (sig.n_channels == 1):  # apply all filters in bank to signal
+                out.data = numpy.empty((sig.n_samples, self.n_filters))
+                for filt in range(self.n_filters):
                     out.data[:, filt] = scipy.signal.filtfilt(
                         self[:, filt], [1], sig.data, axis=0).flatten()
             else:
@@ -139,17 +157,17 @@ class Filter(Signal):
             sig_freq_bins = numpy.fft.rfftfreq(sig.n_samples, d=1 / sig.samplerate)
             filt_freq_bins = self.frequencies
             # interpolate the FFT filter bins to match the length of the fft of the signal
-            if self.nfilters == sig.n_channels:  # filter each channel with corresponding filter
+            if self.n_filters == sig.n_channels:  # filter each channel with corresponding filter
                 for chan in range(sig.n_channels):
                     _filt = numpy.interp(sig_freq_bins, filt_freq_bins, self[:, chan])
                     out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt, sig.n_samples)
-            elif (self.nfilters == 1) and (sig.n_channels > 1):  # filter each channel
+            elif (self.n_filters == 1) and (sig.n_channels > 1):  # filter each channel
                 _filt = numpy.interp(sig_freq_bins, filt_freq_bins, self.data.flatten())
                 for chan in range(sig.n_channels):
                     out.data[:, chan] = numpy.fft.irfft(sig_rfft[:, chan] * _filt, sig.n_samples)
-            elif (self.nfilters > 1) and (sig.n_channels == 1):  # apply all filters in bank to signal
-                out.data = numpy.empty((sig.n_samples, self.nfilters))
-                for filt in range(self.nfilters):
+            elif (self.n_filters > 1) and (sig.n_channels == 1):  # apply all filters in bank to signal
+                out.data = numpy.empty((sig.n_samples, self.n_filters))
+                for filt in range(self.n_filters):
                     _filt = numpy.interp(sig_freq_bins, filt_freq_bins, self[:, filt])
                     out.data[:, filt] = numpy.fft.irfft(sig_rfft.flatten() * _filt, sig.n_samples)
             else:
@@ -157,58 +175,80 @@ class Filter(Signal):
                     'Number of filters must equal number of signal channels, or either one of them must be equal to 1.')
         return out
 
-    def tf(self, channels='all', nbins=None, show=True, axis=None, **kwargs):
-        '''
-        Computes the transfer function of a filter (magnitude over frequency).
-        Returns transfer functions of filter at index 'channels' (int or list) or, if channels='all' returns all
-        transfer functions. If show=True then plot the response, else return magnitude and frequency vectors.
-        '''
-        if isinstance(channels, int): # check chan is in range of nfilters
-            channels = [channels]
+    def tf(self, channels='all', n_bins=None, show=True, axis=None, **kwargs):
+        """ Compute a filter's transfer function (magnitude over frequency) and optionally plot it.
+        Arguments:
+            channels (str | list | int): the filter channels to compute the transfer function for. Defaults to the
+                string "all" which includes all channels. To compute the transfer function for multiple channels, pass
+                a list of channel integers. For the transfer function for a single channel pass it's index as integer.
+            n_bins (None): number of bins in the transfer function (determines frequency resolution).
+                If None, use the maximum number of bins.
+            show (bool): whether to show the plot right after drawing.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            ** kwargs: keyword arguments for the plot, see documentation of matplotlib.pyplot.plot for details.
+        Returns:
+            w (numpy.ndarray): the frequency bins in the range from 0 Hz to the Nyquist frequency.
+            h (numpy.ndarray: the magnitude of each frequency in `w`.
+            None: If `show` is True OR and `axis` was specified, a plot is drawn and nothing is returned.
+        Examples:
+            filt = slab.Filter.band(frequency=(100, 1500), kind='bp')  # bandpass filter
+            filt.tf(show=True)  # compute and plot the transfer functions
+            w, h = filt.tf(show=False)  # compute and return the transfer functions """
+        if isinstance(channels, int):
+            if channels > self.n_filters:  # check chan is in range of n_filters
+                raise IndexError("Channel index out of range!")
+            else:
+                channels = [channels]
+        elif isinstance(channels, list):  # check that all the elements are unique and in range
+            if len(channels) != len(set(channels)):
+                raise ValueError("There should be no duplicates in the list of channels!")
+            if min(channels) < 0 or max(channels) < self.n_filters:
+                raise IndexError("Channel index out of range!")
+            if not all([isinstance(i, int) for i in channels]):
+                raise ValueError("Channels must be integers!")
         elif channels == 'all':
-            channels = list(range(self.nfilters))  # now we have a list of filter indices to process
-        if not nbins:
-            nbins = self.data.shape[0]
+            channels = list(range(self.n_filters))  # now we have a list of filter indices to process
+        if not n_bins:
+            n_bins = self.data.shape[0]
         if self.fir:
-            if not have_scipy:
+            if scipy is False:
                 raise ImportError('Computing transfer functions of FIR filters requires Scipy.')
-            h = numpy.empty((nbins, len(channels)))
+            h = numpy.empty((n_bins, len(channels)))
             for i, idx in enumerate(channels):
-                w, _h = scipy.signal.freqz(self.channel(idx), worN=nbins, fs=self.samplerate)
+                w, _h = scipy.signal.freqz(self.channel(idx), worN=n_bins, fs=self.samplerate)
                 h[:, i] = 20 * numpy.log10(numpy.abs(_h.flatten()))
         else:
             w = self.frequencies
             data = self.data[:, channels]
             data[data == 0] += numpy.finfo(float).eps
             h = 20 * numpy.log10(data)
-            if not nbins == len(w): # interpolate if necessary
-                w_interp = numpy.linspace(0, w[-1], nbins)
-                h_interp = numpy.zeros((nbins, len(channels)))
+            if not n_bins == len(w): # interpolate if necessary
+                w_interp = numpy.linspace(0, w[-1], n_bins)
+                h_interp = numpy.zeros((n_bins, len(channels)))
                 for idx, _ in enumerate(channels):
                     h_interp[:, idx] = numpy.interp(w_interp, w, h[:, idx])
                 h = h_interp
                 w = w_interp
         if show or (axis is not None):
-            if not have_pyplot:
+            if plt is False:
                 raise ImportError('Plotting transfer functions requires matplotlib.')
             if axis is None:
                 _, axis = plt.subplots()
             axis.plot(w, h, **kwargs)
             axis.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
             axis.grid(True)
-        if show:
-            plt.show()
+            if show:
+                plt.show()
         else:
             return w, h
 
     @staticmethod
     # TODO: oversampling factor needed for cochleagram!
     def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, samplerate=None):
-        """Create ERB cosine filterbank of n_filters.
-
+        # TODO: what is erb, what is the purpose of these filters?
+        """ Create a set of ERB-spaced Fourier filters.
         Attributes:
-            length: length of signal to be filtered with the generated
-                filterbank. The signal length determines the length of the filters.
+            length (int): The number of bins in the filter, determines the frequency resolution.
             samplerate: sampling rate associated with the signal waveform
             bandwidth: of the filters (subbands) in octaves
             low_cutoff: lower limit of frequency range
@@ -257,6 +297,7 @@ class Filter(Signal):
 
     @staticmethod
     def collapse_subbands(subbands, filter_bank=None):
+        """ """
         if not filter_bank:
             filter_bank = Filter.cos_filterbank(
                 length=subbands.n_samples, samplerate=subbands.samplerate)
@@ -267,11 +308,12 @@ class Filter(Signal):
         return Signal(data=subbands.sum(axis=1), samplerate=filter_bank.samplerate)
 
     def filter_bank_center_freqs(self):
+        """ """
         if self.fir:
             raise NotImplementedError('Not implemented for FIR filter banks.')
         freqs = self.frequencies
-        center_freqs = numpy.zeros(self.nfilters)
-        for i in range(self.nfilters):  # for each filter
+        center_freqs = numpy.zeros(self.n_filters)
+        for i in range(self.n_filters):  # for each filter
             idx = numpy.argmax(self.channel(i).data)  # get index of max Gain
             center_freqs[i] = freqs[idx]  # look-up freq of index -> centre_freq for that filter
         return center_freqs
@@ -333,8 +375,8 @@ class Filter(Signal):
 
     def save(self, filename):
         'Save the filter in Numpys .npy format to a file.'
-        fs = numpy.tile(self.samplerate, reps=self.nfilters)
-        fir = numpy.tile(self.fir, reps=self.nfilters)
+        fs = numpy.tile(self.samplerate, reps=self.n_filters)
+        fir = numpy.tile(self.fir, reps=self.n_filters)
         fs = fs[numpy.newaxis, :]
         fir = fir[numpy.newaxis, :]
         to_save = numpy.concatenate((fs, fir, self.data))  # prepend the samplerate as new 'filter'
@@ -358,8 +400,3 @@ class Filter(Signal):
     def _erb2freq(n_erb):
         'Converts human ERBs to Hz, using the formula of Glasberg and Moore.'
         return 24.7 * 9.265 * (numpy.exp(n_erb / 9.265) - 1)
-
-
-if __name__ == '__main__':
-    filt = Filter.band(frequency=15000, kind='hp', samplerate=44100)
-    filt.tf()

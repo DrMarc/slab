@@ -93,7 +93,7 @@ class HRTF:
             self.samplerate = samplerate
             self.data = []
             for idx in range(data.shape[0]):
-                # (ind x taps x ear), 2 x ntaps filter (left right)
+                # (ind x taps x ear), 2 x n_taps filter (left right)
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             self.sources = sources
             self.listener = listener

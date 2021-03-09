@@ -8,7 +8,7 @@ plt.ioff()
 def test_hrtf():
     fig, ax = plt.subplots(3)
     fbank = slab.Filter.cos_filterbank()
-    hrtf = slab.HRTF(fbank, sources=numpy.random.random(fbank.nfilters))
+    hrtf = slab.HRTF(fbank, sources=numpy.random.random(fbank.n_filters))
     hrtf = slab.HRTF("slab/data/mit_kemar_normal_pinna.sofa")
     hrtf.diffuse_field_avg()
     hrtf.diffuse_field_equalization()
