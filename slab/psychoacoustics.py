@@ -43,7 +43,7 @@ class _FigChar:
     """ Adapter class to allow easy switching to input via the current_character attribute of stairs figure.
     Set slab.psychoacoustics.input_method = 'figure' to use. A figure with the name 'stairs' will be opened if it is not
     already present. If used together with the plot method of the Staircase class, input is acquired through the stairs
-    plot.
+    plot. Depending on the operating system, you may have to click once into the figure to give it focus.
     """
 
     import warnings # necessary for matplotlib versions <3.5 to suppress a MatplotlibDeprecationWarning
