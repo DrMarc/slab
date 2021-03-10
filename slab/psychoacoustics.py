@@ -138,14 +138,14 @@ class TrialPresentationOptionsMixin:
         pass
 
     def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
-        """ Present the target and distractor sounds in random order and acquire a response keypress.
-        The subject has to identify at which position the target was played. The result (True if response was correct
+        """ Present the reference and distractor sounds in random order and acquire a response keypress.
+        The subject has to identify at which position the reference was played. The result (True if response was correct
         or False if response was wrong) is stored in the sequence via the `add_response` method.
         Arguments:
             target (instance of slab.Sound): sound that ought to be identified in the trial
             distractors (instance or list of slab.Sound): distractor sound(s)
             key_codes (list of int): ascii codes for the response keys (get code for button '1': ord('1') --> 49)
-                pressing the second button in the list is equivalent to the response "the target was the second sound
+                pressing the second button in the list is equivalent to the response "the reference was the second sound
                 played in this trial". Defaults to the key codes for buttons '1' to '9'
             isi (int or float): inter stimulus interval which is the pause between the end of one sound and the start
             of the next one.
@@ -169,7 +169,7 @@ class TrialPresentationOptionsMixin:
             self.print_trial_info()
 
     def present_tone_trial(self, stimulus, correct_key_idx=0, key_codes=(range(49, 58)), print_info=True):
-        """ Present the target and distractor sounds in random order and acquire a response keypress.
+        """ Present the reference and distractor sounds in random order and acquire a response keypress.
         The result (True if response was correct or False if response was wrong) is stored in the sequence via the
         `add_response` method.
         Arguments:

@@ -326,7 +326,7 @@ class HRTF:
         y = numpy.sin(elevation) * numpy.sin(azimuth)
         eles = self.elevations()
         out = []
-        for ele in eles:  # for each elevation, find the source closest to the target y
+        for ele in eles:  # for each elevation, find the source closest to the reference y
             subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x >= 0))
             cmin = numpy.min(numpy.abs(y[subidx]-cone))
             if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away

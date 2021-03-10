@@ -154,7 +154,7 @@ def main_experiment(subject=None, do_jnd=True, do_interference=True):
     Pre-recorded voice recordings are presented in different simulated rooms (the large stimulus
     set is not included). Just-noticeable differences for changes in room volume and voice
     parameters (glottal pulse rate and vocal tract length) are first measured, then 3-alternative-
-    forced-choice trial are presented with the target in a larger room. Does a simultaneous voice
+    forced-choice trial are presented with the reference in a larger room. Does a simultaneous voice
     change impede the detection of the room change?
 
     This experiment showcases participant data handling, AFC trials, prerecorded stimulus handling, among others.

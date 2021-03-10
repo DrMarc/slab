@@ -34,7 +34,7 @@ try:  # try getting a previously set calibration intensity from file
 except FileNotFoundError:
     _calibration_intensity = 0  #: Difference between rms intensity and measured output intensity in dB
 # TODO: should there be a warning if the setup is not level-calibrated?
-# TODO: it would be useful if we test the signal for clipping
+# TODO: it would be useful if we test the sound for clipping
 
 
 class Sound(Signal):
@@ -135,10 +135,10 @@ class Sound(Signal):
         Arguments:
             frequency (int | float | list): frequency of the tone.  Given a list of length `n_channels`, one
                 element of the list is used as frequency for each channel.
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             phase (int | float | list): phase of the sinusoid, defaults to 0. Given a list of length `n_channels`, one
                 element of the list is used as phase for each channel.
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): the tone generated from the parameters. """
@@ -165,7 +165,7 @@ class Sound(Signal):
         """ Generate a harmonic complex tone composed of pure tones at integer multiples of the fundamental frequency.
         Arguments:
             f0 (int): the fundamental frequency. Harmonics will be generated at integer multiples of this value.
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             amplitude (int | float | list): Amplitude in dB, relative to the full scale (i.e. 0 corresponds to maximum
                 intensity, -30 would be 30 dB softer). Given a single int or float, all harmonics are set to the same
                 amplitude and harmonics up to 1/5th of of the samplerate are generated. Given a list of values,
@@ -175,7 +175,7 @@ class Sound(Signal):
                 length as the one given for the amplitude argument) every element will be used as the phase of one
                 harmonic. Given a string, its value must be schroeder', in which case the harmonics are in
                 Schroeder phase, producing a complex tone with minimal peak-to-peak amplitudes (Schroeder 1970).
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): the harmonic complex generated from the parameters.
@@ -214,11 +214,11 @@ class Sound(Signal):
     def whitenoise(duration=1.0, samplerate=None, n_channels=1, normalise=True):
         """ Generate white noise.
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
-            n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise signal will
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise sound will
                 be generated and they will be uncorrelated.
-            normalise (bool): if True, normalise the signal. # TODO: how is this kind of normalization called ?
+            normalise (bool): if True, normalise the sound. # TODO: how is this kind of normalization called ?
         Returns:
             (slab.Sound): the white noise generated from the parameters.
         Examples:
@@ -236,13 +236,13 @@ class Sound(Signal):
     def powerlawnoise(duration=1.0, alpha=1, samplerate=None, n_channels=1, normalise=True):
         """ Generate a power-law noise with a spectral density per unit of bandwidth scales as 1/(f**alpha).
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             alpha (int) : power law exponent.
             samplerate: output samplerate
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
-            n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise signal will
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise sound will
                 be generated and they will be uncorrelated.
-            normalise (bool): if True, normalise the signal. # TODO: how is this kind of normalization called ?
+            normalise (bool): if True, normalise the sound. # TODO: how is this kind of normalization called ?
         Returns:
             (slab.Sound): the power law noise generated from the parameters.
         Examples:
@@ -293,7 +293,7 @@ class Sound(Signal):
             (slab.Sound): power law noise generated from the parameters with exponent alpha==1.
         """
         return Sound.powerlawnoise(duration, 1.0, samplerate=samplerate,
-                                   nchannels=n_channels, normalise=normalise)
+                                   n_channels=n_channels, normalise=normalise)
 
     @staticmethod
     def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None):
@@ -309,8 +309,8 @@ class Sound(Signal):
             gain (int | float) : multiplicative factor of the repeated additions. Smaller values reduce the
                 temporal regularities in the resulting IRN.
             n_iter (int): number of iterations of additions. Higher values increase pitch saliency.
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
         Returns:
             (slab.Sound): ripple noise that has a perceived pitch at the given frequency.
         """
@@ -332,8 +332,8 @@ class Sound(Signal):
     def click(duration=0.0001, samplerate=None, n_channels=1):
         """Generate a click (a sequence of ones).
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): click generated from the given parameters.
@@ -346,11 +346,11 @@ class Sound(Signal):
     def clicktrain(duration=1.0, frequency=500, clickduration=0.0001, samplerate=None):
         """Generate a series of n clicks (by calling the `click` method) with a perceived pitch at the given frequency.
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             frequency (float | int): the frequency of the signals perceived pitch in Hz.
             clickduration: (float | int): duration of a single click in seconds (given a float) or in
                 samples (given an int). The number of clicks in the train is given by `duration` / `clickduration`.
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
         Returns:
             (slab.Sound): click train generated from the given parameters.
     """
@@ -366,14 +366,14 @@ class Sound(Signal):
 
     @staticmethod
     def chirp(duration=1.0, from_frequency=100, to_frequency=None, samplerate=None, kind='quadratic'):
-        """ Returns a pure tone with in- or decreasing frequency using the function `scipy.signal.chirp`.
+        """ Returns a pure tone with in- or decreasing frequency using the function `scipy.sound.chirp`.
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
-            from_frequency (float | int): the frequency of tone in Hz at the start of the signal.
-            to_frequency (float | int | None): the frequency of tone in Hz at the end of the signal. If None, the
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            from_frequency (float | int): the frequency of tone in Hz at the start of the sound.
+            to_frequency (float | int | None): the frequency of tone in Hz at the end of the sound. If None, the
                 nyquist frequency (`samplerate` / 2) will be used.
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
-            kind (str): determines the type of ramp (see :func:`scipy.signal.chirp` for options).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            kind (str): determines the type of ramp (see :func:`scipy.sound.chirp` for options).
         Returns:
             (slab.Sound): chirp generated from the given parameters.
         """
@@ -394,8 +394,8 @@ class Sound(Signal):
     def silence(duration=1.0, samplerate=None, n_channels=1):
         """ Generate silence (all samples equal zero).
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): silence generated from the given parameters. """
@@ -416,8 +416,8 @@ class Sound(Signal):
             glottal_pulse_time (int | float) : the distance between glottal pulses in
                 milliseconds (determines vocal trakt length).
             formant_multiplier (int | float): multiplier for the pre-set formant frequencies (scales the voice pitch).
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): vowel generated from the given parameters. """
@@ -464,11 +464,11 @@ class Sound(Signal):
         """ Generate noise made of ERB-spaced random-phase pure tones. This noise does not have random amplitude
         variations and is useful for testing CI patients [Oxenham 2014, Trends Hear].
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             low_cutoff (int | float): the lower frequency limit of the noise in Hz
             high_cutoff (int | float): the upper frequency limit of the noise in Hz
             bandwidth (float):  # TODO: what's a concise description of bandwidth?
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
         Returns:
             (slab.Sound): multi tone masker noise, generated from the given parameters.
         Examples:
@@ -497,10 +497,10 @@ class Sound(Signal):
     def erb_noise(duration=1.0, low_cutoff=125, high_cutoff=4000, samplerate=None):
         """ Generate an equally-masking noise (ERB noise) within a given frequency band.
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             low_cutoff (int | float): the lower frequency limit of the noise in Hz
             high_cutoff (int | float): the upper frequency limit of the noise in Hz
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
         Returns:
             (slab.Sound): equally masking noise noise, generated from the given parameters.
         Examples:
@@ -566,7 +566,7 @@ class Sound(Signal):
         """ Adds an on and/or off ramp to the sound.
         Arguments:
             when (str): can take values 'onset', 'offset' or 'both'
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             envelope():  # TODO: what does envelope do?
         Returns:
             (slab.Sound): copy of the sound with the added ramp(s) """
@@ -609,7 +609,7 @@ class Sound(Signal):
             noise2vowel.play() """
         sounds = list(sounds)
         if any([sound.duration < overlap for sound in sounds]):
-            raise ValueError('The overlap can not be longer then the signal.')
+            raise ValueError('The overlap can not be longer then the sound.')
         if len(set([sound.n_channels for sound in sounds])) != 1:
             raise ValueError('Cannot crossfade sounds with unequal numbers of channels.')
         if len(set([sound.samplerate for sound in sounds])) != 1:
@@ -646,7 +646,7 @@ class Sound(Signal):
             pulse_frequency (int): the frequency of pulses in the modified sound in Hz.
             duty (float): ratio between the pulse duration and period, values must be between 1 (always high) and
                 0 (always low). When using values close to 0, the `rf_time` has to be low as well, otherwise the
-                ramps would be longer than the signal.
+                ramps would be longer than the sound.
             rf_time (float): rise/fall time of the pulse in milliseconds
         Returns:
             slab.Sound: pulsed copy of the instance. """
@@ -726,9 +726,9 @@ class Sound(Signal):
     def record(duration=1.0, samplerate=None):
         """ Record from inbuilt microphone. Uses SoundCard module if installed [recommended], otherwise uses SoX.
         Arguments:
-            duration (float | int): duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
                 Note that duration has to be in seconds when using SoX
-            samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
                 Note that most sound cards can only record at 44100 Hz samplerate.
         Returns:
             (slab.Sound): 
@@ -932,7 +932,7 @@ class Sound(Signal):
         sig_rfft = numpy.zeros((len(freqs), self.n_channels))
         for chan in range(self.n_channels):
             sig_rfft[:, chan] = numpy.abs(numpy.fft.rfft(self.data[:, chan], axis=0))
-        # scale by the number of points so that the magnitude does not depend on the length of the signal
+        # scale by the number of points so that the magnitude does not depend on the length of the sound
         pxx = sig_rfft / len(freqs)
         pxx = pxx ** 2  # square to get the power
         if low_cutoff is not None or high_cutoff is not None:
@@ -975,7 +975,7 @@ class Sound(Signal):
             feature (str): the kind of feature to compute, options are:
                 "centroid" which is the center of mass of the short-term spectrum,
                 "fwhm" which is the width of a Gaussian of the same variance as the spectrum around the centroid,
-                "flux" which is a measure of how quickly the power spectrum of a signal is changing, by
+                "flux" which is a measure of how quickly the power spectrum of a sound is changing, by
                 comparing the power spectrum for one frame against the power spectrum from the previous frame.
                 Returns the root-mean-square over the entire stimulus of the change in power spectrum between
                 adjacent time windows, measured as Euclidean distance.
@@ -984,14 +984,14 @@ class Sound(Signal):
                 (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" I
                 EEE Signal Processing Letters, 2004, Vol. 11.).
                 "rolloff", which is the frequency at which the spectrum rolls off and is typically used to find a
-                suitable low-cutoff frequency that retains most of the signal power (given as fraction in `rolloff`)
+                suitable low-cutoff frequency that retains most of the sound power (given as fraction in `rolloff`)
             mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms"
-                (root means square), "average" or None. If None, a new signal with the feature value at each sample
+                (root means square), "average" or None. If None, a new sound with the feature value at each sample
                 is generated.
             frame_duration (None):  # TODO: add parameter description
             rolloff (float):  # TODO: add parameter description
         Returns:
-            (list | slab.Signal): The mean feature for each channel in a list or a new signal with the feature value
+            (list | slab.Signal): The mean feature for each channel in a list or a new sound with the feature value
                 at each sample. """
         if not frame_duration:
             if mean is not None:
@@ -1038,7 +1038,7 @@ class Sound(Signal):
     def vocode(self, bandwidth=1/3):
         """ Returns a noise vocoded version of the sound by computing the envelope in different frequency subbands,
         filling these envelopes with noise, and collapsing the subbands into one sound. This removes most spectral
-        information but retains temporal information in a speech signal.
+        information but retains temporal information in a speech sound.
         Arguments:
             bandwidth (float): width of the subbands in octaves.
         Returns:
@@ -1051,7 +1051,7 @@ class Sound(Signal):
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         noise = Sound.whitenoise(duration=self.n_samples,
                                  samplerate=self.samplerate)  # make white noise
-        subbands_noise = fbank.apply(noise)  # divide into same subbands as signal
+        subbands_noise = fbank.apply(noise)  # divide into same subbands as sound
         subbands_noise *= envs  # apply envelopes
         subbands_noise.level = subbands.level
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
@@ -1061,7 +1061,7 @@ class Sound(Signal):
         and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB.
         Numerically identical to the peak-to-average power ratio.
         Returns:
-            (float | numpy.nan):  the crest factor or NaN if there are no peaks in the signal."""
+            (float | numpy.nan):  the crest factor or NaN if there are no peaks in the sound."""
         jwd = self.data - numpy.mean(self.data)
         if numpy.any(jwd):  # if not all elements are zero
             crest = numpy.abs(jwd).max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
@@ -1073,7 +1073,7 @@ class Sound(Signal):
         quick intensity increases the sound has. These onset-like features make the
         sound easier to localize via envelope ITD.
         Returns:
-            (float): the histograms centroid or 0 if there are no onsets in the signal."""
+            (float): the histograms centroid or 0 if there are no onsets in the sound."""
         env = self.envelope(kind='dB')  # get envelope
         diffs = numpy.diff(env.data, axis=0) * self.samplerate  # compute db change per sec
         diffs[diffs < 0] = 0  # keep positive changes (onsets)
@@ -1133,7 +1133,7 @@ class Sound(Signal):
 
 def calibrate(intensity=None, make_permanent=False):
     """ Calibrate the presentation intensity of a setup. The calibration intensity determines the relationship
-    between the amplitude of a signal and it's level.
+    between the amplitude of a sound and it's level.
     Arguments:
         intensity (int | float | None): the difference between the actual intensity of the output and the intensity indicated
             by the sound's `level` attribute (For example: If `level` is 80 dB and you record 60 dB, the value of

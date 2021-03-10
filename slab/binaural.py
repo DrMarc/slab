@@ -8,10 +8,10 @@ from slab.hrtf import HRTF
 
 class Binaural(Sound):
     """
-    Class for working with binaural sounds, including ITD and ILD manipulation. Binaural inherits all signal
+    Class for working with binaural sounds, including ITD and ILD manipulation. Binaural inherits all sound
     generation functions  from the Sound class, but returns binaural signals. Recasting an object of class sound or
-    signal with 1 or 3+ channels calls Sound.copychannel to return a binaural sound with two channels identical
-    to the first channel of the original signal.
+    sound with 1 or 3+ channels calls Sound.copychannel to return a binaural sound with two channels identical
+    to the first channel of the original sound.
     Arguments:
         data (slab.Signal | numpy.ndarray | list | str): see documentation of slab.Sound for details. the `data` must
             have either one or two channels. If it has one, that channel is duplicated
@@ -128,7 +128,7 @@ class Binaural(Sound):
             return self._apply_ild(dB)
 
     def _apply_ild(self, dB):
-        new = copy.deepcopy(self)  # so that we can return a new signal
+        new = copy.deepcopy(self)  # so that we can return a new sound
         level = numpy.mean(self.level)
         new_levels = (level + dB/2, level - dB/2)
         new.level = new_levels
@@ -259,7 +259,7 @@ class Binaural(Sound):
             raise ValueError('No frontal direction [0,0] found in HRTF.')
         _, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, show=False)  # get low-res version of HRTF spectrum
         resampled_signal = copy.deepcopy(self)
-        # if signal and HRTF has different samplerates, resample the signal, apply the HRTF, and resample back:
+        # if sound and HRTF has different samplerates, resample the sound, apply the HRTF, and resample back:
         resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate)  # resample to hrtf rate
         filt = Filter(10**(h/20), fir=False, samplerate=hrtf.data[0].samplerate)
         filtered_signal = filt.apply(resampled_signal)

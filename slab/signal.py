@@ -13,19 +13,19 @@ class Signal:
     """ Base class for Signal data (from which the Sound and Filter class inherit).
     Provides arithmetic operations, slicing, and conversion between samples and times.
     Arguments:
-        data (numpy.ndarray | slab.Signal | list): samples of the signal. If it is an array, the first dimension
+        data (numpy.ndarray | slab.Signal | list): samples of the sound. If it is an array, the first dimension
             should represent the number of samples and the second one the number of channels. If it's an object,
             it must have a .data attribute containing an array. If it's a list, the elements can be arrays or objects.
-            The output will be a multi-channel signal with each channel corresponding to an element of the list.
-        samplerate (int | None): the samplerate of the signal. If None, use the default samplerate.
+            The output will be a multi-channel sound with each channel corresponding to an element of the list.
+        samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
     Attributes:
-        .duration: duration of the signal in seconds
-        .n_samples: duration of the signal in samples
-        .n_channels: number of channels in the signal
+        .duration: duration of the sound in seconds
+        .n_samples: duration of the sound in samples
+        .n_channels: number of channels in the sound
         .times: list with the time point of each sample
     Examples:
         import slab, numpy
-        sig = slab.Signal(numpy.ones([10,2]),samplerate=10)  # create a signal
+        sig = slab.Signal(numpy.ones([10,2]),samplerate=10)  # create a sound
         sig[:5] = 0  # set the first 5 samples to 0
         sig[:,1]  # select the data from the second channel
         sig2 = sig * 2  # multiply each sample by 2
@@ -137,7 +137,7 @@ class Signal:
         seconds (floating point numbers) in the class.
         Arguments:
             ctime (int | float | numpy | ndarray): the time(s) to convert to samples.
-            samplerate (int): the samplerate of the signal.
+            samplerate (int): the samplerate of the sound.
         Returns:
              (int | numpy.ndarray): the time(s) in samples. """
         if isinstance(ctime, (int, numpy.int64)):  # single int is treated as samples
@@ -196,7 +196,7 @@ class Signal:
     def resize(self, duration):
         """ Change the duration by padding with zeros or cutting the data.
         Arguments:
-            duration (float | int): new duration of the signal in seconds (given a float) or in samples (given an int).
+            duration (float | int): new duration of the sound in seconds (given a float) or in samples (given an int).
         Returns:
             (slab.Signal): a new instance of the same class with the specified duration. """
         duration = Signal.in_samples(duration, self.samplerate)
@@ -211,13 +211,13 @@ class Signal:
         return resized
 
     def resample(self, samplerate):
-        """ Resample the signal.
+        """ Resample the sound.
         Arguments:
-            samplerate (int): the samplerate of the resampled signal.
+            samplerate (int): the samplerate of the resampled sound.
         Returns:
             (slab.Signal): a new instance of the same class with the specified samplerate. """
         if scipy is False:
-            raise ImportError('Resampling requires scipy.signal.')
+            raise ImportError('Resampling requires scipy.sound.')
         if self.samplerate == samplerate:
             return self
         else:
@@ -232,27 +232,27 @@ class Signal:
             return out
 
     def envelope(self, apply_envelope=None, times=None, kind='gain'):
-        """ Either apply an envelope to a signal or, if no `apply_envelope` was specified, compute the Hilbert envelope
-        of the signal.
+        """ Either apply an envelope to a sound or, if no `apply_envelope` was specified, compute the Hilbert envelope
+        of the sound.
         Arguments:
-            apply_envelope (None | numpy.ndarray): data to multiply with the signal. the envelope is linearly
-                interpolated to be the same length as the signal. If None, compute the signal's Hilbert envelope
-            times (None | numpy.ndarray | list): If None a vector linearly spaced from 0 to the duration of the signal
-                is used. If time points (in seconds, clamped to the the signal duration) for the amplitude values
+            apply_envelope (None | numpy.ndarray): data to multiply with the sound. the envelope is linearly
+                interpolated to be the same length as the sound. If None, compute the sound's Hilbert envelope
+            times (None | numpy.ndarray | list): If None a vector linearly spaced from 0 to the duration of the sound
+                is used. If time points (in seconds, clamped to the the sound duration) for the amplitude values
                 in envelope are supplied, then the interpolation is piecewise linear between pairs of time and envelope
                  valued (must have same length).
             kind (str): determines the unit of the envelope value
         Returns:
-            (slab.Signal): Either a copy of the instance with the specified envelope applied or the signal's
+            (slab.Signal): Either a copy of the instance with the specified envelope applied or the sound's
                 Hilbert envelope. """
         if apply_envelope is None:  # get the signals envelope
             return self._get_envelope(kind)
-        else:  # apply the envelope to the signal
+        else:  # apply the envelope to the sound
             return self._apply_envelope(apply_envelope, times, kind)
 
     def _get_envelope(self, kind):
         if scipy is False:
-            raise ImportError('Calculating envelopes requires scipy.signal.')
+            raise ImportError('Calculating envelopes requires scipy.sound.')
         else:
             envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))
             # 50Hz lowpass filter to remove fine-structure
@@ -286,25 +286,25 @@ class Signal:
         """ Add a delay to one channel.
         Arguments:
             duration (int | float | array-like): duration of the delay in seconds (given a float) or samples (given
-                an int). Given an array with the same length as the signal, each sample is delayed by the
+                an int). Given an array with the same length as the sound, each sample is delayed by the
                 corresponding number of seconds. This option is used by in `slab.Binaural.itd_ramp`.
             channel (int): The index of the channel to add the delay to
             filter_length (int): Must be and even number. determines the accuracy of the reconstruction when
-                using fractional sample delays. Defaults to 2048, or the signal length for shorter signals.
+                using fractional sample delays. Defaults to 2048, or the sound length for shorter signals.
         """
         new = copy.deepcopy(self)
         if channel >= self.n_channels:
-            raise ValueError('Channel must be smaller than number of channels in signal!')
+            raise ValueError('Channel must be smaller than number of channels in sound!')
         if filter_length % 2:
             raise ValueError('Filter_length must be even!')
-        if self.n_samples < filter_length:  # reduce the filter_length to the signal length of short signals
+        if self.n_samples < filter_length:  # reduce the filter_length to the sound length of short signals
             filter_length = self.n_samples - 1 if self.n_samples % 2 else self.n_samples  # make even
         center_tap = int(filter_length / 2)
         t = numpy.array(range(filter_length))
         if isinstance(duration, (int, float, numpy.int64, numpy.float64)):  # just a constant delay
             duration = Signal.in_samples(duration, self.samplerate)
             if duration > self.n_samples:
-                raise ValueError("Duration of the delay cant be greater longer then the signal!")
+                raise ValueError("Duration of the delay cant be greater longer then the sound!")
             x = t - duration + 1
             window = 0.54 - 0.46 * numpy.cos(2 * numpy.pi * (x+0.5) /
                                              filter_length)  # Hamming window
@@ -316,7 +316,7 @@ class Signal:
             new.data[:, channel] = numpy.convolve(self.data[:, channel], tap_weight, mode='same')
         else:  # dynamic delay
             if len(duration) != self.n_samples:
-                ValueError('Duration shorter or longer than signal!')
+                ValueError('Duration shorter or longer than sound!')
             duration *= self.samplerate  # assuming vector in seconds, convert to samples
             padding = numpy.zeros(center_tap)
             # for zero-padded convolution (potential edge artifacts!)
@@ -332,6 +332,6 @@ class Signal:
                     tap_weight = window * numpy.sinc(x-center_tap)
                     sig_portion = sig[i:i+filter_length]
                     # sig_portion and tap_weight have the same length, so the valid part of the convolution is just
-                    # one sample, which gets written into the signal at the current index
+                    # one sample, which gets written into the sound at the current index
                     new.data[i, channel] = numpy.convolve(sig_portion, tap_weight, mode='valid')
         return new
