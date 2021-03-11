@@ -874,7 +874,7 @@ class ResultsFile:
     def read_file(filename, tag=None):
         """ Read a results file and return the content.
         Arguments:
-            filename (str):
+            filename (str | pathlib.Path):
             tag (None | str):
         Returns:
             (list | dict): The content of the file. If tag is None, the whole file is returned, else only the

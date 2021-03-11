@@ -69,7 +69,7 @@ def test_deviants():
         assert count_deviants == sequence.trials.count(0) == int(n_trials*deviant_frequency)
 
 
-def test_staircase():
+def test_staircase():  # this seems to block
     stairs1 = slab.Staircase(start_val=10, n_reversals=4)
     stairs2 = slab.Staircase(start_val=8, n_reversals=6)
     stairs = zip_longest(stairs1, stairs2)

@@ -43,7 +43,7 @@ def test_at_azimuth():
         for azimuth in numpy.linspace(-90, 90, 40):
             lateral = sound.at_azimuth(azimuth)
             itd = slab.Sound.in_samples(slab.Binaural.azimuth_to_itd(azimuth), 8000)
-            assert numpy.abs(itd - lateral.get_itd()) <= 1
+            assert numpy.abs(itd - lateral.itd()) <= 1
             ild = slab.Binaural.azimuth_to_ild(azimuth)
             numpy.testing.assert_almost_equal(ild, numpy.diff(lateral.level)*-1, decimal=0)
 
