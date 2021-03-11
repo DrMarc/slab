@@ -130,7 +130,7 @@ class Binaural(Sound):
     def _apply_ild(self, dB):
         new = copy.deepcopy(self)  # so that we can return a new sound
         level = numpy.mean(self.level)
-        new_levels = (level + dB/2, level - dB/2)
+        new_levels = (level - dB/2, level + dB/2)
         new.level = new_levels
         return new
 
