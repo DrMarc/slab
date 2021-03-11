@@ -75,7 +75,25 @@ def test_ild_ramp():
 
 
 def test_externalize():
-    sound = slab.Binaural.whitenoise()
-    external = sound.externalize()
+    for i in range(10):
+        hrtf = slab.HRTF(slab.DATAPATH+'mit_kemar_normal_pinna.sofa')
+        idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[0][0]
+        sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
+        filtered = hrtf.data[idx_frontal].apply(sound)
+        external = sound.externalize()
+        assert numpy.abs(filtered.data-external.data).sum() < numpy.abs(filtered.data-sound.data).sum()
+        assert numpy.abs(sound.level - external.level).max() < 0.1
 
+
+def test_interaural_level_spectrum():
+    ils = slab.Binaural._make_level_spectrum_filter()
+    sound = slab.Binaural.whitenoise(samplerate=int(ils[0, 0]))
+    azimuths = ils[0, 1:]
+    for i, azi in enumerate(azimuths):
+        level_differences = ils[1:, i+1]
+        lateral = sound.interaural_level_spectrum(azi)
+        fbank = slab.Filter.cos_filterbank(samplerate=sound.samplerate, pass_bands=True)
+        subbands_left = fbank.apply(lateral.left)
+        subbands_right = fbank.apply(lateral.right)
+        assert -0.5 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 0.5
 
