@@ -1,6 +1,9 @@
 import itertools
+import pathlib
+import tempfile
 import slab
 import numpy
+tmpdir = pathlib.Path(tempfile.gettempdir())
 
 def test_low_high_pass():
     for i in range(10):
@@ -109,3 +112,23 @@ def test_equalization():
         Z_filtered, _ = filtered.spectrum(show=False)
         # The difference between spectra should be smaller after equalization
         assert numpy.abs(Z_sound-Z_filtered).sum() / numpy.abs(Z_sound-Z_equalized).sum() > 2
+
+
+def test_load_save():
+    for kind, freq in zip(["lp", "hp", "bs", "bp"], [
+        numpy.random.uniform(100, 2000),
+        numpy.random.uniform(100, 2000),
+        (0+numpy.random.uniform(100, 2000), 2000+numpy.random.uniform(100, 2000)),
+        (0 + numpy.random.uniform(100, 2000), 2000 + numpy.random.uniform(100, 2000))
+    ]):
+        for fir in (True, False):
+            filt = slab.Filter.band(kind=kind, frequency=freq, fir=fir)
+            filt.save(tmpdir/"filt.npy")
+            loaded = slab.Filter.load(tmpdir/"filt.npy")
+            numpy.testing.assert_equal(filt.data, loaded.data)
+            numpy.testing.assert_equal(filt.times, loaded.times)
+            assert filt.fir == loaded.fir
+            assert filt.n_frequencies == loaded.n_frequencies
+            assert filt.n_taps == loaded.n_taps
+
+
