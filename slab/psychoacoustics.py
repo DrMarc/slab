@@ -39,6 +39,31 @@ class _Buttonbox:
             return int(input_key)
 
 
+class _FigChar:
+    """ Adapter class to allow easy switching to input via the current_character attribute of stairs figure.
+    Set slab.psychoacoustics.input_method = 'figure' to use. A figure with the name 'stairs' will be opened if it is not
+    already present. If used together with the plot method of the Staircase class, input is acquired through the stairs
+    plot. Depending on the operating system, you may have to click once into the figure to give it focus.
+    """
+
+    import warnings # necessary for matplotlib versions <3.5 to suppress a MatplotlibDeprecationWarning
+    import matplotlib.cbook
+    warnings.filterwarnings("ignore", category=matplotlib.cbook.MatplotlibDeprecationWarning)
+
+    @staticmethod
+    def getch():
+        global key
+        def _on_key(event):
+            global key
+            key = event.key
+        fig = plt.figure('stairs')
+        cid = fig.canvas.mpl_connect('key_press_event', _on_key)
+        key = None # reset
+        while not key:
+            plt.pause(0.01) # wait for 10ms, but keep figure event loop running
+        return ord(key)
+
+
 @contextmanager
 def key():
     """ Wrapper for curses module to simplify getting a single keypress from the terminal (default) or a buttonbox.
@@ -51,6 +76,7 @@ def key():
         if curses is None:
             raise ImportError(
                 'You need curses to use the keypress class (pip install curses (or windows-curses))')
+        curses.filter()
         stdscr = curses.initscr()
         curses.noecho()
         curses.cbreak()
@@ -58,8 +84,12 @@ def key():
         curses.nocbreak()
         curses.echo()
         curses.endwin()
-    else:
+    elif input_method == 'buttonbox':
         yield _Buttonbox
+    elif input_method == 'figure':
+        yield _FigChar
+    else:
+        raise ValueError('Unknown input method!')
 
 
 class LoadSaveMixin:

@@ -258,6 +258,7 @@ class Binaural(Sound):
         if not idx_frontal.size: # idx_frontal is empty
             raise ValueError('No frontal direction [0,0] found in HRTF.')
         _, h = hrtf.data[idx_frontal].tf(channels=0, nbins=12, show=False)  # get low-res version of HRTF spectrum
+        h[0] = 1 # avoids low-freq attenuation in KEMAR HRTF (unproblematic for other HRTFs)
         resampled_signal = copy.deepcopy(self)
         # if sound and HRTF has different samplerates, resample the sound, apply the HRTF, and resample back:
         resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate)  # resample to hrtf rate
@@ -268,11 +269,16 @@ class Binaural(Sound):
 
     @staticmethod
     def _make_level_spectrum_filter(hrtf=None):
-        """ Generate a level spectrum from the horizontal recordings in a HRTF. The default
-        :meth:`slab.Filter.cos_filterbank` is used and the same filter bank has to be used when applying
-        the level spectrum to a sound. """
+        '''
+        Generate a level spectrum from the horizontal recordings in a :class:`slab.HRTF` file. The KEMAR HRTF is used
+        by default. The computation might take a few seconds. For the KEMAR HRTF only, the computed level spectrum is
+        saved as slab.DATAPATH/KEMAR_interaural_level_spectrum.npy to save computation time when called again. If you
+        supply a different HRTF object, you must saving it manually with numpy.save() if you need it again and want to
+        avoid recomputing it.
+        The default :meth:`slab.Filter.cos_filterbank` is used and the same filter bank has to be used when applying
+        the level spectrum to a sound.
+        '''
         from slab import DATAPATH
-        save_standard = False
         if not hrtf:
             try:
                 ils = numpy.load(DATAPATH + 'KEMAR_interaural_level_spectrum.npy')
@@ -286,14 +292,15 @@ class Binaural(Sound):
         # at this point, we could just get the transfer function of each filter with hrtf.data[idx[i]].tf(),
         # but it may be better to get the spectral left/right differences with ERB-spaced frequency resolution:
         azi = hrtf.sources[idx, 0]
-        # 270<azi<360 -> azi-360 to get negative angles the left
+        # 270<azi<360 -> azi-360 to get negative angles on the left
         azi[azi >= 270] = azi[azi >= 270]-360
         sort = numpy.argsort(azi)
         fbank = Filter.cos_filterbank(samplerate=hrtf.samplerate)
         freqs = fbank.filter_bank_center_freqs()
         noise = Sound.pinknoise(samplerate=hrtf.samplerate)
         ils = numpy.zeros((len(freqs) + 1, len(idx) + 1))
-        ils[:, 0] = numpy.concatenate(([0], freqs))  # first row are the frequencies
+        ils[0, 0] = hrtf.samplerate  # save samplerate in ils filter
+        ils[1:, 0] = freqs  # first row are the frequencies
         for n, i in enumerate(idx[sort]):  # put the level differences in order of increasing angle
             noise_filt = Binaural(hrtf.data[i].apply(noise))
             noise_bank_left = fbank.apply(noise_filt.left)
@@ -316,20 +323,24 @@ class Binaural(Sound):
         '''
         if not level_spectrum_filter:
             ils = Binaural._make_level_spectrum_filter()
-        ils = ils[:, 1:]  # remove the frequency values (not necessary here)
-        azis = ils[0, :]  # get vector of azimuths in ils filter bank
-        ils = ils[1:, :]  # the rest is the filter
+        ils_samplerate = ils[0, 0]
+        original_samplerate = self.samplerate
+        azis = ils[0, 1:]  # get vector of azimuths in ils filter bank
+        ils = ils[1:, 1:]  # get the level differences
         # interpolate levels at azimuth
-        levels = [numpy.interp(azimuth, azis, ils[:, i]) for i in range(ils.shape[1])]
-        fbank = Filter.cos_filterbank(length=self.n_samples, samplerate=self.samplerate)
-        subbands_left = fbank.apply(self.left)
-        subbands_right = fbank.apply(self.right)
+        levels = numpy.array([numpy.interp(azimuth, azis, ils[i, :]) for i in range(ils.shape[0])])
+        # resample the signal to the rate of the HRTF from which the filter was computed:
+        resampled = self.resample(samplerate=ils_samplerate)
+        fbank = Filter.cos_filterbank(length=resampled.nsamples, samplerate=ils_samplerate)
+        subbands_left = fbank.apply(resampled.left)
+        subbands_right = fbank.apply(resampled.right)
         # change subband levels:
         subbands_left.level = subbands_left.level + levels / 2
         subbands_right.level = subbands_right.level - levels / 2
         out_left = Filter.collapse_subbands(subbands_left, filter_bank=fbank)
         out_right = Filter.collapse_subbands(subbands_right, filter_bank=fbank)
-        return Binaural([out_left, out_right])
+        out = Binaural([out_left, out_right])
+        return out.resample(samplerate=original_samplerate)
 
     @staticmethod
     def whitenoise(duration=1.0, kind='diotic', samplerate=None, normalise=True):
