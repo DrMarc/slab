@@ -42,10 +42,10 @@ def test_read_write():
 
 
 def test_tone():
-    for freq in range(50, 200000, 100):
-        sound = slab.Sound.tone(duration=numpy.random.randint(1000, 5000), frequency=freq)
+    for freq in range(50, 20000, 100):
+        sound = slab.Sound.tone(duration=numpy.random.randint(1000, 5000), frequency=freq, samplerate=44100)
         Z, freqs = sound.spectrum(show=False)
-        numpy.testing.assert_almost_equal(freqs[numpy.where(Z == Z.max())[0][0]], freq, decimal=0)
+        assert numpy.abs(freqs[numpy.where(Z == Z.max())[0][0]] - freq) < 50
     for freq in range(50, 5000, 100):
         harmonic = slab.Sound.harmoniccomplex(duration=numpy.random.randint(1000, 5000), f0=freq, samplerate=44100)
         Z, freqs = harmonic.spectrum(show=False)
