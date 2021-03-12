@@ -26,15 +26,15 @@ from slab.filter import Filter
 
 
 class HRTF:
-    """
-    Class for reading and manipulating head-related transfer functions. This is essentially a collection of two Filter
-    objects (hrtf.left and hrtf.right) #TODO: really?
-    with attributes and functions to manage them.
+    """ Class for reading and manipulating head-related transfer functions with attributes and functions to manage them.
     Arguments:
         data (str | Filter | numpy.ndarray): Typically, this is the path to a file in the .sofa format.
             The file is then loaded and the data of each source for which the transfer function was recorded is stored
             as a Filter object in the `data` attribute. Instead of a file name, the data can be passed directly as
-            Filter or numpy array. However, this should be avoided if possible!
+            Filter or numpy array (not recommended). Given a `Filter`, every filter channel in the instance is taken as
+            a sound source. Given an 3-dimensional array, the first dimension represents the sources, the second the
+            number of taps per filter and the last the number of filter channels per filter (should be always 2 for
+            left and right ear).
         samplerate (None | float): rate at which the data was acquired, only relevant when not loading from .sofa file
         sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
         listener (None | list | dict): position of the listener, only relevant when not loading from .sofa file
@@ -52,8 +52,7 @@ class HRTF:
         hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
         sourceidx = hrtf.cone_sources(20)
         hrtf.plot_sources(sourceidx)
-        hrtf.plot_tf(sourceidx,ear='left')
-    """
+        hrtf.plot_tf(sourceidx,ear='left') """
     # instance properties
     n_sources = property(fget=lambda self: len(self.sources),
                          doc='The number of sources in the HRTF.')
@@ -89,6 +88,8 @@ class HRTF:
             self.sources = sources
             if listener is None:
                 self.listener = [0, 0, 0]
+            else:
+                self.listener = listener
         else:
             self.samplerate = samplerate
             self.data = []
@@ -96,7 +97,10 @@ class HRTF:
                 # (ind x taps x ear), 2 x n_taps filter (left right)
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             self.sources = sources
-            self.listener = listener
+            if listener is None:
+                self.listener = [0, 0, 0]
+            else:
+                self.listener = listener
 
     def __repr__(self):
         return f'{type(self)} (\n{repr(self.data)} \n{repr(self.samplerate)})'
@@ -125,7 +129,7 @@ class HRTF:
         """ Returns the sampling rate of the recordings. If the sampling rate is not given in Hz, the function assumes
         it is given in kHz and multiplies by 1000 to convert to Hz.
         Arguments:
-            f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
+            f (h5netcdf.core.File): data as returned by the `_sofa_load` method.
         Returns:
             (float): the sampling rate in Hz.
         """
