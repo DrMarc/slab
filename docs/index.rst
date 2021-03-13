@@ -17,10 +17,10 @@ Installation
 ------------
 
 Install the current stable release from the python package index with pip:
-``pip install soundlab``
+``pip install slab``
 
 or get the latest development version directly from GitHub (if you have `git <https://git-scm.com>`_) by running:
-``pip git+https://github.com/DrMarc/soundlab.git``
+``pip git+https://github.com/DrMarc/slab.git``
 
 **The current version is** |version|.
 
