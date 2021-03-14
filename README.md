@@ -143,7 +143,7 @@ The releases use [semantic versioning](https://semver.org): major.minor.patch, w
 Documentation
 -------------
 
-[ReadTheDocs](https://soundlab.readthedocs.io/)
+[ReadTheDocs](https://slab.readthedocs.io/)
 
 Contributing to this project
 ----------------------------
