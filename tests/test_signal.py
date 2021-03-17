@@ -32,7 +32,7 @@ def test_samplerate():
     dur_samples = numpy.random.randint(10, 100000, 100)
     for i in range(100):
         samplerate = numpy.random.randint(1, 100000)
-        assert numpy.abs(slab.Signal.in_samples(dur_seconds[i], samplerate) - int(dur_seconds[i]*samplerate))
+        assert numpy.abs(slab.Signal.in_samples(dur_seconds[i], samplerate) - int(dur_seconds[i]*samplerate)) <=1
         assert slab.Signal.in_samples(dur_samples[i], samplerate) == dur_samples[i]
 
 

@@ -99,10 +99,9 @@ def test_vsi():
     numpy.testing.assert_almost_equal(vsi, 0.82, decimal=2)
     vsis = []
     for i in range(10):
-        n_sources = numpy.random.randint(10)
-        sources = numpy.random.choice(range(len(hrtf.sources)), n_sources)
+        sources = hrtf.cone_sources(cone=numpy.random.uniform(-180, 180))
         vsis.append(hrtf.vsi(sources=sources))
-    assert all(numpy.logical_and(0.8 < numpy.array(vsis), numpy.array(vsis) < 1.1))
+    assert all(numpy.logical_and(0.4 < numpy.array(vsis), numpy.array(vsis) < 1.1))
 
 
 def test_plot_sources():

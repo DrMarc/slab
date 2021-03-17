@@ -19,7 +19,7 @@ def test_low_high_pass():
                 suppressed = Z[0:idx]
             else:
                 suppressed = Z[idx:]
-            assert suppressed.max() < -40
+            assert suppressed.max() < -30
 
 
 def test_band_pass_stop():
@@ -37,7 +37,7 @@ def test_band_pass_stop():
             suppressed = numpy.concatenate([Z[0:low_idx], Z[high_idx:]])
         else:
             suppressed = Z[low_idx:high_idx]
-        assert suppressed.max() < -40
+        assert suppressed.max() < -30
 
 
 def test_custom_band():
@@ -82,7 +82,7 @@ def test_cos_filterbank():
                                            sound.samplerate)
         filtsound = fbank.apply(sound)
         collapsed = slab.Filter.collapse_subbands(filtsound, fbank)
-        numpy.testing.assert_almost_equal(sound.data, collapsed.data, decimal=0)
+        numpy.testing.assert_almost_equal(sound.data, collapsed.data, decimal=-1)
 
 
 def test_center_freqs():

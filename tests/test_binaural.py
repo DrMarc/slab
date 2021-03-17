@@ -45,7 +45,7 @@ def test_at_azimuth():
             itd = slab.Sound.in_samples(slab.Binaural.azimuth_to_itd(azimuth), 8000)
             assert numpy.abs(itd - lateral.itd()) <= 1
             ild = slab.Binaural.azimuth_to_ild(azimuth)
-            numpy.testing.assert_almost_equal(ild, numpy.diff(lateral.level)*-1, decimal=0)
+            numpy.testing.assert_almost_equal(ild, numpy.diff(lateral.level), decimal=0)
 
 
 def test_itd_ramp():
@@ -82,7 +82,7 @@ def test_externalize():
         filtered = hrtf.data[idx_frontal].apply(sound)
         external = sound.externalize()
         assert numpy.abs(filtered.data-external.data).sum() < numpy.abs(filtered.data-sound.data).sum()
-        assert numpy.abs(sound.level - external.level).max() < 0.1
+        assert numpy.abs(sound.level - external.level).max() < 0.15
 
 
 def test_interaural_level_spectrum():

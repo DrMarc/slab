@@ -46,7 +46,7 @@ def test_tone():
         sound = slab.Sound.tone(duration=numpy.random.randint(1000, 5000), frequency=freq, samplerate=44100)
         Z, freqs = sound.spectrum(show=False)
         assert numpy.abs(freqs[numpy.where(Z == Z.max())[0][0]] - freq) < 50
-    for freq in range(50, 5000, 100):
+    for freq in range(500, 5000, 100):
         harmonic = slab.Sound.harmoniccomplex(duration=numpy.random.randint(1000, 5000), f0=freq, samplerate=44100)
         Z, freqs = harmonic.spectrum(show=False)
         peaks = scipy.signal.find_peaks(Z.flatten())[0]
@@ -93,6 +93,6 @@ def test_frames():
         for window, center in zip(windows, window_centers):
             center1 = window[frame_dur][0]
             center2 = sound[numpy.where(sound.times == center)[0][0]][0]
-            numpy.testing.assert_almost_equal(center1, center2, decimal=3)
+            numpy.testing.assert_almost_equal(center1, center2, decimal=2)
 
 

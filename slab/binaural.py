@@ -230,7 +230,7 @@ class Binaural(Sound):
         azis = ils[0, 1:]  # get vector of azimuths in ils filter bank
         ils = ils[1:, 1:]  # the rest is the filter
         levels = [numpy.interp(azimuth, azis, ils[i, :]) for i in range(ils.shape[0])]  # interpolate levels at azimuth
-        return numpy.interp(frequency, freqs, levels)   # interpolate level difference at frequency
+        return numpy.interp(frequency, freqs, levels)*-1   # interpolate level difference at frequency
 
     def at_azimuth(self, azimuth=0):
         """ Convenience function for adding ITD and ILD corresponding to the given `azimuth` to the sound source.

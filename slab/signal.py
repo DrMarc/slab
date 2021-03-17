@@ -139,8 +139,6 @@ class Signal:
             samplerate (int): the samplerate of the sound.
         Returns:
              (int | numpy.ndarray): the time(s) in samples. """
-        if ctime < 0:
-            raise ValueError("Duration can't be negative!")
         out = None
         if isinstance(ctime, (int, numpy.int64)):  # single int is treated as samples
             out = ctime
