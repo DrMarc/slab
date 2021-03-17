@@ -371,34 +371,33 @@ class Binaural(Sound):
         return out.resample(samplerate=original_samplerate)
 
     @staticmethod
-    def whitenoise(duration=1.0, kind='diotic', samplerate=None, normalise=True):
+    def whitenoise(duration=1.0, kind='diotic', samplerate=None):
         """ Generate binaural white noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.whitenoise`. """
-        out = Binaural(Sound.whitenoise(duration=duration, n_channels=2,
-                                        samplerate=samplerate, normalise=normalise))
+        out = Binaural(Sound.whitenoise(duration=duration, n_channels=2, samplerate=samplerate))
         if kind == 'diotic':
             out.left = out.right
         return out
 
     @staticmethod
-    def pinknoise(duration=1.0, kind='diotic', samplerate=None, normalise=True):
+    def pinknoise(duration=1.0, kind='diotic', samplerate=None):
         """ Generate binaural pink noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.pinknoise`. """
         return Binaural.powerlawnoise(
-                duration=duration, alpha=1, samplerate=samplerate, normalise=normalise)
+                duration=duration, alpha=1, samplerate=samplerate)
 
     @staticmethod
-    def powerlawnoise(duration=1.0, alpha=1, kind='diotic', samplerate=None, normalise=True):
+    def powerlawnoise(duration=1.0, alpha=1, kind='diotic', samplerate=None):
         """ Generate binaural power law noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.powerlawnoise`. """
         if kind == 'dichotic':
             out = Binaural(Sound.powerlawnoise(
-                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=2, normalise=normalise))
+                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=2))
             out.left = Sound.powerlawnoise(
-                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=1, normalise=normalise)
+                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=1)
         elif kind == 'diotic':
             out = Binaural(Sound.powerlawnoise(
-                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=2, normalise=normalise))
+                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=2))
             out.left = out.right
         else:
             raise ValueError("kind must be 'dichotic' or 'diotic'.")

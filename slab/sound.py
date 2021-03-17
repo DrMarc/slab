@@ -272,7 +272,7 @@ class Sound(Signal):
         return Sound(x, samplerate)
 
     @staticmethod
-    def pinknoise(duration=1.0, samplerate=None, n_channels=1, normalise=True):
+    def pinknoise(duration=1.0, samplerate=None, n_channels=1):
         """ Generate pink noise (power law noise with exponent alpha==1. This is simply a wrapper for calling
         the `powerlawnoise` method.
         Arguments:
@@ -280,8 +280,7 @@ class Sound(Signal):
         Returns:
             (slab.Sound): power law noise generated from the parameters with exponent alpha==1.
         """
-        return Sound.powerlawnoise(duration, 1.0, samplerate=samplerate,
-                                   n_channels=n_channels, normalise=normalise)
+        return Sound.powerlawnoise(duration, 1.0, samplerate=samplerate, n_channels=n_channels)
 
     @staticmethod
     def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None):
