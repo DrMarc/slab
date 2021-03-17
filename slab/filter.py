@@ -214,7 +214,7 @@ class Filter(Signal):
                 raise ValueError("Channels must be integers!")
         elif channels == 'all':
             channels = list(range(self.n_filters))  # now we have a list of filter indices to process
-        if not n_bins:
+        if n_bins is None:
             n_bins = self.data.shape[0]
         if self.fir:
             if scipy is False:

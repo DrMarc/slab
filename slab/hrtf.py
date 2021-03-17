@@ -222,17 +222,23 @@ class HRTF:
         elif ear == 'right':
             chan = 1
         elif ear == 'both':
-            chan = [0, 1]
+            if axis is not None and not isinstance(axis, (list, numpy.ndarray)):
+                raise ValueError("Axis must be a list of length two when plotting left and right ear!")
+            elif axis is None:
+                axis = [None, None]
             if kind == 'image':
-                if axis is not None and not isinstance(axis, list):
-                    raise ValueError("Axis must be a list of length two when plotting left and right ear!")
-                elif axis is None:
-                    axis = [None, None]
                 fig1 = self.plot_tf(sourceidx, ear='left', xlim=xlim, axis=axis[0], show=show,
                                     linesep=linesep, n_bins=n_bins, kind='image', xscale=xscale)
                 fig2 = self.plot_tf(sourceidx, ear='right', xlim=xlim, axis=axis[1], show=show,
                                     linesep=linesep, n_bins=n_bins, kind='image', xscale=xscale)
-                return fig1, fig2
+            elif kind == "waterfall":
+                fig1 = self.plot_tf(sourceidx, ear='left', xlim=xlim, axis=axis[0], show=show,
+                                    linesep=linesep, n_bins=n_bins, kind='waterfall', xscale=xscale)
+                fig2 = self.plot_tf(sourceidx, ear='right', xlim=xlim, axis=axis[1], show=show,
+                                    linesep=linesep, n_bins=n_bins, kind='waterfall', xscale=xscale)
+            else:
+                raise ValueError("'Kind' must be either 'waterfall' or 'image'!")
+            return fig1, fig2
         else:
             raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
         if not axis:
@@ -258,7 +264,7 @@ class HRTF:
                       s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
         elif kind == 'image':
             if not n_bins:
-                img = numpy.zeros((self.data[sourceidx[0]].ntaps, len(sourceidx)))
+                img = numpy.zeros((self.data[sourceidx[0]].n_taps, len(sourceidx)))
             else:
                 img = numpy.zeros((n_bins, len(sourceidx)))
             elevations = self.sources[sourceidx, 1]
@@ -293,18 +299,18 @@ class HRTF:
         dfa = []
         for source in range(self.n_sources):
             filt = self.data[source]
-            for chan in range(filt.nchannels):
+            for chan in range(filt.n_channels):
                 _, h = filt.tf(channels=chan, show=False)
                 dfa.append(h)
         dfa = 10 ** (numpy.mean(dfa, axis=0)/20)  # average and convert from dB to gain
         return Filter(dfa, fir=False, samplerate=self.samplerate)
 
     def diffuse_field_equalization(self):
-        """ Returns a diffuse field equalized version of the HRTF.
-        The resulting filters have zero mean and are of type FFR.
+        """ Equalize the HRTF by dividing each filter by the diffuse field average. The resulting filters have a mean
+        close to 0 and they are Fourier filters.
         Returns:
-            (HRTF): diffuse field equalized version of the HRTF."""
-
+            (HRTF): diffuse field equalized version of the HRTF. """
+        # TODO: the filter mean is not 0 after equalization
         dfa = self.diffuse_field_avg()
         # invert the diffuse field average
         dfa.data = 1/dfa.data
@@ -318,10 +324,19 @@ class HRTF:
         return dtfs
 
     def cone_sources(self, cone=0):
-        """
-        Return indices of sources along a vertical off-axis sphere slice (`cone`). The default returns sources along the
-        frontal median plane. Note: This currently only works as intended for HRTFs recorded in horizontal rings.
-        """
+        """ Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
+        slice. All sources that lie on the cone have the same interaural level and time difference.
+        Note: This currently only works as intended for HRTFs recorded in horizontal rings.
+        Arguments:
+            cone (int | float): azimuth of the cone center in degree.
+        Returns:
+            (list): elements of the list are the indices of sound sources on the frontal half of the cone.
+        Examples:
+            from slab import DATAPATH, HRTF
+            hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
+            sourceidx = hrtf.cone_sources(20)  # get the source indices
+            print(hrtf.sources[sourceidx])  # print the coordinates of the source indices
+            hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot """
         cone = numpy.sin(numpy.deg2rad(cone))
         azimuth = numpy.deg2rad(self.sources[:, 0])
         elevation = numpy.deg2rad(self.sources[:, 1]-90)
@@ -340,44 +355,53 @@ class HRTF:
         return sorted(out, key=lambda x: self.sources[x, 1])
 
     def elevation_sources(self, elevation=0):
-        '''
-        Return indices of sources along a horizontal sphere slice at the given `elevation`.
-        The default returns sources along the fronal horizon.
-        '''
+        """ Get the indices of sources along a horizontal sphere slice at the given `elevation`.
+        Arguments:
+            elevation (int | float): The elevation of the sources in degree. The default returns sources along
+                the frontal horizon.
+        Returns:
+            (list): indices of the sound sources. If the hrtf does not contain the specified `elevation` an empty
+                list is returned. """
         idx = numpy.where((self.sources[:, 1] == elevation) & (
             (self.sources[:, 0] <= 90) | (self.sources[:, 0] >= 270)))
         return idx[0]
 
-    def tfs_from_sources(self, source_list, n_bins=96):
-        '''
-        Extract transfer functions with `n_bins` from a list of source indices (`source_list`, generated for instance
-        with :meth:`slab.HRTF.cone_sources`) as `(n_bins, n_sources)` numpy array.
-        '''
-        n_sources = len(source_list)
+    def tfs_from_sources(self, sources, n_bins=96):
+        """Get the transfer function from sources in the hrtf.
+        Arguments:
+            sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method), for
+                which the transfer function is extracted.
+            n_bins (int): The number of frequency bins for each transfer function
+        Returns:
+            (numpy.ndarray): 2-dimensional array where the first dimension represents the frequency bins and the
+                second dimension represents the sources. """
+        n_sources = len(sources)
         tfs = numpy.zeros((n_bins, n_sources))
-        for idx, source in enumerate(source_list):
-            _, jwd = self.data[source].tf(channels=0, nbins=96, show=False)
+        for idx, source in enumerate(sources):
+            _, jwd = self.data[source].tf(channels=0, n_bins=n_bins, show=False)
             tfs[:, idx] = jwd.flatten()
         return tfs
 
     def vsi(self, sources=None, equalize=True):
-        '''
-        Compute a measure of the dissimilarity of spectral profiles at different elevations ("vertical spectral information"), which relates to behavioral localization accuracy in the vertical dimension (Trapeau and Schönwiesner, 2016).
-
-        If `equalize` is True, the method applies a `diffuse_field_equalization()` (set to False if the hrtf object is already diffuse-field equalized), then computes the average of the correlation coefficients between all combinations of DTFs on the vertical midline (obtained from `cone_sources()`) or any other set of source indices supplied as `sources`. VSI measures the average dissimilarity of DTFs as 1 minus the average of the coefficients. A DTF set of identical transfer functions for all elevations will result in a VSI of 0, whereas highly different transfer functions will result in a high VSI (empirical maximum is ~1.07, KEMAR has a VSI of 0.82). To obtain the VSI measure from the paper, sources should on the vertical midline and the hrtf should be diffuse-field equalized.
-
-        Attributes:
-            sources: indices of sources for which to compute the VSI (default is the vertical midline)
-            equalize: if True, apply diffuse field equalization, saves a bit of computing time when set to false
-                      and the hrtf is already equalized.
-        '''
+        """ Compute  the "vertical spectral information" which is a measure of the dissimilarity of spectral profiles
+         at different elevations. The vsi relates to behavioral localization accuracy in the vertical dimension
+         (Trapeau and Schönwiesner, 2016). It is computed as one minus the average of the correlation coefficients
+         between all combinations of directional transfer functions of the specified `sources`. A set of identical
+         transfer functions results in a vsi of 0 whereas highly different transfer functions will result in a high VSI
+        (empirical maximum is ~1.07, KEMAR has a VSI of 0.82).
+        Arguments:
+            sources (None | list): indices of sources for which to compute the VSI. If None use the vertical midline.
+            equalize (bool): If True, apply the `diffuse_field_equalization` method (set to False if the hrtf object
+                is already diffuse-field equalized).
+        Returns:
+            (float): the vertical spectral information between the specified `sources`. """
         if sources is None:
             sources = self.cone_sources()
         if equalize:
             dtf = self.diffuse_field_equalization()
-            tfs = dtf.tfs_from_sources(source_list=sources)
+            tfs = dtf.tfs_from_sources(sources=sources)
         else:
-            tfs = self.tfs_from_sources(source_list=sources)
+            tfs = self.tfs_from_sources(sources=sources)
         sum_corr = 0
         n = 0
         for i in range(len(sources)):
@@ -386,7 +410,7 @@ class HRTF:
                 n += 1
         return 1 - sum_corr / n
 
-    def plot_sources(self, idx=False, show=True, axis=None):
+    def plot_sources(self, idx=None, show=True, axis=None):
         """
         Plot source locations in 3D.
         Args:
@@ -414,7 +438,7 @@ class HRTF:
         if self.listener:  # TODO: view dir is inverted!
             x_, y_, z_, u, v, w = zip(*[self.listener['viewvec'], self.listener['upvec']])
             ax.quiver(x_, y_, z_, u, v, w, length=0.5, colors=['r', 'b', 'r', 'r', 'b', 'b'])
-        if idx:
+        if idx is not None:
             ax.scatter(x[idx], y[idx], z[idx], c='r', marker='o')
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
