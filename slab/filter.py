@@ -32,7 +32,6 @@ class Filter(Signal):
 
     Examples. """
     # instance properties
-    # TODO: this might be confusing because the filter still has the attributes n_channels and n_samples
     n_filters = property(fget=lambda self: self.n_channels, doc='The number of filters in the bank.')
     n_taps = property(fget=lambda self: self.n_samples if self.fir else None, doc='The number of filter taps.')
     n_frequencies = property(fget=lambda self: self.n_samples if not self.fir else None,

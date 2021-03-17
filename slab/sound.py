@@ -33,8 +33,6 @@ try:  # try getting a previously set calibration intensity from file
     _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
 except FileNotFoundError:
     _calibration_intensity = 0  #: Difference between rms intensity and measured output intensity in dB
-# TODO: should there be a warning if the setup is not level-calibrated?
-# TODO: it would be useful if we test the sound for clipping
 
 
 class Sound(Signal):
@@ -211,14 +209,13 @@ class Sound(Signal):
         return out
 
     @staticmethod
-    def whitenoise(duration=1.0, samplerate=None, n_channels=1, normalise=True):
+    def whitenoise(duration=1.0, samplerate=None, n_channels=1):
         """ Generate white noise.
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise sound will
                 be generated and they will be uncorrelated.
-            normalise (bool): if True, normalise the sound. # TODO: how is this kind of normalization called ?
         Returns:
             (slab.Sound): the white noise generated from the parameters.
         Examples:
@@ -226,14 +223,10 @@ class Sound(Signal):
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
         x = numpy.random.randn(duration, n_channels)
-        if normalise:
-            for i in range(n_channels):
-                x[:, i] = ((x[:, i] - numpy.amin(x[:, i])) /
-                           (numpy.amax(x[:, i]) - numpy.amin(x[:, i])) - 0.5) * 2
         return Sound(x, samplerate)
 
     @staticmethod
-    def powerlawnoise(duration=1.0, alpha=1, samplerate=None, n_channels=1, normalise=True):
+    def powerlawnoise(duration=1.0, alpha=1, samplerate=None, n_channels=1):
         """ Generate a power-law noise with a spectral density per unit of bandwidth scales as 1/(f**alpha).
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
@@ -242,7 +235,6 @@ class Sound(Signal):
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise sound will
                 be generated and they will be uncorrelated.
-            normalise (bool): if True, normalise the sound. # TODO: how is this kind of normalization called ?
         Returns:
             (slab.Sound): the power law noise generated from the parameters.
         Examples:
@@ -277,10 +269,6 @@ class Sound(Signal):
                               numpy.flipud(numpy.conj(a2))))
         x = numpy.real(numpy.fft.ifft(d.flatten()))
         x.shape = (n, n_channels)
-        if normalise:
-            for i in range(n_channels):
-                x[:, i] = ((x[:, i] - numpy.amin(x[:, i])) /
-                           (numpy.amax(x[:, i]) - numpy.amin(x[:, i])) - 0.5) * 2
         return Sound(x, samplerate)
 
     @staticmethod
@@ -467,7 +455,7 @@ class Sound(Signal):
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             low_cutoff (int | float): the lower frequency limit of the noise in Hz
             high_cutoff (int | float): the upper frequency limit of the noise in Hz
-            bandwidth (float):  # TODO: what's a concise description of bandwidth?
+            bandwidth (float):  the signals bandwidth in octaves.
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
         Returns:
             (slab.Sound): multi tone masker noise, generated from the given parameters.
@@ -554,12 +542,11 @@ class Sound(Signal):
                 'Writing wav files requires SoundFile (pip install SoundFile).')
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
-        if self.samplerate % 1:
-            self = self.resample(int(self.samplerate))
-            print('Sampling rate rounded to nearest integer for writing!')
         if normalise:
             soundfile.write(filename, self.data / numpy.amax(numpy.abs(self.data)), self.samplerate, format=fmt)
         else:
+            if self.data.max(initial=None) > 1.0:
+                print("There are data points in the signal that will be clipped. Normalization is recommended!")
             soundfile.write(filename, self.data, self.samplerate, format=fmt)
 
     def ramp(self, when='both', duration=0.01, envelope=None):
@@ -567,7 +554,7 @@ class Sound(Signal):
         Arguments:
             when (str): can take values 'onset', 'offset' or 'both'
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
-            envelope():  # TODO: what does envelope do?
+            envelope(callable):  function to compute the samples of the ramp, defaults to a sinusoid
         Returns:
             (slab.Sound): copy of the sound with the added ramp(s) """
         sound = copy.deepcopy(self)
@@ -615,7 +602,7 @@ class Sound(Signal):
         if len(set([sound.samplerate for sound in sounds])) != 1:
             raise ValueError('Cannot crossfade sounds with unequal samplerates.')
         overlap = Sound.in_samples(overlap, samplerate=sounds[0].samplerate)
-        n_total = sum([sound.n_samples for sound in sounds]) - overlap * (len(sounds)-1)
+        n_total = sum([sound.n_samples for sound in sounds]) - overlap * (len(sounds) - 1)
         # give each sound an offset and onset ramp and add silence to them. The length of the silence added to the
         # beginning and end of the sound is equal to the length of the sounds that come before or after minus overlaps
         n_previous = 0
@@ -625,7 +612,7 @@ class Sound(Signal):
                 sound = sound.ramp(duration=overlap, when="offset")  # for the first sound only add offset ramp
                 sounds[i] = sound.resize(n_total)
             else:
-                if i == len(sounds)-1:
+                if i == len(sounds) - 1:
                     sound = sound.ramp(duration=overlap, when="onset")  # for the first sound only add onset ramp
                 else:
                     sound = sound.ramp(duration=overlap, when="both")  # for all other sounds add both
@@ -731,8 +718,7 @@ class Sound(Signal):
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
                 Note that most sound cards can only record at 44100 Hz samplerate.
         Returns:
-            (slab.Sound): 
-            """
+            (slab.Sound): The recorded sound. """
         if soundcard is not False:
             samplerate = Sound.get_samplerate(samplerate)
             duration = Sound.in_samples(duration, samplerate)
@@ -867,7 +853,8 @@ class Sound(Signal):
             dB_max = power.max()
             vmin = dB_max - dyn_range
             cmap = matplotlib.cm.get_cmap('Greys')
-            extent = (times.min(), times.max(), freqs.min(), upper_frequency or freqs.max())
+            extent = (times.min(initial=0), times.max(initial=0), freqs.min(initial=0),
+                      upper_frequency or freqs.max(initial=0))
             if axis is None:
                 _, axis = plt.subplots()
             axis.imshow(power, origin='lower', aspect='auto',
@@ -878,11 +865,11 @@ class Sound(Signal):
         else:
             return freqs, times, power
 
-    def cochleagram(self, bandwidth=1/5, show=True, axis=None, **kwargs):
+    def cochleagram(self, bandwidth=1 / 5, show=True, axis=None, **kwargs):
         """ Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
         and applying a cube-root compression to the resulting envelopes.
         Arguments:
-            bandwidth (float): filter bandwidth in octaves. # TODO: concise explanation of what bandwidth does
+            bandwidth (float): filter bandwidth in octaves.
             show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
                 passed, no plot will be created
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
@@ -1035,7 +1022,7 @@ class Sound(Signal):
             out_all = Signal(data=out_all, samplerate=self.samplerate)  # cast as Signal
         return out_all
 
-    def vocode(self, bandwidth=1/3):
+    def vocode(self, bandwidth=1 / 3):
         """ Returns a noise vocoded version of the sound by computing the envelope in different frequency subbands,
         filling these envelopes with noise, and collapsing the subbands into one sound. This removes most spectral
         information but retains temporal information in a speech sound.

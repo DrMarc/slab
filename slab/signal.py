@@ -31,8 +31,8 @@ class Signal:
         sig2 = sig * 2  # multiply each sample by 2
         sig_inv = -sig  # invert the phase """
     # instance properties
-    n_samples = property(fget=lambda self: self.data.shape[0], fset=lambda self, l: self.resize(l),
-                         doc='The number of samples in the Signal. Setting calls resize.')
+    n_samples = property(fget=lambda self: self.data.shape[0],
+                         doc='The number of samples in the Signal.')
     duration = property(fget=lambda self: self.data.shape[0] / self.samplerate,
                         doc='The length of the Signal in seconds.')
     times = property(fget=lambda self: numpy.arange(self.data.shape[0], dtype=float) / self.samplerate,
@@ -132,7 +132,6 @@ class Signal:
     # static methods (belong to the class, but can be called without creating an instance)
     @staticmethod
     def in_samples(ctime, samplerate):
-        # TODO: check if duration is positive
         """ Converts time values in seconds to samples. This is used to enable input in either samples (integers) or
         seconds (floating point numbers) in the class.
         Arguments:
@@ -140,6 +139,9 @@ class Signal:
             samplerate (int): the samplerate of the sound.
         Returns:
              (int | numpy.ndarray): the time(s) in samples. """
+        if ctime < 0:
+            raise ValueError("Duration can't be negative!")
+        out = None
         if isinstance(ctime, (int, numpy.int64)):  # single int is treated as samples
             out = ctime
         elif isinstance(ctime, (float, numpy.float64)):
@@ -162,7 +164,6 @@ class Signal:
 
     @staticmethod
     def get_samplerate(samplerate):
-        # TODO: maybe we should restrict samplerates to (positive) integers?
         """ Return samplerate if supplied, otherwise return the default samplerate. """
         if samplerate is None:
             return _default_samplerate
