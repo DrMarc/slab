@@ -92,10 +92,10 @@ def test_center_freqs():
         bandwidth1 = numpy.random.uniform(0.1, 0.7)
         pass_bands = False
         center_freqs1, bandwidth2, _ = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth1, pass_bands)
-        assert numpy.abs(bandwidth1 - bandwidth2) < 0.2
-        fbank = slab.Filter.cos_filterbank(1000, bandwidth1, low_cutoff, high_cutoff, pass_bands, 44100)
+        assert numpy.abs(bandwidth1 - bandwidth2) < 0.3
+        fbank = slab.Filter.cos_filterbank(5000, bandwidth1, low_cutoff, high_cutoff, pass_bands, 44100)
         center_freqs2 = fbank.filter_bank_center_freqs()
-        assert numpy.abs(slab.Filter._erb2freq(center_freqs1) - center_freqs2).max() < 40
+        assert numpy.abs(slab.Filter._erb2freq(center_freqs1[1:]) - center_freqs2[1:]).max() < 40
         assert numpy.abs(center_freqs1 - slab.Filter._freq2erb(center_freqs2)).max() < 1
 
 
