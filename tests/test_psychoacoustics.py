@@ -73,12 +73,17 @@ def test_staircase():  # this seems to block
     stairs1 = slab.Staircase(start_val=10, n_reversals=4)
     stairs2 = slab.Staircase(start_val=8, n_reversals=6)
     stairs = zip_longest(stairs1, stairs2)
+    count = 0
     for stim1, stim2 in stairs:
-        if stim1:
+        count += 1
+        if count > 100:
+            break
+        print(count)
+        if stim1 is not None:
             r1 = stairs1.simulate_response(4)
             stairs1.add_response(r1)
             # stairs1.print_trial_info()
-        if stim2:
+        if stim2 is not None:
             r2 = stairs2.simulate_response(2)
             stairs2.add_response(r2)
             # stairs2.print_trial_info()
