@@ -93,6 +93,6 @@ def test_frames():
         for window, center in zip(windows, window_centers):
             center1 = window[frame_dur][0]
             center2 = sound[numpy.where(sound.times == center)[0][0]][0]
-            numpy.testing.assert_almost_equal(center1, center2, decimal=2)
+            numpy.testing.assert_almost_equal(center1, center2, decimal=1)
 
 

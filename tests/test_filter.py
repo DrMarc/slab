@@ -19,7 +19,7 @@ def test_low_high_pass():
                 suppressed = Z[0:idx]
             else:
                 suppressed = Z[idx:]
-            assert suppressed.max() < -30
+            assert suppressed.max() < -25
 
 
 def test_band_pass_stop():
