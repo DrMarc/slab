@@ -68,7 +68,7 @@ def test_resample():
         assert numpy.abs(sig_resampled.n_samples - sig.duration*samplerate) < 1
 
 
-def test_envelope(self):
+def test_envelope():
     sig = slab.Sound.tone()
     _ = sig.envelope(kind="gain")
     _ = sig.envelope(kind="dB")
