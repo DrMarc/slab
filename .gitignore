@@ -35,6 +35,9 @@
 /slab/data/cipic/
 /slab/data/.DS_Store
 
+# interaural level spectrum from KEMAR HRTF
+/slab/data/KEMAR_interaural_level_spectrum.npy
+
 # loudness calibration
 /slab/data/calibration_intensity.npy
 

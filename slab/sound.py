@@ -6,25 +6,21 @@ import copy
 
 try:
     import soundfile
-    have_soundfile = True
 except ImportError:
-    have_soundfile = False
+    soundfile = False
 try:
     import soundcard
-    have_soundcard = True
 except ImportError:
-    have_soundcard = False
+    soundcard = False
 try:
     import scipy.signal
-    have_scipy = True
 except ImportError:
-    have_scipy = False
+    scipy = False
 try:
     import matplotlib
     import matplotlib.pyplot as plt
-    have_pyplot = True
 except ImportError:
-    have_pyplot = False
+    matplotlib, plt = False, False
 
 from slab.signal import Signal
 from slab.filter import Filter
@@ -40,79 +36,69 @@ except FileNotFoundError:
 
 
 class Sound(Signal):
-    '''
-    Class for working with sounds, including loading/saving, manipulating and playing.
-
+    """ Class for working with sounds, including loading/saving, manipulating and playing. Inherits from the base class
+    `slab.Signal`. Instances of Sound can be created by either loading a file, passing an array of values and a
+    samplerate or by using one of the sound-generating methods of the class (all of the @staticmethods).
+    Arguments:
+        data ( str | pathlib.Path | numpy.ndarray | slab.Signal | list): Given a string or Path pointing to the
+            .wav file, the `data` and `samplerate` will be loaded from the file. Given and array, and instance of
+            a `Signal` or a list, the data will be passed to the super class (see documentation of slab.Signal).
+        samplerate(int | float): must only be defined when creating a `Sound` from an array.
+    Attributes:
+        .data: the data-array of the Sound object which has the shape `n_samples` x `n_channels`.
+        .n_channels: the number of channels in `data`.
+        .n_samples: the number of samples in `data`. Equals `duration` * `samplerate`.
+        .duration: the duration of the sound in seconds. Equals `n_samples` / `samplerate`.
     Examples:
-
-    >>> import slab
-    >>> import numpy
-    >>> print(slab.Sound(numpy.ones([10,2]),samplerate=10))
-    <class 'slab.sound.Sound'> duration 1.0, samples 10, channels 2, samplerate 10
-    >>> print(slab.Sound(numpy.ones([10,2]),samplerate=10).channel(0))
-    <class 'slab.sound.Sound'> duration 1.0, samples 10, channels 1, samplerate 10
-
-    **Properties**
-
-    >>> sig = slab.Sound.tone()
-    >>> sig.level = 80
-    >>> sig.level
-    80.0
-
-    **Generating sounds**
-
-    All sound generating methods can be used with durations arguments in samples (int) or seconds (float). The number of channels can be set with the keyword argument nchannels.
-
-    **Plotting**
-
-    >>> vowel = slab.Sound.vowel(vowel='a', duration=.5, samplerate=8000)
-    >>> vowel.ramp()
-    >>> vowel.spectrogram(dyn_range = 50)
-    >>> vowel.spectrum(low=100, high=4000, log_power=True)
-    >>> vowel.waveform(start=0, end=.1)
-
-    '''
-    # instance properties
+        import slab, numpy
+        # generate a Sound object from an array of random floats:
+        sig = slab.Sound(data=numpy.random.randn(10000), samplerate=41000)
+        # generate a Sound object using one of the modules methods, like `tone`:
+        sig = slab.Sound.tone()  # generate a tone
+        sig.level = 80  # set the level to 80 dB
+        sig = sig.ramp(duration=0.05)  # add a 50 millisecond ramp
+        sig.spectrum(log_power=True)  # plot the spectrum
+        sig. waveform()  # plot the time course """
 
     def _get_level(self):
-        '''
-        Returns level in dB SPL (RMS) assuming array is in Pascals.
-        In the case of multi-channel sounds, returns an array of levels
-        for each channel, otherwise returns a float.
-        '''
-        if self.nchannels == 1:
-            rms_value = numpy.sqrt(numpy.mean(numpy.square(self.data-numpy.mean(self.data))))
+        """ Calculate level in dB SPL (RMS) assuming array is in Pascals.
+        Returns:
+            (float | numpy.ndarray): In the case of multi-channel sounds, returns an array of levels (one per channel),
+                otherwise returns a float. """
+        if self.n_channels == 1:
+            rms_value = numpy.sqrt(numpy.mean(numpy.square(self.data - numpy.mean(self.data))))
             if rms_value == 0:
-                rms_dB = 0
+                rms_decibel = 0
             else:
-                rms_dB = 20.0*numpy.log10(rms_value/2e-5)
-            return rms_dB + _calibration_intensity
-        chans = self.channels()
-        levels = [c.level for c in chans]
+                rms_decibel = 20.0 * numpy.log10(rms_value / 2e-5)
+            return rms_decibel + _calibration_intensity
+        channels = self.channels()
+        levels = [c.level for c in channels]
         return numpy.array(levels)
 
     def _set_level(self, level):
-        '''
-        Sets level in dB SPL (RMS) assuming array is in Pascals. `level`
-        should be a value in dB, or a tuple of levels, one for each channel.
-        '''
-        rms_dB = self._get_level()
-        if self.nchannels > 1:
+        """ Sets level in dB SPL (RMS) assuming array is in Pascals.
+        Arguments:
+            level (float | int | numpy.ndarray): the level in dB. Given a single float or int, all channels will be
+                set to this level.
+                should be a value in dB, or an array of levels, one for each channel. """
+        rms_decibel = self._get_level()
+        if self.n_channels > 1:
             level = numpy.array(level)
             if level.size == 1:
-                level = level.repeat(self.nchannels)
-            level = numpy.reshape(level, (1, self.nchannels))
-            rms_dB = numpy.reshape(rms_dB, (1, self.nchannels))
-        gain = 10**((level-rms_dB)/20.)
+                level = level.repeat(self.n_channels)
+            level = numpy.reshape(level, (1, self.n_channels))
+            rms_decibel = numpy.reshape(rms_decibel, (1, self.n_channels))
+        gain = 10 ** ((level - rms_decibel) / 20.)
         self.data *= gain
 
-    level = property(fget=_get_level, fset=_set_level, doc='''
+    level = property(fget=_get_level, fset=_set_level, doc="""
     Can be used to get or set the rms level of a sound, which should be in dB.
     For single channel sounds a value in dB is used, for multiple channel
     sounds a value in dB can be used for setting the level (all channels
     will be set to the same level), or a list/tuple/array of levels. Use
     :meth:`slab.Sound.calibrate` to make the computed level reflect output intensity.
-    ''')
+    """)
 
     def __init__(self, data, samplerate=None):
         if isinstance(data, pathlib.Path):  # Sound initialization from a file name (pathlib object)
@@ -130,202 +116,236 @@ class Sound(Signal):
     # static methods (creating sounds)
     @staticmethod
     def read(filename):
-        '''
-        Load the file given by filename (.wav) and returns a Sound object.
-        '''
-        if not have_soundfile:
+        """ Load a wav file and create an instance of `Sound`.
+        Arguments:
+            filename (str): the full path to a (.wav) file.
+        Returns:
+            (slab.Sound): the sound generated with the `data` and `samplerate` from the file. """
+        if soundfile is False:
             raise ImportError(
                 'Reading wav files requires SoundFile (pip install git+https://github.com/bastibe/SoundFile.git')
         data, samplerate = soundfile.read(filename)
         return Sound(data, samplerate=samplerate)
 
     @staticmethod
-    def tone(frequency=500, duration=1., phase=0, samplerate=None, nchannels=1):
-        '''
-        Returns a pure tone at frequency for duration, using the default
-        samplerate or the given one.
-
+    def tone(frequency=500, duration=1., phase=0, samplerate=None, n_channels=1):
+        """ Generate a pure tone.
         Arguments:
-            frequency/phase: if single values, multiple channels can be specified with the `nchannels` argument.
-                If sequences, one frequency or phase is used for each channel.
-        '''
+            frequency (int | float | list): frequency of the tone.  Given a list of length `n_channels`, one
+                element of the list is used as frequency for each channel.
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            phase (int | float | list): phase of the sinusoid, defaults to 0. Given a list of length `n_channels`, one
+                element of the list is used as phase for each channel.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one.
+        Returns:
+            (slab.Sound): the tone generated from the parameters. """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
         frequency = numpy.array(frequency)
         phase = numpy.array(phase)
-        if frequency.size > nchannels and nchannels == 1:
-            nchannels = frequency.size
-        if phase.size > nchannels and nchannels == 1:
-            nchannels = phase.size
-        if frequency.size == nchannels:
-            frequency.shape = (1, nchannels)
-        if phase.size == nchannels:
-            phase.shape = (1, nchannels)
-        t = numpy.arange(0, duration, 1)/samplerate
+        if frequency.size > n_channels == 1:
+            n_channels = frequency.size
+        if phase.size > n_channels == 1:
+            n_channels = phase.size
+        if frequency.size == n_channels:
+            frequency.shape = (1, n_channels)
+        if phase.size == n_channels:
+            phase.shape = (1, n_channels)
+        t = numpy.arange(0, duration, 1) / samplerate
         t.shape = (t.size, 1)  # ensures C-order
-        x = numpy.sin(phase + 2*numpy.pi * frequency * numpy.tile(t, (1, nchannels)))
+        x = numpy.sin(phase + 2 * numpy.pi * frequency * numpy.tile(t, (1, n_channels)))
         return Sound(x, samplerate)
 
     @staticmethod
-    def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, nchannels=1):
-        '''
-        Returns a harmonic complex composed of pure tones at integer multiples of the fundamental frequency `f0`.
-
+    def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, n_channels=1):
+        # TODO: in tone() the phase argument refers to the channels, here it refers to the harmonics --> rename?
+        """ Generate a harmonic complex tone composed of pure tones at integer multiples of the fundamental frequency.
         Arguments:
-            amplitude/phase: can be a single value or a sequence. In the former case the value is set for all harmonics,
-                and harmonics up to 1/5th of the sampling frequency are generated. In the latter case each harmonic
-                parameter is set separately, and the number of harmonics generated corresponds to the length of the
-                sequence. Amplitudes are relateve to full scale (i.e. 0 corresponds to maximum intensity, -30 would be
-                30 dB softer).
-            phase: can have a special non-numerical value, the string 'schroeder', in which case the harmonics are in
-                Schoeder phase, producing a complex tone with minimal peak-to-peak amplitudes (Schroeder 1970).
+            f0 (int): the fundamental frequency. Harmonics will be generated at integer multiples of this value.
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            amplitude (int | float | list): Amplitude in dB, relative to the full scale (i.e. 0 corresponds to maximum
+                intensity, -30 would be 30 dB softer). Given a single int or float, all harmonics are set to the same
+                amplitude and harmonics up to 1/5th of of the samplerate are generated. Given a list of values,
+                the number of harmonics generated is equal to the length of the list with each element of the list
+                setting the amplitude for one harmonic.
+            phase (int | float | string | list): phase of the sinusoid, defaults to 0. Given a list (with the same
+                length as the one given for the amplitude argument) every element will be used as the phase of one
+                harmonic. Given a string, its value must be schroeder', in which case the harmonics are in
+                Schroeder phase, producing a complex tone with minimal peak-to-peak amplitudes (Schroeder 1970).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one.
+        Returns:
+            (slab.Sound): the harmonic complex generated from the parameters.
+        Examples:
+            sig = slab.Sound.harmoniccomplex(f0=200, amplitude=[0,-10,-20,-30])  # generate the harmonic complex tone
+            _ = sig.spectrum()  # plot it's spectrum """
 
-        >>> sig = Sound.harmoniccomplex(f0=200, amplitude=[0,-10,-20,-30])
-        >>> _ = sig.spectrum()
-        '''
         samplerate = Sound.get_samplerate(samplerate)
         phases = numpy.array(phase).flatten()
         amplitudes = numpy.array(amplitude).flatten()
         if len(phases) > 1 or len(amplitudes) > 1:
             if (len(phases) > 1 and len(amplitudes) > 1) and (len(phases) != len(amplitudes)):
                 raise ValueError('Please specify the same number of phases and amplitudes')
-            nharmonics = max(len(phases), len(amplitudes))
+            n_harmonics = max(len(phases), len(amplitudes))
         else:
-            nharmonics = int(numpy.floor(samplerate/(5*f0)))
+            n_harmonics = int(numpy.floor(samplerate / (5 * f0)))
         if len(phases) == 1:
-            phases = numpy.tile(phase, nharmonics)
+            phases = numpy.tile(phase, n_harmonics)
         if len(amplitudes) == 1:
-            amplitudes = numpy.tile(amplitude, nharmonics)
-        freqs = numpy.linspace(f0, nharmonics * f0, nharmonics, endpoint=True)
+            amplitudes = numpy.tile(amplitude, n_harmonics)
+        freqs = numpy.linspace(f0, n_harmonics * f0, n_harmonics, endpoint=True)
         if isinstance(phase, str) and phase == 'schroeder':
-            n = numpy.linspace(1, nharmonics, nharmonics, endpoint=True)
-            phases = numpy.pi * n * (n + 1) / nharmonics
-        out = Sound.tone(f0, duration, phase=phases[0], samplerate=samplerate, nchannels=nchannels)
+            n = numpy.linspace(1, n_harmonics, n_harmonics, endpoint=True)
+            phases = numpy.pi * n * (n + 1) / n_harmonics
+        out = Sound.tone(f0, duration, phase=phases[0], samplerate=samplerate, n_channels=n_channels)
         lvl = out.level
         out.level += amplitudes[0]
-        for i in range(1, nharmonics):
+        for i in range(1, n_harmonics):
             tmp = Sound.tone(frequency=freqs[i], duration=duration,
-                             phase=phases[i], samplerate=samplerate, nchannels=nchannels)
+                             phase=phases[i], samplerate=samplerate, n_channels=n_channels)
             tmp.level = lvl + amplitudes[i]
             out += tmp
         return out
 
     @staticmethod
-    def whitenoise(duration=1.0, samplerate=None, nchannels=1, normalise=True):
-        '''
-        Returns a white noise. If the samplerate is not specified, the global
-        default value will be used. nchannels = 2 produces uncorrelated noise (dichotic).
-        See also :func:`Binaural.whitenoise`.
-
-        >>> noise = Sound.whitenoise(1.0,nchannels=2)
-        '''
+    def whitenoise(duration=1.0, samplerate=None, n_channels=1):
+        """ Generate white noise.
+        Arguments:
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise sound will
+                be generated and they will be uncorrelated.
+        Returns:
+            (slab.Sound): the white noise generated from the parameters.
+        Examples:
+            noise = slab.Sound.whitenoise(1.0, n_channels=2).  # generate a 1 second white noise with two channels """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
-        x = numpy.random.randn(duration, nchannels)
-        if normalise:
-            for i in range(nchannels):
-                x[:, i] = ((x[:, i] - numpy.amin(x[:, i])) /
-                           (numpy.amax(x[:, i]) - numpy.amin(x[:, i])) - 0.5) * 2
+        x = numpy.random.randn(duration, n_channels)
         return Sound(x, samplerate)
 
     @staticmethod
-    def powerlawnoise(duration=1.0, alpha=1, samplerate=None, nchannels=1, normalise=True):
-        '''
-        Returns a power-law noise for the given duration.
-        Spectral density per unit of bandwidth scales as 1/(f**alpha).
-
+    def powerlawnoise(duration=1.0, alpha=1, samplerate=None, n_channels=1):
+        """ Generate a power-law noise with a spectral density per unit of bandwidth scales as 1/(f**alpha).
         Arguments:
-            duration: duration of the output.
-            alpha: power law exponent.
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            alpha (int) : power law exponent.
             samplerate: output samplerate
-
-        >>> noise = Sound.powerlawnoise(0.2, 1, samplerate=8000)
-        '''
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise sound will
+                be generated and they will be uncorrelated.
+        Returns:
+            (slab.Sound): the power law noise generated from the parameters.
+        Examples:
+            # Generate and plot power law noise with three different exponents
+            from matplotlib import pyplot as plt
+            fig, ax = plt.subplots()
+            for alpha in [1, 2, 3]:
+                noise = slab.Sound.powerlawnoise(0.2, alpha, samplerate=8000)
+                noise.spectrum(axis=ax, show=False)
+            plt.show() """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
         n = duration
-        n2 = int(n/2)
-        f = numpy.array(numpy.fft.fftfreq(n, d=1.0/samplerate), dtype=complex)
+        n2 = int(n / 2)
+        f = numpy.array(numpy.fft.fftfreq(n, d=1.0 / samplerate), dtype=complex)
         f.shape = (len(f), 1)
-        f = numpy.tile(f, (1, nchannels))
+        f = numpy.tile(f, (1, n_channels))
         if n % 2 == 1:
-            z = (numpy.random.randn(n2, nchannels) + 1j * numpy.random.randn(n2, nchannels))
-            a2 = 1.0 / (f[1:(n2+1), :]**(alpha/2.0))
+            z = (numpy.random.randn(n2, n_channels) + 1j * numpy.random.randn(n2, n_channels))
+            a2 = 1.0 / (f[1:(n2 + 1), :] ** (alpha / 2.0))
         else:
-            z = (numpy.random.randn(n2-1, nchannels) + 1j * numpy.random.randn(n2-1, nchannels))
-            a2 = 1.0 / (f[1:n2, :]**(alpha/2.0))
+            z = (numpy.random.randn(n2 - 1, n_channels) + 1j * numpy.random.randn(n2 - 1, n_channels))
+            a2 = 1.0 / (f[1:n2, :] ** (alpha / 2.0))
         a2 *= z
         if n % 2 == 1:
-            d = numpy.vstack((numpy.ones((1, nchannels)), a2,
+            d = numpy.vstack((numpy.ones((1, n_channels)), a2,
                               numpy.flipud(numpy.conj(a2))))
         else:
-            d = numpy.vstack((numpy.ones((1, nchannels)), a2,
-                              1.0 / (numpy.abs(f[n2])**(alpha/2.0)) *
-                              numpy.random.randn(1, nchannels),
+            d = numpy.vstack((numpy.ones((1, n_channels)), a2,
+                              1.0 / (numpy.abs(f[n2]) ** (alpha / 2.0)) *
+                              numpy.random.randn(1, n_channels),
                               numpy.flipud(numpy.conj(a2))))
         x = numpy.real(numpy.fft.ifft(d.flatten()))
-        x.shape = (n, nchannels)
-        if normalise:
-            for i in range(nchannels):
-                x[:, i] = ((x[:, i] - numpy.amin(x[:, i])) /
-                           (numpy.amax(x[:, i]) - numpy.amin(x[:, i])) - 0.5) * 2
+        x.shape = (n, n_channels)
         return Sound(x, samplerate)
 
     @staticmethod
-    def pinknoise(duration=1.0, samplerate=None, nchannels=1, normalise=True):
-        '''
-        Returns pink noise, i.e :func:`powerlawnoise` with alpha=1.
-        nchannels = 2 produces uncorrelated noise (dichotic).
-        See also :func:`Binaural.pinknoise`.
-        '''
-        return Sound.powerlawnoise(duration, 1.0, samplerate=samplerate,
-                                   nchannels=nchannels, normalise=normalise)
+    def pinknoise(duration=1.0, samplerate=None, n_channels=1):
+        """ Generate pink noise (power law noise with exponent alpha==1. This is simply a wrapper for calling
+        the `powerlawnoise` method.
+        Arguments:
+            see `slab.Sound.powerlawnoise`
+        Returns:
+            (slab.Sound): power law noise generated from the parameters with exponent alpha==1.
+        """
+        return Sound.powerlawnoise(duration, 1.0, samplerate=samplerate, n_channels=n_channels)
 
     @staticmethod
-    def irn(frequency=100, gain=1, niter=4, duration=1.0, samplerate=None):
-        '''
-        Iterated ripple noise (IRN) is a broadband noise with temporal regularities,
+    def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None):
+        """
+        Generate iterated ripple noise (IRN). IRN is a broadband noise with temporal regularities,
         which can give rise to a perceptible pitch. Since the perceptual pitch to noise
         ratio of these stimuli can be altered without substantially altering their spectral
         content, they have been useful in exploring the role of temporal processing in pitch
         perception [Yost 1996, JASA]. The noise is obtained by adding attenuated and delayed
-        versions of a white noise in the frequency domain.
-
+        versions of a white noise in the frequency domain.  # TODO: maybe this is a bit too much info for a docstring?
         Arguments:
-            frequency: the frequency of the resulting pitch in Hz
-            gain: multiplicative factor of the repeated additions. Smaller values reduce the
+            frequency (int | float): the frequency of the signals perceived pitch in Hz.
+            gain (int | float) : multiplicative factor of the repeated additions. Smaller values reduce the
                 temporal regularities in the resulting IRN.
-            niter: number of iterations of additions. Higher values increase pitch saliency.
-        '''
+            n_iter (int): number of iterations of additions. Higher values increase pitch saliency.
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+        Returns:
+            (slab.Sound): ripple noise that has a perceived pitch at the given frequency.
+        """
         samplerate = Sound.get_samplerate(samplerate)
-        delay = 1/frequency
+        delay = 1 / frequency
         noise = Sound.whitenoise(duration, samplerate=samplerate)
         x = numpy.array(noise.data.T)[0]
         irn_add = numpy.fft.fft(x)
-        n_samples, sample_dur = len(irn_add), float(1/samplerate)
-        w = 2 * numpy.pi*numpy.fft.fftfreq(n_samples, sample_dur)
+        n_samples, sample_dur = len(irn_add), float(1 / samplerate)
+        w = 2 * numpy.pi * numpy.fft.fftfreq(n_samples, sample_dur)
         d = float(delay)
-        for k in range(1, niter+1):
-            irn_add += (gain**k) * irn_add * numpy.exp(-1j * w * k * d)
+        for k in range(1, n_iter + 1):
+            irn_add += (gain ** k) * irn_add * numpy.exp(-1j * w * k * d)
         irn_add = numpy.fft.ifft(irn_add)
         x = numpy.real(irn_add)
         return Sound(x, samplerate)
 
     @staticmethod
-    def click(duration=0.0001, samplerate=None, nchannels=1):
-        'Returns a click of the given duration (*100 microsec*).'
+    def click(duration=0.0001, samplerate=None, n_channels=1):
+        """Generate a click (a sequence of ones).
+        Arguments:
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one.
+        Returns:
+            (slab.Sound): click generated from the given parameters.
+            """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
-        return Sound(numpy.ones((duration, nchannels)), samplerate)
+        return Sound(numpy.ones((duration, n_channels)), samplerate)
 
     @staticmethod
     def clicktrain(duration=1.0, frequency=500, clickduration=0.0001, samplerate=None):
-        'Returns a series of n clicks (see :func:`click`) at a frequency of freq.'
+        """Generate a series of n clicks (by calling the `click` method) with a perceived pitch at the given frequency.
+        Arguments:
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            frequency (float | int): the frequency of the signals perceived pitch in Hz.
+            clickduration: (float | int): duration of a single click in seconds (given a float) or in
+                samples (given an int). The number of clicks in the train is given by `duration` / `clickduration`.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+        Returns:
+            (slab.Sound): click train generated from the given parameters.
+    """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
         clickduration = Sound.in_samples(clickduration, samplerate)
-        interval = int(numpy.rint(1/frequency * samplerate))
-        n = numpy.rint(duration/interval)
+        interval = int(numpy.rint(1 / frequency * samplerate))
+        n = numpy.rint(duration / interval)
         oneclick = Sound.click(clickduration, samplerate=samplerate)
         oneclick.resize(interval)
         oneclick.repeat(n)
@@ -333,11 +353,19 @@ class Sound(Signal):
 
     @staticmethod
     def chirp(duration=1.0, from_frequency=100, to_frequency=None, samplerate=None, kind='quadratic'):
-        '''Returns a pure tone with increasing or decreasing frequency from and to given
-        frequency endpoints using :func:`scipy.signal.chirp`.
-        `kind` determines the type of ramp (see :func:`scipy.signal.chirp` for options).
-        '''
-        if not have_scipy:
+        """ Returns a pure tone with in- or decreasing frequency using the function `scipy.sound.chirp`.
+        Arguments:
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            from_frequency (float | int): the frequency of tone in Hz at the start of the sound.
+            to_frequency (float | int | None): the frequency of tone in Hz at the end of the sound. If None, the
+                nyquist frequency (`samplerate` / 2) will be used.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            kind (str): determines the type of ramp (see :func:`scipy.sound.chirp` for options).
+        Returns:
+            (slab.Sound): chirp generated from the given parameters.
+        """
+
+        if scipy is False:
             raise ImportError('Generating chirps requires Scipy.')
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
@@ -350,34 +378,46 @@ class Sound(Signal):
         return Sound(chirp, samplerate=samplerate)
 
     @staticmethod
-    def silence(duration=1.0, samplerate=None, nchannels=1):
-        'Returns a silent sound (all samples equal zero) for the given duration.'
+    def silence(duration=1.0, samplerate=None, n_channels=1):
+        """ Generate silence (all samples equal zero).
+        Arguments:
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one.
+        Returns:
+            (slab.Sound): silence generated from the given parameters. """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
-        return Sound(numpy.zeros((duration, nchannels)), samplerate)
+        return Sound(numpy.zeros((duration, n_channels)), samplerate)
 
     @staticmethod
-    def vowel(vowel='a', gender=None, glottal_pulse_time=12, formant_multiplier=1, duration=1., samplerate=None, nchannels=1):
-        '''
-        Returns a vowel sound.
-
+    def vowel(vowel='a', gender=None, glottal_pulse_time=12, formant_multiplier=1,
+              duration=1., samplerate=None, n_channels=1):
+        """ Generate a sound resembling the human vocalization of a vowel.
         Arguments:
-            vowel: 'a', 'e', 'i', 'o', 'u', 'ae', 'oe', or 'ue' (pre-set format frequencies)
-                or None for random formants in the range of the vowel formants.
-            gender: 'male', 'female'; shortcut for setting glottal_pulse_time and formant_multiplier
-            glottal_pulse_time: distance in milliseconds of glottal pulses (determines vocal trakt length)
-            formant_multiplier: multiplier for the predefined formant frequencies (scales the voice pitch)
-        '''
+            vowel (str | None): kind of vowel to generate can be: 'a', 'e', 'i', 'o', 'u', 'ae', 'oe', or 'ue'. For
+                these vowels, the function haa pre-set format frequencies. If None, a vowel will be generated from
+                random formant frequencies in the range of the existing vowel formants.
+            gender (str | None): Setting the gender ('male', 'female') is a shortcut for setting  the arguments
+                `glottal_pulse_time` and `formant_multiplier`.
+            glottal_pulse_time (int | float) : the distance between glottal pulses in
+                milliseconds (determines vocal trakt length).
+            formant_multiplier (int | float): multiplier for the pre-set formant frequencies (scales the voice pitch).
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one.
+        Returns:
+            (slab.Sound): vowel generated from the given parameters. """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
         formant_freqs = {'a': (0.73, 1.09, 2.44), 'e': (0.36, 2.25, 3.0), 'i': (0.27, 2.29, 3.01),
-                         'o': (0.35, 0.5, 2.6), 'u': (0.3, 0.87, 2.24), 'ae': (0.86, 2.05, 2.85), 'oe': (0.4, 1.66, 1.96),
-                         'ue': (0.25, 1.67, 2.05)}
+                         'o': (0.35, 0.5, 2.6), 'u': (0.3, 0.87, 2.24), 'ae': (0.86, 2.05, 2.85),
+                         'oe': (0.4, 1.66, 1.96), 'ue': (0.25, 1.67, 2.05)}
         if vowel is None:
             BW = 0.3
-            formants = (0.22/(1-BW)+(0.86/(1+BW)-0.22/(1-BW))*numpy.random.rand(),
-                        0.5/(1-BW)+(2.29/(1+BW)-0.5/(1-BW))*numpy.random.rand(),
-                        1.96/(1-BW)+(3.01/(1+BW)-1.96/(1-BW))*numpy.random.rand())
+            formants = (0.22 / (1 - BW) + (0.86 / (1 + BW) - 0.22 / (1 - BW)) * numpy.random.rand(),
+                        0.5 / (1 - BW) + (2.29 / (1 + BW) - 0.5 / (1 - BW)) * numpy.random.rand(),
+                        1.96 / (1 - BW) + (3.01 / (1 + BW) - 1.96 / (1 - BW)) * numpy.random.rand())
         else:
             if vowel not in formant_freqs:
                 raise ValueError(f'Unknown vowel: {vowel}')
@@ -388,71 +428,87 @@ class Sound(Signal):
             glottal_pulse_time = 6
             formant_multiplier = 1.2  # raise formant frequencies by 20%
         formants = [formant_multiplier * f for f in formants]  # scale each formant
-        ST = 1000/samplerate
+        ST = 1000 / samplerate
         times = ST * numpy.arange(duration)
         T05 = 2.5  # decay half-time for glottal pulses
-        env = numpy.exp(-numpy.log(2)/T05 * numpy.mod(times, glottal_pulse_time))
-        env = numpy.mod(times, glottal_pulse_time)**0.25 * env
-        min_env = numpy.min(env[(times >= glottal_pulse_time/2) & (times <= glottal_pulse_time-ST)])
+        env = numpy.exp(-numpy.log(2) / T05 * numpy.mod(times, glottal_pulse_time))
+        env = numpy.mod(times, glottal_pulse_time) ** 0.25 * env
+        min_env = numpy.min(env[(times >= glottal_pulse_time / 2) & (times <= glottal_pulse_time - ST)])
         env = numpy.maximum(env, min_env)
         out = numpy.zeros(len(times))
         for f in formants:
-            A = numpy.min((0, -6*numpy.log2(f)))
-            out = out + 10**(A/20) * env * numpy.sin(2 * numpy.pi *
-                                                     f * numpy.mod(times, glottal_pulse_time))
-        if nchannels > 1:
-            out = numpy.tile(out, (nchannels, 1))
+            A = numpy.min((0, -6 * numpy.log2(f)))
+            out = out + 10 ** (A / 20) * env * numpy.sin(2 * numpy.pi *
+                                                         f * numpy.mod(times, glottal_pulse_time))
+        if n_channels > 1:
+            out = numpy.tile(out, (n_channels, 1))
         vowel = Sound(data=out, samplerate=samplerate)
-        vowel.filter(frequency=0.75*samplerate/2, kind='lp')
+        vowel.filter(frequency=0.75 * samplerate / 2, kind='lp')
         return vowel
 
     @staticmethod
-    def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1/3, samplerate=None):
-        '''
-        Returns a noise made of ERB-spaced random-phase sinetones in the band between `low_cutoff` and `high_cutoff`.
-        This noise does not have random amplitude variations and is useful for testing CI patients.
-        See Oxenham 2014, Trends Hear.
-
-        >>> sig = Sound.multitone_masker()
-        >>> sig.ramp()
-        >>> _ = sig.spectrum()
-        '''
+    def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1 / 3, samplerate=None):
+        """ Generate noise made of ERB-spaced random-phase pure tones. This noise does not have random amplitude
+        variations and is useful for testing CI patients [Oxenham 2014, Trends Hear].
+        Arguments:
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            low_cutoff (int | float): the lower frequency limit of the noise in Hz
+            high_cutoff (int | float): the upper frequency limit of the noise in Hz
+            bandwidth (float):  the signals bandwidth in octaves.
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+        Returns:
+            (slab.Sound): multi tone masker noise, generated from the given parameters.
+        Examples:
+            sig = Sound.multitone_masker()
+            sig = sig.ramp()
+            sig.spectrum()
+            # Generate and plot power law noise with three different exponents
+            from matplotlib import pyplot as plt
+            fig, ax = plt.subplots()
+            for alpha in [1, 2, 3]:
+                noise = slab.Sound.powerlawnoise(0.2, alpha, samplerate=8000)
+                noise.spectrum(axis=ax, show=False)
+            plt.show() """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
-        # get centre_freqs
-        freqs, _, _ = Filter._center_freqs(
+        freqs, _, _ = Filter._center_freqs(  # get center_freqs
             low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth)
         rand_phases = numpy.random.rand(len(freqs)) * 2 * numpy.pi
         sig = Sound.tone(frequency=freqs, duration=duration,
                          phase=rand_phases, samplerate=samplerate)
-        # collapse across channels
-        data = numpy.sum(sig.data, axis=1) / len(freqs)
+        data = numpy.sum(sig.data, axis=1) / len(freqs)  # collapse across channels
         return Sound(data, samplerate=samplerate)
 
     @staticmethod
+    # TODO: would be more consistent if the function would be called equally_masking_noise?"
     def erb_noise(duration=1.0, low_cutoff=125, high_cutoff=4000, samplerate=None):
-        '''
-        Returns an equally-masking noise (ERB noise) in the band between `low_cutoff` and `high_cutoff`.
-
-        >>> sig = Sound.erb_noise()
-        >>> sig.ramp()
-        >>> _ = sig.spectrum()
-        '''
+        """ Generate an equally-masking noise (ERB noise) within a given frequency band.
+        Arguments:
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            low_cutoff (int | float): the lower frequency limit of the noise in Hz
+            high_cutoff (int | float): the upper frequency limit of the noise in Hz
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+        Returns:
+            (slab.Sound): equally masking noise noise, generated from the given parameters.
+        Examples:
+            sig = Sound.erb_noise()
+            sig.spectrum()
+        """
         samplerate = Sound.get_samplerate(samplerate)
         duration = Sound.in_samples(duration, samplerate)
-        n = 2**(duration-1).bit_length()  # next power of 2
+        n = 2 ** (duration - 1).bit_length()  # next power of 2
         st = 1 / samplerate
         df = 1 / (st * n)
-        frq = df * numpy.arange(n/2)
+        frq = df * numpy.arange(n / 2)
         frq[0] = 1  # avoid DC = 0
-        lev = -10*numpy.log10(24.7*(4.37*frq))
-        filt = 10.**(lev/20)
+        lev = -10 * numpy.log10(24.7 * (4.37 * frq))
+        filt = 10. ** (lev / 20)
         noise = numpy.random.randn(n)
         noise = numpy.real(numpy.fft.ifft(numpy.concatenate(
             (filt, filt[::-1])) * numpy.fft.fft(noise)))
-        noise = noise/numpy.sqrt(numpy.mean(noise**2))
+        noise = noise / numpy.sqrt(numpy.mean(noise ** 2))
         band = numpy.zeros(len(lev))
-        band[round(low_cutoff/df):round(high_cutoff/df)] = 1
+        band[round(low_cutoff / df):round(high_cutoff / df)] = 1
         fnoise = numpy.real(numpy.fft.ifft(numpy.concatenate(
             (band, band[::-1])) * numpy.fft.fft(noise)))
         fnoise = fnoise[:duration]
@@ -460,7 +516,11 @@ class Sound(Signal):
 
     @staticmethod
     def sequence(*sounds):
-        'Joins the sounds in the list `sounds` into a new sound object.'
+        """ Join sounds into a new sound object.
+        Arguments
+            *sounds (slab.Sound): two or more sounds to combine.
+        Returns:
+            (slab.Sound): the input sounds combined in a single object. """
         samplerate = sounds[0].samplerate
         for sound in sounds:
             if sound.samplerate != samplerate:
@@ -471,32 +531,31 @@ class Sound(Signal):
 
     # instance methods
     def write(self, filename, normalise=True, fmt='WAV'):
-        '''
-        Save the sound as a WAV. If `normalise` is set to True, the maximal amplitude of the sound is normalised to 1.
-        '''
-        if not have_soundfile:
+        """ Save the sound as a WAV.
+        Arguments:
+            filename (str | pathlib.Path): path, the file is written to.
+            normalise (bool): if True, the maximal amplitude of the sound is normalised to 1.
+            fmt (str): data format to write. See soundfile.available_formats(). """
+        if soundfile is False:
             raise ImportError(
                 'Writing wav files requires SoundFile (pip install SoundFile).')
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
-        if self.samplerate % 1:
-            self = self.resample(int(self.samplerate))
-            print('Sampling rate rounded to nearest integer for writing!')
         if normalise:
             soundfile.write(filename, self.data / numpy.amax(numpy.abs(self.data)), self.samplerate, format=fmt)
         else:
+            if self.data.max(initial=None) > 1.0:
+                print("There are data points in the signal that will be clipped. Normalization is recommended!")
             soundfile.write(filename, self.data, self.samplerate, format=fmt)
 
     def ramp(self, when='both', duration=0.01, envelope=None):
-        """
-        Adds an on and/or off ramp to the sound.
-
-        Args:
+        """ Adds an on and/or off ramp to the sound.
+        Arguments:
             when (str): can take values 'onset', 'offset' or 'both'
-            duration (int, float): time over which the ramping happens (in samples or seconds)
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            envelope(callable):  function to compute the samples of the ramp, defaults to a sinusoid
         Returns:
-            slab.Sound: copy of the instance with the added ramp(s)
-        """
+            (slab.Sound): copy of the sound with the added ramp(s) """
         sound = copy.deepcopy(self)
         when = when.lower().strip()
         if envelope is None:
@@ -506,81 +565,104 @@ class Sound(Signal):
         if when in ('onset', 'both'):
             sound.data[:sz, :] *= multiplier
         if when in ('offset', 'both'):
-            sound.data[sound.nsamples-sz:, :] *= multiplier[::-1]
+            sound.data[sound.n_samples - sz:, :] *= multiplier[::-1]
         return sound
 
     def repeat(self, n):
-        """
-        Repeat the sound n times.
-        Args:
-            n (int): number of repetitions
+        """ Repeat the sound n times.
+        Arguments:
+            n (int): the number of repetitions.
         Returns:
-            slab.Sound: copy of the instance with n repetitions
-        """
+            (slab.Sound): copy of the sound repeated n times. """
         sound = copy.deepcopy(self)
-        sound.data = numpy.vstack((sound.data,)*int(n))
+        sound.data = numpy.vstack((sound.data,) * int(n))
         return sound
 
     @staticmethod
-    def crossfade(sound1, sound2, overlap=0.01):
-        '''
-        Return a new sound that is a crossfade of sound1 and sound2 with a given `overlap`.
-
-        >>> noise = Sound.whitenoise(duration=1.0)
-        >>> vowel = Sound.vowel()
-        >>> noise2vowel = Sound.crossfade(noise,vowel,overlap=0.4)
-        >>> noise2vowel.play()
-        '''
-        if sound1.nchannels != sound2.nchannels:
+    def crossfade(*sounds, overlap=0.01):
+        """ Crossfade two sounds.
+        Arguments:
+            *sounds (instances of slab.Sound): sounds to crossfade
+            overlap (float | int): duration of the overlap between the cross-faded sounds in seconds (given a float)
+                or in samples (given an int).
+        Returns:
+            (slab.Sound): A single sound that contains all input sounds cross-faded. The duration will be the
+                sum of the input sound's durations minus the overlaps.
+        Examples:
+            noise = Sound.whitenoise(duration=1.0)
+            vowel = Sound.vowel()
+            noise2vowel = Sound.crossfade(vowel, noise, vowel, overlap=0.4)
+            noise2vowel.play() """
+        sounds = list(sounds)
+        if any([sound.duration < overlap for sound in sounds]):
+            raise ValueError('The overlap can not be longer then the sound.')
+        if len(set([sound.n_channels for sound in sounds])) != 1:
             raise ValueError('Cannot crossfade sounds with unequal numbers of channels.')
-        if sound1.samplerate != sound2.samplerate:
+        if len(set([sound.samplerate for sound in sounds])) != 1:
             raise ValueError('Cannot crossfade sounds with unequal samplerates.')
-        overlap = Sound.in_samples(overlap, samplerate=sound1.samplerate)
-        n_total = sound1.nsamples + sound2.nsamples - overlap
-        silence = Sound.silence(sound1.nsamples - overlap,
-                                samplerate=sound1.samplerate, nchannels=sound1.nchannels)
-        sound1.ramp(duration=overlap, when='offset')
-        sound1.resize(n_total)  # extend sound1 to total length
-        sound2.ramp(duration=overlap, when='onset')
-        sound2 = Sound.sequence(silence, sound2)  # sound2 has to be prepended with silence
-        return sound1 + sound2
+        overlap = Sound.in_samples(overlap, samplerate=sounds[0].samplerate)
+        n_total = sum([sound.n_samples for sound in sounds]) - overlap * (len(sounds) - 1)
+        # give each sound an offset and onset ramp and add silence to them. The length of the silence added to the
+        # beginning and end of the sound is equal to the length of the sounds that come before or after minus overlaps
+        n_previous = 0
+        for i, sound in enumerate(sounds):
+            n_samples = sound.n_samples
+            if i == 0:
+                sound = sound.ramp(duration=overlap, when="offset")  # for the first sound only add offset ramp
+                sounds[i] = sound.resize(n_total)
+            else:
+                if i == len(sounds) - 1:
+                    sound = sound.ramp(duration=overlap, when="onset")  # for the first sound only add onset ramp
+                else:
+                    sound = sound.ramp(duration=overlap, when="both")  # for all other sounds add both
+                n_silence_before = n_previous - overlap * i
+                n_silence_after = n_total - n_silence_before - sound.n_samples
+                sounds[i] = Sound.sequence(
+                    Sound.silence(n_silence_before, samplerate=sound.samplerate, n_channels=sound.n_channels),
+                    sound,
+                    Sound.silence(n_silence_after, samplerate=sound.samplerate, n_channels=sound.n_channels))
+            n_previous += n_samples
+        sound = sum(sounds)
+        return sound
 
     def pulse(self, pulse_frequency=4, duty=0.75, rf_time=0.05):
-        """
-        Apply a pulse envelope to the sound with a `pulse_frequency` and `duty` cycle.
-        Args:
-            pulse_frequency (int): description
-            duty (float, int): duty cycle in s
-            rf(float): rise/fall time of the pulse in milliseconds
+        """ Apply a pulse envelope to the sound.
+        with a `pulse_frequency` and `duty` cycle (in place).
+        Arguments:
+            pulse_frequency (int): the frequency of pulses in the modified sound in Hz.
+            duty (float): ratio between the pulse duration and period, values must be between 1 (always high) and
+                0 (always low). When using values close to 0, the `rf_time` has to be low as well, otherwise the
+                ramps would be longer than the sound.
+            rf_time (float): rise/fall time of the pulse in milliseconds
         Returns:
-            slab.Sound: pulsed copy of the instance
-        """
+            slab.Sound: pulsed copy of the instance. """
         sound = copy.deepcopy(self)
-        pulse_period = 1/pulse_frequency
+        pulse_period = 1 / pulse_frequency
         n_pulses = round(sound.duration / pulse_period)  # number of pulses in the stimulus
         pulse_period = sound.duration / n_pulses  # period in s, fits into stimulus duration
         pulse_samples = Sound.in_samples(pulse_period * duty, sound.samplerate)
         fall_samples = Sound.in_samples(rf_time, sound.samplerate)  # 5ms rise/fall time
-        fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * (fall_samples)))**2
-        pulse = numpy.concatenate((1-fall, numpy.ones(pulse_samples - 2 * fall_samples), fall))
+        if pulse_samples - 2 * fall_samples:
+            raise ValueError(f"The pulse duration {pulse_samples} is shorter than the combined ramps, each with"
+                             f"duration {fall_samples}. Reduce ´pulse_frequency´ or `rf_time`!")
+        fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * fall_samples)) ** 2
+        pulse = numpy.concatenate((1 - fall, numpy.ones(pulse_samples - 2 * fall_samples), fall))
         pulse = numpy.concatenate(
-            (pulse, numpy.zeros(Sound.in_samples(pulse_period, sound.samplerate)-len(pulse))))
+            (pulse, numpy.zeros(Sound.in_samples(pulse_period, sound.samplerate) - len(pulse))))
         envelope = numpy.tile(pulse, n_pulses)
         envelope = envelope[:, None]  # add an empty axis to get to the same shape as sound.data
-        # if data is 2D (>1 channel) broadcase the envelope to fit
+        # if data is 2D (>1 channel) broadcast the envelope to fit
         sound.data *= numpy.broadcast_to(envelope, sound.data.shape)
         return sound
 
     def am(self, frequency=10, depth=1, phase=0):
-        """
-        Apply an amplitude modulation to the sound by multplication with a sine function.
-        Args:
+        """ Apply an amplitude modulation to the sound by multiplication with a sine function.
+        Arguments:
             frequency (int): frequency of the modulating sine function in Hz
             depth (int, float): modulation depth/index of the modulating sine function
             phase (int, float): initial phase of the modulating sine function
         Returns:
-            slab.Sound: amplitude modulated copy of the instance
-        """
+            slab.Sound: amplitude modulated copy of the instance. """
         sound = copy.deepcopy(self)
         envelope = (1 + depth * numpy.sin(2 * numpy.pi * frequency * sound.times + phase))
         envelope = envelope[:, None]
@@ -588,40 +670,35 @@ class Sound(Signal):
         return sound
 
     def filter(self, frequency=100, kind='hp'):
-        """
-        Convenient wrapper for the Filter class for a standard low-, high-, bandpass,
-        and bandstop filter.
+        """ Convenient wrapper for the Filter class for a standard low-, high-, bandpass, and bandstop filter.
         Args:
             frequency (int, tuple): cutoff frequency in Hz. Integer for low- and highpass filters,
-                                    tuple eith lowe cutoff and upper cutoff for bandpass and -stop.
+                                    tuple with lower and upper cutoff for bandpass and -stop.
             kind (str): type of filter, can be "lp" (lowpass), "hp" (highpass)
                         "bp" (bandpass) or "bs" (bandstop)
         Returns:
-            slab.Sound: filtered copy of the instance
-
-        """
+            slab.Sound: filtered copy of the instance. """
         sound = copy.deepcopy(self)
-        n = min(1000, self.nsamples)
+        n = min(1000, self.n_samples)
         filt = Filter.band(
             frequency=frequency, kind=kind, samplerate=self.samplerate, length=n)
         sound.data = filt.apply(self).data
         return sound
 
     def aweight(self):
-        '''
-        Returns A-weighted sound. A-weighting is applied to instrument-recorded sounds
+        """ Returns A-weighted sound. A-weighting is applied to instrument-recorded sounds
         to account for the relative loudness of different frequencies perceived by the
-        human ear. See: https://en.wikipedia.org/wiki/A-weighting'''
-        if not have_scipy:
+        human ear. See: https://en.wikipedia.org/wiki/A-weighting. """
+        if scipy is False:
             raise ImportError('Applying a-weighting requires Scipy.')
         f1 = 20.598997
         f2 = 107.65265
         f3 = 737.86223
         f4 = 12194.217
         A1000 = 1.9997
-        numerators = [(2 * numpy.pi * f4)**2 * (10**(A1000 / 20)), 0, 0, 0, 0]
+        numerators = [(2 * numpy.pi * f4) ** 2 * (10 ** (A1000 / 20)), 0, 0, 0, 0]
         denominators = numpy.convolve(
-            [1, 4 * numpy.pi * f4, (2 * numpy.pi * f4)**2], [1, 4 * numpy.pi * f1, (2 * numpy.pi * f1)**2])
+            [1, 4 * numpy.pi * f4, (2 * numpy.pi * f4) ** 2], [1, 4 * numpy.pi * f1, (2 * numpy.pi * f1) ** 2])
         denominators = numpy.convolve(numpy.convolve(
             denominators, [1, 2 * numpy.pi * f3]), [1, 2 * numpy.pi * f2])
         b, a = scipy.signal.filter_design.bilinear(numerators, denominators, self.samplerate)
@@ -633,10 +710,15 @@ class Sound(Signal):
 
     @staticmethod
     def record(duration=1.0, samplerate=None):
-        '''Record from inbuilt microphone. Note that most soundcards can only record at 44100 Hz samplerate.
-        Uses SoundCard module if installed [recommended], otherwise uses SoX (duration must be in sec in this case).
-        '''
-        if have_soundcard:
+        """ Record from inbuilt microphone. Uses SoundCard module if installed [recommended], otherwise uses SoX.
+        Arguments:
+            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+                Note that duration has to be in seconds when using SoX
+            samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+                Note that most sound cards can only record at 44100 Hz samplerate.
+        Returns:
+            (slab.Sound): The recorded sound. """
+        if soundcard is not False:
             samplerate = Sound.get_samplerate(samplerate)
             duration = Sound.in_samples(duration, samplerate)
             mic = soundcard.default_microphone()
@@ -645,141 +727,164 @@ class Sound(Signal):
         else:  # use sox
             import subprocess
             try:
-                subprocess.call(['sox', '-d', '-r', str(samplerate), str(_tmpdir / 'tmp.wav'), 'trim', '0', str(duration)])
-            except:
+                subprocess.call(
+                    ['sox', '-d', '-r', str(samplerate), str(_tmpdir / 'tmp.wav'), 'trim', '0', str(duration)])
+            except FileNotFoundError:
                 raise ImportError(
-                    'Recording whithout SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all OR pip install SoundCard.')
+                    'Recording without SoundCard module requires SoX.\n'
+                    'Install: sudo apt-get install sox libsox-fmt-all OR pip install SoundCard.')
             time.sleep(duration)
             out = Sound('tmp.wav')
         return out
 
-    def play(self, sleep=False):
-        'Plays the sound through the default device.'
-        if have_soundcard:
+    def play(self, sleep=None):
+        """Plays the sound through the default device. If the soundcard module is installed it is used
+        to play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via the
+        `play_file` method.
+        Arguments:
+            sleep (int | float | None): time to sleep after presenting the sound in seconds."""
+        if soundcard is not False:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
             self.write(_tmpdir / 'tmp.wav', normalise=False)
             Sound.play_file(_tmpdir / 'tmp.wav')
-        if sleep:  # all current play methods are blocking, there is no reason to sleep!
+        if sleep:  # all current play methods are blocking, there is no reason to sleep!  # TODO: so remove it?
             time.sleep(self.duration)
 
     @staticmethod
-    def play_file(fname):
-        fname = str(fname) # in case it is a pathlib.Path object, get the name string
+    def play_file(filename):
+        """ Play a .wav file using the OS-specific mechanism for Windows, Linux or Mac.
+        Arguments:
+             filename (str | pathlib.Path): full path to the .wav file to be played. """
         from platform import system
+        if isinstance(filename, pathlib.Path):
+            filename = str(filename)
         system = system()
         if system == 'Windows':
             import winsound
-            winsound.PlaySound(fname, winsound.SND_FILENAME)
+            winsound.PlaySound(filename, winsound.SND_FILENAME)
         elif system == 'Darwin':  # MacOS
             import subprocess
-            subprocess.call(['afplay', fname])
+            subprocess.call(['afplay', filename])
         else:  # Linux
             import subprocess
             try:
-                subprocess.call(['sox', fname, '-d'])
-            except:
+                subprocess.call(['sox', filename, '-d'])
+            except FileNotFoundError:
                 raise NotImplementedError(
-                    'Playing from files on Linux without SoundCard module requires SoX. Install: sudo apt-get install sox libsox-fmt-all or pip install SoundCard')
+                    'Playing from files on Linux without SoundCard module requires SoX. '
+                    'Install: sudo apt-get install sox libsox-fmt-all or pip install SoundCard')
 
     def waveform(self, start=0, end=None, show=True, axis=None, **kwargs):
-        '''
-        Plots the waveform of the sound.
-
+        """ Plot the waveform of the sound.
         Arguments:
-            start, end: time or sample limits; if unspecified, shows the full waveform
-        '''
-        if not have_pyplot:
+            start (int | float): start of the plot in seconds (float) or samples (int), defaults to 0
+            end (int | float | None): the end of the plot in seconds (float) or samples (int), defaults to None.
+            show (bool): whether to show the plot right after drawing.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            ** kwargs: keyword arguments for the plot, see documentation of matplotlib.pyplot.plot for details. """
+        if matplotlib is False:
             raise ImportError('Plotting waveforms requires matplotlib.')
         start = self.in_samples(start, self.samplerate)
         if end is None:
-            end = self.nsamples
+            end = self.n_samples
         end = self.in_samples(end, self.samplerate)
         if axis is None:
             _, axis = plt.subplots()
-        if self.nchannels == 1:
+        if self.n_channels == 1:
             axis.plot(self.times[start:end], self.channel(0)[start:end], **kwargs)
-        elif self.nchannels == 2:
+        elif self.n_channels == 2:
             axis.plot(self.times[start:end], self.channel(0)[start:end], label='left', **kwargs)
             axis.plot(self.times[start:end], self.channel(1)[start:end], label='right', **kwargs)
             axis.legend()
         else:
-            for i in range(self.nchannels):
+            for i in range(self.n_channels):
                 axis.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}', **kwargs)
             plt.legend()
         axis.set(title='Waveform', xlabel='Time [sec]', ylabel='Amplitude')
         if show:
             plt.show()
 
-    def spectrogram(self, window_dur=0.005, dyn_range=120, upper_frequency=None, other=None, show=True, axis=None, **kwargs):
-        '''
-        Plots a spectrogram of the sound.
-
+    def spectrogram(self, window_dur=0.005, dyn_range=120, upper_frequency=None, other=None, show=True, axis=None,
+                    **kwargs):
+        """ Plot a spectrogram of the sound or return the computed values.
         Arguments:
-            window_dur: Duration of time window for short-term FFT (*0.005sec*)
-            dyn_range: Dynamic range in dB to plot (*120*)
-            other: If a sound object is given, subtract the waveform and plot the difference spectrogram.
-        If plot is False, returns the values returned by :func:`scipy.signal.spectrogram`, namely
-        freqs, times, power where power is a 2D array of powers, freqs are the corresponding frequencies,
-        and times are the time bins.
-        '''
-        if not have_scipy:
+            window_dur: duration of time window for short-term FFT, defaults to 0.005 seconds.
+            dyn_range: dynamic range in dB to plot, defaults to 120.
+            upper_frequency (int | float | None): The upper frequency limit of the plot. If None use the maximum.
+            other (slab.Sound): if a sound object is given, subtract the waveform and plot the difference spectrogram.
+            show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
+                passed, no plot will be created.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            **kwargs: keyword arguments for the plot. See documentation for matplotlib.pyplot.imshow.
+        Returns:
+            (None | tuple): If `show == True` or an axis was passed, a plot is drawn and nothing is returned. Else,
+                a tuple is returned which contains frequencies, time bins and a 2D array of powers. """
+        if scipy is False:
             raise ImportError('Computing spectrograms requires Scipy.')
-        if self.nchannels > 1:
+        if self.n_channels > 1:
             raise ValueError('Can only compute spectrograms for mono sounds.')
         if other is not None:
             x = self.data.flatten() - other.data.flatten()
         else:
             x = self.data.flatten()
         # set default for step_dur optimal for Gaussian windows.
-        step_dur = window_dur/numpy.sqrt(numpy.pi)/8
+        step_dur = window_dur / numpy.sqrt(numpy.pi) / 8
         # convert window & step durations from seconds to numbers of samples
-        window_nsamp = Sound.in_samples(window_dur, self.samplerate) * 2
-        step_nsamp = Sound.in_samples(step_dur, self.samplerate)
+        window_n_samples = Sound.in_samples(window_dur, self.samplerate) * 2
+        step_n_samples = Sound.in_samples(step_dur, self.samplerate)
         # make the window. A Gaussian filter needs a minimum of 6σ - 1 samples, so working
-        # backward from window_nsamp we can calculate σ.
-        window_sigma = (window_nsamp+1)/6
-        window = scipy.signal.windows.gaussian(window_nsamp, window_sigma)
+        # backward from window_n_samples we can calculate σ.
+        window_sigma = (window_n_samples + 1) / 6
+        window = scipy.signal.windows.gaussian(window_n_samples, window_sigma)
         # convert step size into number of overlapping samples in adjacent analysis frames
-        noverlap = window_nsamp - step_nsamp
+        n_overlap = window_n_samples - step_n_samples
         # compute the power spectral density
         freqs, times, power = scipy.signal.spectrogram(
-            x, mode='psd', fs=self.samplerate, scaling='density', noverlap=noverlap, window=window, nperseg=window_nsamp)
+            x, mode='psd', fs=self.samplerate, scaling='density', noverlap=n_overlap, window=window,
+            nperseg=window_n_samples)
         if show or (axis is not None):
-            if not have_pyplot:
+            if matplotlib is False:
                 raise ImportError('Ploting spectrograms requires matplotlib.')
             p_ref = 2e-5  # 20 μPa, the standard reference pressure for sound in air
             power = 10 * numpy.log10(power / (p_ref ** 2))  # logarithmic power for plotting
             # set lower bound of colormap (vmin) from dynamic range.
             dB_max = power.max()
-            vmin = dB_max-dyn_range
+            vmin = dB_max - dyn_range
             cmap = matplotlib.cm.get_cmap('Greys')
-            extent = (times.min(), times.max(), freqs.min(), upper_frequency or freqs.max())
+            extent = (times.min(initial=0), times.max(initial=0), freqs.min(initial=0),
+                      upper_frequency or freqs.max(initial=0))
             if axis is None:
                 _, axis = plt.subplots()
             axis.imshow(power, origin='lower', aspect='auto',
                         cmap=cmap, extent=extent, vmin=vmin, vmax=None, **kwargs)
             axis.set(title='Spectrogram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
-        if show:
-            plt.show()
+            if show:
+                plt.show()
         else:
             return freqs, times, power
 
-    def cochleagram(self, bandwidth=1/5, show=True, axis=None, **kwargs):
-        '''
-        Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
-        (*1/5* th octave) and applying a cube-root compression to the resulting envelopes.
-        If show is False, returns the envelopes.
-        '''
+    def cochleagram(self, bandwidth=1 / 5, show=True, axis=None, **kwargs):
+        """ Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
+        and applying a cube-root compression to the resulting envelopes.
+        Arguments:
+            bandwidth (float): filter bandwidth in octaves.
+            show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
+                passed, no plot will be created
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            **kwargs: keyword arguments for the plot. See documentation for matplotlib.pyplot.imshow.
+        Returns:
+            (None | numpy.ndarray): If `show == True` or an axis was passed, a plot is drawn and nothing is returned.
+                Else, an array with the envelope is returned. """
         fbank = Filter.cos_filterbank(bandwidth=bandwidth, low_cutoff=20,
                                       high_cutoff=None, samplerate=self.samplerate)
         freqs = fbank.filter_bank_center_freqs()
         subbands = fbank.apply(self.channel(0))
         envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
-        envs = envs.data ** (1/3)  # apply non-linearity (cube-root compression)
+        envs = envs.data ** (1 / 3)  # apply non-linearity (cube-root compression)
         if show or (axis is not None):
-            if not have_pyplot:
+            if not matplotlib is False:
                 raise ImportError('Plotting cochleagrams requires matplotlib.')
             cmap = matplotlib.cm.get_cmap('Greys')
             if axis is None:
@@ -796,24 +901,26 @@ class Sound(Signal):
             return envs
 
     def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, axis=None, show=True, **kwargs):
-        '''
-        Returns the spectrum of the sound and optionally plots it.
-
+        """ Compute the spectrum of the sound.
         Arguments:
-            low_cutoff/high_cutoff: If these are left unspecified, it shows the full spectrum, otherwise it shows
+            low_cutoff (int | float):
+            high_cutoff (int | float | None): If these are left unspecified, it shows the full spectrum, otherwise it shows
                 only between `low` and `high` in Hz.
-            log_power: If True it returns the log of the power.
-            show: Whether to plot the output.
-                If show=False, returns `Z, freqs`, where `Z` is a 1D array of powers
-                and `freqs` are the corresponding frequencies.
-        '''
-        freqs = numpy.fft.rfftfreq(self.nsamples, d=1/self.samplerate)
-        sig_rfft = numpy.zeros((len(freqs), self.nchannels))
-        for chan in range(self.nchannels):
+            log_power (bool): whether to compute the log of the power.
+            show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
+                passed, no plot will be created.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            **kwargs: keyword arguments for the plot. see documentation for matplotlib.pyplot.semilogx.
+        Returns:
+            If show=False, returns `Z, freqs`, where `Z` is a 1D array of powers
+                and `freqs` are the corresponding frequencies.n"""
+        freqs = numpy.fft.rfftfreq(self.n_samples, d=1 / self.samplerate)
+        sig_rfft = numpy.zeros((len(freqs), self.n_channels))
+        for chan in range(self.n_channels):
             sig_rfft[:, chan] = numpy.abs(numpy.fft.rfft(self.data[:, chan], axis=0))
-        # scale by the number of points so that the magnitude does not depend on the length of the signal
-        pxx = sig_rfft/len(freqs)
-        pxx = pxx**2  # square to get the power
+        # scale by the number of points so that the magnitude does not depend on the length of the sound
+        pxx = sig_rfft / len(freqs)
+        pxx = pxx ** 2  # square to get the power
         if low_cutoff is not None or high_cutoff is not None:
             if low_cutoff is None:
                 low_cutoff = 0
@@ -829,13 +936,13 @@ class Sound(Signal):
             Z[Z < 1e-20] = 1e-20  # no zeros because we take logs
             Z = 10 * numpy.log10(Z)
         if show or (axis is not None):
-            if not have_pyplot:
+            if matplotlib is False:
                 raise ImportError('Plotting spectra requires matplotlib.')
             if axis is None:
                 _, axis = plt.subplots()
             axis.semilogx(freqs, Z, **kwargs)
             ticks_freqs = numpy.round(32000 * 2 **
-                                      (numpy.arange(12, dtype=float)*-1))
+                                      (numpy.arange(12, dtype=float) * -1))
             axis.set_xticks(ticks_freqs)
             axis.set_xticklabels(map(str, ticks_freqs.astype(int)))
             axis.grid()
@@ -848,30 +955,33 @@ class Sound(Signal):
             return Z, freqs
 
     def spectral_feature(self, feature='centroid', mean='rms', frame_duration=None, rolloff=0.85):
-        '''
-        Computes one of several features of the spectrogram of a sound and returns either a
-        new Signal with the feature value at each sample, or the average (*rms* or mean) feature value over all samples.
-        Available features:
-        `centroid` is the centre of mass of the short-term spectrum, and 'fwhm' is the width of a Gaussian of the same variance as the spectrum around the centroid.
-
-        >>> sig = Sound.tone(frequency=500, nchannels=2)
-        >>> round(sig.spectral_feature(feature='centroid')[0])
-        500.0
-
-        `flux` is a measure of how quickly the power spectrum of a signal is changing, calculated by comparing the power spectrum for one frame against the power spectrum from the previous frame. Returns the root-mean-square over the entire stimulus of the change in power spectrum between adjacent time windows, measured as Euclidean distance.
-
-        >>> sig = Sound.tone()
-        >>> numpy.testing.assert_allclose(sig.spectral_feature(feature='flux'), desired=0, atol=1e-04)
-
-        `flatness` measures how tone-like a sound is, as opposed to being noise-like.
-        It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean. (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" IEEE Signal Processing Letters, 2004, Vol. 11.)
-
-        `rolloff` is the frequency at which the spectrum rolles off and is typically used to find a suitable low-cutoff
-        frequency that retains most of the signal power (given as fraction in `rolloff`).
-        '''
+        """ Computes one of several features of the spectrogram of a sound for each channel.
+        Arguments:
+            # TODO: every feature should only be described briefly, computational details go in the documentation
+            feature (str): the kind of feature to compute, options are:
+                "centroid" which is the center of mass of the short-term spectrum,
+                "fwhm" which is the width of a Gaussian of the same variance as the spectrum around the centroid,
+                "flux" which is a measure of how quickly the power spectrum of a sound is changing, by
+                comparing the power spectrum for one frame against the power spectrum from the previous frame.
+                Returns the root-mean-square over the entire stimulus of the change in power spectrum between
+                adjacent time windows, measured as Euclidean distance.
+                "flatness", which measures how tone-like a sound is, as opposed to being noise-like
+                It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean.
+                (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" I
+                EEE Signal Processing Letters, 2004, Vol. 11.).
+                "rolloff", which is the frequency at which the spectrum rolls off and is typically used to find a
+                suitable low-cutoff frequency that retains most of the sound power (given as fraction in `rolloff`)
+            mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms"
+                (root means square), "average" or None. If None, a new sound with the feature value at each sample
+                is generated.
+            frame_duration (None):  # TODO: add parameter description
+            rolloff (float):  # TODO: add parameter description
+        Returns:
+            (list | slab.Signal): The mean feature for each channel in a list or a new sound with the feature value
+                at each sample. """
         if not frame_duration:
             if mean is not None:
-                frame_duration = int(self.nsamples/2)  # long frames if not averaging
+                frame_duration = int(self.n_samples / 2)  # long frames if not averaging
             else:
                 frame_duration = 0.05  # 50ms frames by default
         out_all = []
@@ -888,7 +998,7 @@ class Sound(Signal):
             elif feature == 'flux':
                 norm = numpy.c_[norm[:, 0], norm]  # duplicate first frame to give 0 diff
                 delta_p = numpy.diff(norm, axis=1)  # diff now has same shape as norm
-                out = numpy.sqrt((delta_p**2).sum(axis=0)) / power.shape[0]
+                out = numpy.sqrt((delta_p ** 2).sum(axis=0)) / power.shape[0]
             elif feature == 'rolloff':
                 cum = numpy.cumsum(norm, axis=0)
                 rolloff_idx = numpy.argmax(cum >= rolloff, axis=0)
@@ -903,7 +1013,7 @@ class Sound(Signal):
             if mean is None:
                 out = numpy.interp(self.times, times, out)  # interpolate to sound samples
             elif mean == 'rms':
-                out = numpy.sqrt(numpy.mean(out**2))  # average feature time series
+                out = numpy.sqrt(numpy.mean(out ** 2))  # average feature time series
             elif mean == 'average':
                 out = out.mean()
             out_all.append(out)  # concatenate channel data
@@ -911,130 +1021,136 @@ class Sound(Signal):
             out_all = Signal(data=out_all, samplerate=self.samplerate)  # cast as Signal
         return out_all
 
-    def vocode(self, bandwidth=1/3):
-        '''
-        Returns a noise vocoded version of the sound by computing the envelope in different frequency subbands,
+    def vocode(self, bandwidth=1 / 3):
+        """ Returns a noise vocoded version of the sound by computing the envelope in different frequency subbands,
         filling these envelopes with noise, and collapsing the subbands into one sound. This removes most spectral
-        information but retains temporal information in a speech signal.
-
+        information but retains temporal information in a speech sound.
         Arguments:
-            bandwidth: width of the subbands in octaves
-        '''
-        fbank = Filter.cos_filterbank(length=self.nsamples, bandwidth=bandwidth,
+            bandwidth (float): width of the subbands in octaves.
+        Returns:
+            (slab.Sound): a vocoded copy of the sound. """
+
+        fbank = Filter.cos_filterbank(length=self.n_samples, bandwidth=bandwidth,
                                       low_cutoff=30, pass_bands=True, samplerate=self.samplerate)
         subbands = fbank.apply(self.channel(0))
-        envs = subbands.envelope()
+        envs = subbands.get_envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
-        noise = Sound.whitenoise(duration=self.nsamples,
+        noise = Sound.whitenoise(duration=self.n_samples,
                                  samplerate=self.samplerate)  # make white noise
-        subbands_noise = fbank.apply(noise)  # divide into same subbands as signal
+        subbands_noise = fbank.apply(noise)  # divide into same subbands as sound
         subbands_noise *= envs  # apply envelopes
         subbands_noise.level = subbands.level
         return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
 
     def crest_factor(self):
-        '''
-        The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
+        """ The crest factor is the ratio of the peak amplitude and the RMS value of a waveform
         and indicates how extreme the peaks in a waveform are. Returns the crest factor in dB.
         Numerically identical to the peak-to-average power ratio.
-        '''
+        Returns:
+            (float | numpy.nan):  the crest factor or NaN if there are no peaks in the sound."""
         jwd = self.data - numpy.mean(self.data)
-        if numpy.any(jwd): # if not all elements are zero
+        if numpy.any(jwd):  # if not all elements are zero
             crest = numpy.abs(jwd).max() / numpy.sqrt(numpy.mean(numpy.square(jwd)))
             return 20 * numpy.log10(crest)
         return numpy.nan
 
     def onset_slope(self):
-        '''
-        Returns the centroid of a histogram of onset slopes as a measure of how many
+        """ Compute the centroid of a histogram of onset slopes as a measure of how many
         quick intensity increases the sound has. These onset-like features make the
         sound easier to localize via envelope ITD.
-        '''
+        Returns:
+            (float): the histograms centroid or 0 if there are no onsets in the sound."""
         env = self.envelope(kind='dB')  # get envelope
         diffs = numpy.diff(env.data, axis=0) * self.samplerate  # compute db change per sec
         diffs[diffs < 0] = 0  # keep positive changes (onsets)
         if diffs.max() == 0:
-            return 0
+            return 0.0
         # compute histogram of differences
         hist, bins = numpy.histogram(diffs, range=(1, diffs.max()), bins=1000)
         bin_centers = (bins[:-1] + bins[1:]) / 2
-        norm = hist / hist.sum()  # normalize histogram so that it summs to 1
+        norm = hist / hist.sum()  # normalize histogram so that it sums to 1
         return numpy.sum(bin_centers * norm)  # compute centroid of histogram
 
     def frames(self, duration=1024):
-        '''
-        Returns a generator that steps through the sound in overlapping, windowed frames.
-        Get the frame center times by calling `frametimes`. The frames have the same class as the object.
-
+        """ A generator that steps through the sound in overlapping, windowed frames.
+        Get the frame center times by calling Sound's `frametimes` method.
         Arguments:
-            duration: half-length of the returned frames in samples or seconds
-
-        >>> windows = sig.frames()
-        >>> for w in windows:
-        >>>		process(w) # process windowed frame here
-        '''
+            duration (int | float): half of the length of the returned frames in samples (int) or seconds (float)
+        Returns:
+            (generator): the generator object that yields frames which are of the same type as the object.
+        Examples:
+            sound = slab.Sound.vowel()
+            windows = sound.frames()
+            for window in windows:  # get the flatness of each frame
+                print(window.spectral_feature("flatness")) """
         frame = copy.deepcopy(self)
-        if not have_scipy:
+        if scipy is False:
             raise ImportError('Need scipy for time window processing.')
         window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
-        # step_dur optimal for Gaussian windows
-        step_nsamp = numpy.floor(window_nsamp/numpy.sqrt(numpy.pi)/8).astype(int)
+        # step duration optimal for Gaussian windows
+        step_nsamp = numpy.floor(window_nsamp / numpy.sqrt(numpy.pi) / 8).astype(int)
         # make the window, Gaussian filter needs a minimum of 6σ - 1 samples.
-        window_sigma = numpy.ceil((window_nsamp+1)/6)
+        window_sigma = numpy.ceil((window_nsamp + 1) / 6)
         window = numpy.tile(scipy.signal.windows.gaussian(
-            window_nsamp, window_sigma), (self.nchannels, 1)).T
+            window_nsamp, window_sigma), (self.n_channels, 1)).T
         idx = 0
-        while idx + window_nsamp/2 < self.nsamples: # loop through windows, yield each one
-            frame.data = self.data[idx:min(self.nsamples, idx + window_nsamp), :]
-            frame.resize(window_nsamp)  # in case the last window is too short
+        while idx + window_nsamp / 2 < self.n_samples:  # loop through windows, yield each one
+            frame.data = self.data[idx:min(self.n_samples, idx + window_nsamp), :]
+            frame = frame.resize(window_nsamp)  # in case the last window is too short
             frame *= window
             yield frame
             idx += step_nsamp
 
     def frametimes(self, duration=1024):
-        'Returns the time points at the frame centers constructed by the `frames` method.'
+        """ Returns the time points at the frame centers constructed by the `frames` method.
+        Arguments:
+            duration (int | float): half of the length of the returned frames in samples (int) or seconds (float)
+        Returns:
+            (numpy.ndarray): the center of each frame in seconds. """
         window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
-        step_nsamp = numpy.floor(window_nsamp/numpy.sqrt(numpy.pi)/8).astype(int)
+        step_nsamp = numpy.floor(window_nsamp / numpy.sqrt(numpy.pi) / 8).astype(int)
         samplepoints = []
         idx = 0
-        while idx + window_nsamp/2 < self.nsamples:
-            samplepoints.append(min(idx + window_nsamp/2, self.nsamples))
+        while idx + window_nsamp / 2 < self.n_samples:
+            samplepoints.append(min(idx + window_nsamp / 2, self.n_samples))
             idx += step_nsamp
-        return numpy.array(samplepoints) / self.samplerate # convert to array of time points
+        return numpy.array(samplepoints) / self.samplerate  # convert to array of time points
 
 
 def calibrate(intensity=None, make_permanent=False):
-    '''
-    Calibrate the presentation intensity of a setup. Enter the calibration intensity, if you know it.
-    If None, plays a 1kHz tone. Please measure actual intensity with a sound level meter and appropriate
-    coupler. Set make_permanent to True to save a calibration file in slab.DATAPATH that is loaded on import.
-    '''
+    """ Calibrate the presentation intensity of a setup. The calibration intensity determines the relationship
+    between the amplitude of a sound and it's level.
+    Arguments:
+        intensity (int | float | None): the difference between the actual intensity of the output and the intensity indicated
+            by the sound's `level` attribute (For example: If `level` is 80 dB and you record 60 dB, the value of
+            `intensity` should be -20). If None, a 1 kHz tone is played for five seconds after which you will be
+            prompted to input the measured intensity.
+        make_permanent (bool): If True, save a calibration file in slab.DATAPATH that is loaded on import. """
     global _calibration_intensity
     if intensity is None:
         tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
         print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
         tone.play()  # play it
-        intensity = input('Enter measured intensity in dB: ')  # ask for measured intesnity
+        intensity = input('Enter measured intensity in dB: ')  # ask for measured intensity
         intensity = intensity - tone.level  # subtract measured from rms intensity
     # set and save
     _calibration_intensity = intensity
     if make_permanent:
         numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
 
+
 def apply_to_path(path='.', method=None, kwargs={}, out_path=None):
-    '''
-    Apply a function to all wav files in a given directory.
+    """ Apply a function to all wav files in a given directory.
 
     Arguments:
-        path: input path (str or pathlib.Path) from which wav files are collected for processing
-        method: callable function to be applied to each file
-        kwargs: dictionary of keyword arguments and values passed to the function.
-        out_path: if is supplied, sounds are saved with their original file name in this directory
-
-    >>> slab.apply_to_path('.', slab.Sound.spectral_feature, {'feature':'fwhm'})
-    >>> slab.apply_to_path('.', slab.Sound.ramp, out_path='./modified')
-    >>> slab.apply_to_path('.', slab.Sound.ramp, kwargs={'duration':0.3}, out_path='./test')
-    '''
+        path (str | pathlib.Path): path to the folder from which wav files are collected for processing.
+        method (callable): function to be applied to each file.
+        kwargs (dict): dictionary of keyword arguments and values passed to the function.
+        out_path (str | pathlib.Path): if is supplied, sounds are saved with their original file name in this directory.
+    Examples:
+        slab.apply_to_path('.', slab.Sound.spectral_feature, {'feature':'fwhm'})
+        slab.apply_to_path('.', slab.Sound.ramp, out_path='./modified')
+        slab.apply_to_path('.', slab.Sound.ramp, kwargs={'duration':0.3}, out_path='./test') """
     if not callable(method):
         raise ValueError('Method must be callable.')
     if isinstance(path, str):
