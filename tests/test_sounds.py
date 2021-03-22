@@ -38,7 +38,7 @@ def test_read_write():
             sound.write(tmpdir / "sound.wav", normalise=True)
             loaded = slab.Sound(tmpdir/"sound.wav")
             loaded.level = sound.level
-            numpy.testing.assert_almost_equal(sound.data, loaded.data, decimal=4)
+            numpy.testing.assert_almost_equal(sound.data, loaded.data, decimal=3)
 
 
 def test_tone():
