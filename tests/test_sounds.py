@@ -57,8 +57,8 @@ def test_tone():
 
 def test_powerlawnoise():
     for _ in range(100):
-        centroids =[]
-        for alpha in numpy.linspace(.5, 1., 5):
+        centroids = []
+        for alpha in numpy.linspace(.5, 1., 3):
             sound = slab.Sound.powerlawnoise(alpha=alpha, samplerate=44100)
             centroids.append(sound.spectral_feature("centroid"))
         assert all([centroids[i] > centroids[i+1] for i in range(len(centroids)-1)])
