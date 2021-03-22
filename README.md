@@ -1,7 +1,7 @@
-![Package](https://github.com/DrMarc/soundlab/workflows/Python%20package/badge.svg)
-[![PyPI](https://github.com/DrMarc/soundlab/workflows/PyPi/badge.svg)](https://pypi.org/project/slab/)
-[![Documentation Status](https://readthedocs.org/projects/soundlab/badge/?version=latest)](https://soundlab.readthedocs.io/en/latest/?badge=latest)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/soundlab/graphs/commit-activity)
+![Package](https://github.com/DrMarc/slab/workflows/Python%20package/badge.svg)
+[![PyPI](https://github.com/DrMarc/slab/workflows/PyPi/badge.svg)](https://pypi.org/project/slab/)
+[![Documentation Status](https://readthedocs.org/projects/slab/badge/?version=latest)](https://slab.readthedocs.io/en/latest/?badge=latest)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/slab/graphs/commit-activity)
 ![PyPI pyversions](https://img.shields.io/badge/python-%3E%3D3.6-blue)
 ![PyPI license](https://img.shields.io/badge/license-MIT-brightgreen)
 
@@ -132,10 +132,10 @@ Installation
 ------------
 
 Install the current stable release from the python package index with pip:
-```pip install soundlab```
+```pip install slab```
 
 or get the latest development version directly from GitHub (if you have [git](https://git-scm.com)) by running:
-```pip install git+https://github.com/DrMarc/soundlab.git```
+```pip install git+https://github.com/DrMarc/slab.git```
 
 The releases use [semantic versioning](https://semver.org): major.minor.patch, where `major` increments for changes that break backwards compatibility, `minor` increments for added functionality, and `patch` increments for internal bug fixes.
 ```slab.__version__``` prints the installed version.
@@ -143,7 +143,7 @@ The releases use [semantic versioning](https://semver.org): major.minor.patch, w
 Documentation
 -------------
 
-[ReadTheDocs](https://soundlab.readthedocs.io/)
+[ReadTheDocs](https://slab.readthedocs.io/)
 
 Contributing to this project
 ----------------------------
