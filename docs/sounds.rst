@@ -69,7 +69,7 @@ Another method to put sounds together is :meth:`.crossfade`, which applies a cro
     slab.Sound.set_default_samplerate(16000) # we need a higher sample rate
     adapter = slab.Sound.whitenoise(duration=2.0)
     adapter.level = 80
-    irn = slab.Sound.irn(frequency=125, niter=2, duration=1.0) # pitched sound
+    irn = slab.Sound.irn(frequency=125, n_iter=2, duration=1.0) # pitched sound
     irn.level = 80 # set to the same level
     stimulus = slab.Sound.crossfade(adapter, irn, overlap=0.005) # crossfade
     stimulus.filter(frequency=[800, 3200], kind='bp') # filter
@@ -97,9 +97,9 @@ You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or 
     import matplotlib.pyplot as plt # preparing a 2-by-2 figure
     _, [[ax1, ax2], [ax3, ax4]] = plt.subplots(
                     nrows=2, ncols=2, constrained_layout=True)
-    signal.waveform(axis=ax1)
-    signal.waveform(end=0.05, axis=ax2) # first 50ms
-    signal.spectrogram(upper_frequency=5000, axis=ax3)
+    signal.waveform(axis=ax1, show=False)
+    signal.waveform(end=0.05, axis=ax2, show=False) # first 50ms
+    signal.spectrogram(upper_frequency=5000, axis=ax3, show=False)
     signal.spectrum(axis=ax4)
 
 Instead of plotting, :meth:`.spectrum` and :meth:`.spectrogram` will return the time frequency bins and spectral power values for further analysis if you set the :attr:`show` argument to False. All plotting functions can draw into an existing matplotlib.pyplot axis supplied with the :attr:`axis` argument.
@@ -127,10 +127,10 @@ Generating binaural sounds
 Binaural sounds support all sound generating functions with a :attr:`nchannels` attribute of the :class:`Sound` class, but automatically set :attr:`nchannels` to 2. Noises support an additional :attr:`kind` argument, which can be set to 'diotic' (identical noise in both channels) or 'dichotic' (uncorrelated noise). Other methods just return 2-channel versions of the stimuli. You can recast any Sound object as Binaural sound, which duplicates the first channel if :attr:`nchannels` is 1 or greater than 2: ::
 
     monaural = slab.Sound.tone()
-    monaural.nchannels
+    monaural.n_channels
     out: 1
     binaural = slab.Binaural(monaural)
-    binaural.nchannels
+    binaural.n_channels
     out: 2
     binaural.left # access to the left channel
     binaural.right # access to the right channel
@@ -176,13 +176,13 @@ Signals
 -------
 Sounds inherit from the :class:`Signal` class, which provides a generic signal object with properties duration, number of samples, sample times, number of channels. The actual samples are kept as numpy array in the :attr:`data` property and can be accessed, if necessary as for instance :attr:`signal.data`. Signals support slicing, arithmetic operations, and conversion between sample points and time points directly, without having to access the :attr:`data` property. The methods :meth:`.resample`, :meth:`.envelope`, and :meth:`.delay` are also implemented in Signal and passed to the child classes :class:`Sound`, :class:`Binaural`, and :class:`Filter`. You do not normally need to use the Signal class directly. ::
 
-    sig = slab.Sound.pinknoise(nchannels=3)
+    sig = slab.Sound.pinknoise(n_channels=3)
     sig.duration
     out: 1.0
-    sig.nsamples
+    sig.n_samples
     out: 8000
     sig.data.shape # accessing the sample array
-    out: (8000, 3) # which has shape (nsamples x nchannels)
+    out: (8000, 3) # which has shape (n_samples x n_channels)
     sig2 = sig.resample(samplerate=4000) # resample to 4 kHz
     env = sig2.envelope() # returns a new signal containing the lowpass Hilbert envelopes of both channels
     sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms

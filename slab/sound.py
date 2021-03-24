@@ -642,7 +642,7 @@ class Sound(Signal):
         pulse_period = sound.duration / n_pulses  # period in s, fits into stimulus duration
         pulse_samples = Sound.in_samples(pulse_period * duty, sound.samplerate)
         fall_samples = Sound.in_samples(rf_time, sound.samplerate)  # 5ms rise/fall time
-        if pulse_samples - 2 * fall_samples:
+        if pulse_samples - 2 * fall_samples < 0:
             raise ValueError(f"The pulse duration {pulse_samples} is shorter than the combined ramps, each with"
                              f"duration {fall_samples}. Reduce ´pulse_frequency´ or `rf_time`!")
         fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * fall_samples)) ** 2
