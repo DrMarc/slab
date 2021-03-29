@@ -41,6 +41,7 @@ A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound`
 
 .. plot::
     :include-source:
+    :context: close-figs
 
     filters = []
     for i in range(n):
@@ -73,6 +74,7 @@ this by inverting the headphones transfer function and pre-filter our stimuli wi
 
 .. plot::
     :include-source:
+    :context: close-figs
 
     for freq in range(200, 3000, 300):
         filters.append(slab.Filter.band(frequency=(freq, freq+200), kind='bp'))
@@ -83,6 +85,7 @@ If this multi-channel filter is applied to a one-channel signal, each filter cha
 
 .. plot::
     :include-source:
+    :context: close-figs
 
     fbank = slab.Filter.cos_filterbank()
     fbank.tf()
@@ -105,7 +108,7 @@ Psychoacoustic experiments with stimuli that contain several frequencies require
 
 .. plot::
     :include-source:
-    :context:
+    :context: close-figs
 
     import random
     freqs = [f * 400 for f in range(10)]
