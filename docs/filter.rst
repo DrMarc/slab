@@ -66,12 +66,14 @@ Equalization
 In Psychoacoustic experiments, we are often interested in the effect of a specific feature. One could,
 for example, take the bandpass filtered sounds from the example above and investigate how well listeners
 can discriminate them from a noisy background - a typical cocktail-party task. However, if the transfer
-function of the loudspeakers or headphones used in the experiment is not flat, the finding will be biased.
+function of the loudspeakers or headphones used in the experiment is not flat, the findings will be biased.
 Imagine that the headphones used were bad at transmitting frequencies below 1000 Hz. This would make a sound
 with center frequency of 550 Hz harder to detect than one with a center frequency of 1550 Hz. We can prevent
-this by inverting the headphones transfer function and using that as a filter. The inverse transfer function
-filter and the actual transfer function will cancel each other out and the result will be an equalized sound.
-=======
+this by inverting the headphones transfer function and pre-filter our stimuli with this inverse. The inverse transfer function and the actual transfer function will then cancel each other out and result in an equalized sound.
+
+.. plot::
+    :include-source:
+
     for freq in range(200, 3000, 300):
         filters.append(slab.Filter.band(frequency=(freq, freq+200), kind='bp'))
     fbank = slab.Filter(filters)
