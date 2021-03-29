@@ -35,7 +35,7 @@ out: 1.0
 sig.nsamples
 out: 8000
 sig2 = sig.resample(samplerate=4000) # resample to 4 kHz
-env = sig2.envelope() # returns a new signal containing the lowpass Hilbert envelopes of both channels
+env = sig2.envelope() # returns a new sound containing the lowpass Hilbert envelopes of both channels
 sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
 ```
 
@@ -70,15 +70,15 @@ external = lateralized.externalize() # add a low resolution HRTF filter that res
 ```python
 filt = Filter.rectangular_filter(frequency=15000, kind='hp') # make a highpass filter
 filt.tf() # plot the transfer function
-sig_filt = filt.apply(sig) # apply it to a signal
+sig_filt = filt.apply(sig) # apply it to a sound
 # applying a whole filterbank is equally easy:
 fbank = Filter.cos_filterbank(length=sig.nsamples, bandwidth=1/10, low_cutoff=100) # make a cosine filter bank
 fbank.tf() # plot the transfer function of all filters in the bank
-subbands = fbank.apply(sig) # make a multi-channel signal containing the passbands of the filters in the filter bank
+subbands = fbank.apply(sig) # make a multi-channel sound containing the passbands of the filters in the filter bank
 # the subbands could now be manipulated and then combined with the collapse_subbands method
 fbank.filter_bank_center_freqs() # return the centre frequencies of the filters in the filter bank
 fbank = equalizing_filterbank(target, measured) # generates an inverse filter bank for equalizing the differences
-# between measured signals (single- or multi-channel Sound object) and a target signal. Used for equalizing loudspeakers,
+# between measured signals (single- or multi-channel Sound object) and a reference sound. Used for equalizing loudspeakers,
 microphones, or speaker arrays.
 fbank.save('equalizing_filters.npy') # saves the filter bank as .npy file.
 ```
