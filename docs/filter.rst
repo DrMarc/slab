@@ -43,6 +43,7 @@ A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound`
     :include-source:
     :context: close-figs
 
+    from matplotlib import pyplot as plt
     filters = []
     for i in range(n):
         filters.append(Filter.cutoff_filter(
