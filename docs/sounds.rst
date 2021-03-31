@@ -162,14 +162,14 @@ Similar functions exist to manipulate interaural time differences (ITD): :meth:`
 ITD and ILD manipulation leads to the percept of *lateralization*, that is, a source somewhere between the ears inside the head. Additional spectral shaping is necessary to generate an externalized percept (outside the head). This shaping can be achieved with the :meth:`.externalize`, which applies a low-resolution HRTF filter (KEMAR by default). Using both ramp functions and externalization, it is easy to generate a convincing sound source movement with pulsed pink noise: ::
 
     noise = slab.Binaural.pinknoise(samplerate=44100)
-    from_ild = Binaural.azimuth_to_ild(-90)
-    from_itd = Binaural.azimuth_to_itd(-90)
-    to_ild = Binaural.azimuth_to_ild(90)
-    to_itd = Binaural.azimuth_to_itd(90)
+    from_ild = slab.Binaural.azimuth_to_ild(-90)
+    from_itd = slab.Binaural.azimuth_to_itd(-90)
+    to_ild = slab.Binaural.azimuth_to_ild(90)
+    to_itd = slab.Binaural.azimuth_to_itd(90)
     noise_moving = noise.ild_ramp(from_ild, to_ild)
     noise_moving = noise_moving.itd_ramp(from_itd, to_itd)
     noise_moving.externalize() # apply filter in place
-    noise.play() # best through headphones
+    noise_moving.play() # best through headphones
 
 
 Signals

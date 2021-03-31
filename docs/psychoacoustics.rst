@@ -31,13 +31,14 @@ kind of task and give a response. In the example above we could for instance ask
 was higher or lower in frequency than the previous one. The response is captured with the :meth:`~slab.psychoacoustics.Key`
 context manager which can record single button presses using the :mod:`curses` module. In our example, we instruct the
 subject to press "y" (yes) if the played tone was higher then the previous and "n" (no) if it was lower. After each
-trial we check if the response was correct and store that information as 1 (correct) or 0 (wrong) in the trial sequence.
+trial we check if the response was correct and store that information as 1 (correct) or 0 (wrong) in the trial sequence.::
 
   for freq in seq:
     stimulus = slab.Sound.tone(frequency=freq)
     stimulus.play()
-    if trials.this_n > 0:  # don't get response for first trial
-      with slab.Key() as key:  # wait for a key press
+    if seq.this_n > 0:  # don't get response for first trial
+      previous = seq.conditions[seq.trials[seq.this_n-1]-1]
+      with slab.key() as key:  # wait for a key press
         response = key.getch()
       # check if the response was correct, if so store a 1, else store 0
       if (freq > previous and response == 121) or (freq<previous and response == 110):
@@ -68,8 +69,8 @@ All of this can be done in only  lines of code: ::
     freqs = list(range(495, 505))
     trials = slab.Trialsequence(conditions=freqs, n_reps=2)
     for freq in trials:
-        target = slab.Sound.tone(frequency=freq, duration=0.25)
-        trials.present_afc_trial(stimulus, [distractor, distractor], isi=0.2)
+        target = slab.Sound.tone(frequency=freq, duration=0.5)
+        trials.present_afc_trial(target, [distractor, distractor], isi=0.2)
 
 Controlling the sequence
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,6 +93,7 @@ to. For example, the field in row0/column2 shows the tarnsitions from condition 
 follow itself in the default non_repeating`` trial sequence. If you want near-equal transitions,
 then you could generate sequences in a loop until a set condition is fulfilled, for instance, no transition > 4::
 
+    import numpy
     trans = 5
     while numpy.any(trans>4):
         trials = slab.Trialsequence(conditions=4, n_reps=10)
@@ -151,7 +153,7 @@ We can define a list of frequencies and run a staircase for each one. Afterwards
             stimulus.level = level
             stairs.present_tone_trial(stimulus)
             stairs.print_trial_info()
-        threshs.append({stairs.threshold())
+        threshs.append(stairs.threshold())
         print(f'Threshold at {frequency} Hz: {stairs.threshold()} dB')
     plt.plot(freqs, threshs) # plot the audiogram
 
@@ -225,6 +227,7 @@ Simulation is also useful for finding the hitrate (or point on the psychometric 
     # now we have 100 thresholds, take mean and convert to equivalent hitrate:
     import numpy
     hitrate = 1 / (1 + numpy.exp(4 * (0.5/width)  * (thresh - numpy.mean(threshs))))
+    print(hitrate)
 
 As you can see, even through the threshold in the response simulation is 3 (that is, the rate of correct responses is > 0.5 above this value; how fast it increases from there depends on the transition_width), the mean threshold returned from the procedure is over 4.5. The last line translates this value in relation to the width of the simulated psychometric function into a hitrate of about 0.83.
 
@@ -239,7 +242,7 @@ from the computer keyboard (or an attached number pad) using the :mod:`curses` m
 ::
 
     stimulus = slab.Sound.tone(duration=0.5)
-    stairs = slab.Staircase(start_val=60, steps=[10, 3])
+    stairs = slab.Staircase(start_val=60, step_sizes=[10, 3])
     for level in stairs:
         stimulus.level = level
         stimulus.play()
@@ -262,7 +265,7 @@ Trial sequences are useful for non-adaptive testing (the current stimulus does n
     seq = slab.Trialsequence(conditions=['red', 'green', 'blue'], kind='infinite')
 
     # stimulus sequence for an oddball design:
-    seq = slab.Trialsequence.mmn_sequence(n_trials=60, deviant_freq=0.12)
+    seq = slab.Trialsequence(conditions=1, deviant_freq=0.12, n_reps=60)
 
 The list of trials is contained in the :attr:`trials` of the :class:`Trialsequence` object, but you don't normally need to access this list directly. A :class:`Trialsequence` object can be used like a :class:`Staircase` object in a listening experiment and will return the current stimulus value when used in a loop. Below is :ref:`the detection threshold task <detection_example>` from the :class:`Staircase`, rewritten using Fechner's method of constant stimuli with a :class:`Trialsequence`::
 
@@ -279,7 +282,13 @@ The list of trials is contained in the :attr:`trials` of the :class:`Trialsequen
 
 Because there is no simple threshold, the :class:`Trialsequence` class provides a :meth:`.response_summary`, which tabulates responses by condition index in a nested list.
 
-The infinite kind of :class:`Trialsequence` is perhaps less suitable for controlling the stimulus parameter of interest, but it is very useful for varying other stimulus attributes in a controlled fashion from trial to trial (think of 'roving' paradigms). Unlike when selecting a random value in each trial, the infinite :class:`Trialsequence` guarantees locally equal value frequencies, avoid direct repetition, and keeps a record in case you want to include the sequence as nuisance covariate in the analysis later on. Here is a real-world example from an experiment with pseudowords, in which several words without direct repetition were needed in each trial. word_list contained the words as strings, later used to load the correct stimulus file::
+The infinite kind of :class:`Trialsequence` is perhaps less suitable for controlling the stimulus parameter of interest,
+but it is very useful for varying other stimulus attributes in a controlled fashion from trial to trial
+(think of 'roving' paradigms). Unlike when selecting a random value in each trial, the infinite :class:`Trialsequence`
+guarantees locally equal value frequencies, avoid direct repetition, and keeps a record in case you want to include
+the sequence as nuisance covariate in the analysis later on. Here is a real-world example from an experiment with
+pseudowords, in which several words without direct repetition were needed in each trial. word_list contained the words
+as strings, later used to load the correct stimulus file::
 
     word_seq = slab.Trialsequence(conditions=word_list, kind='infinite', name='word_seq')
     word = next(word_seq) # draw a word from the list
@@ -324,7 +333,7 @@ If you present white noise in an experiment, you probably do not want to play th
     stims.play() # play a random instance
     stims.play() # play another one, guaranteed to be different from the previous one
     stims.sequence # the sequence of instances played so far
-    stims.save('stims.zip') # save the sounds as zip file
+    stims.write('stims.zip') # save the sounds as zip file
     stims = slab.Precomputed.read('stims.zip') # reloads the file into a Precomputed object
 
 
@@ -334,8 +343,8 @@ In most experiments, the performance of the listener, experimental settings, the
 
 Set the folder that will hold results files from all participants for the experiment somewhere at the top of your script with the :data:`.results_folder`. Then you can create a file by initializing a class instance with a subject name::
 
-    slab.Resultsfile.results_folder = 'MyResults'
-    file = Resultsfile(subject='MS')
+    slab.ResultsFile.results_folder = 'MyResults'
+    file = slab.ResultsFile(subject='MS')
     print(file.name)
 
 You can now use the :meth:`~Resultsfile.write` method to write any information to the file, to be precise, you can write any object that can be converted to JSON, like strings, lists, or dictionaries. Numpy data types need to be converted to python types. A numpy array can be converted to a list before saving by calling its :meth:`numpy.ndarray.tolist` method, and numpy ints or floats need to be converted by calling their :meth:`~numpy.int64.item` method. You can try out what the JSON representation of an item is by calling::
@@ -345,7 +354,7 @@ You can now use the :meth:`~Resultsfile.write` method to write any information t
     b = [1, 2, 3, 4]
     c = {'frequency': 500, 'duration': 1.5}
     d = numpy.array(b)
-    for item in [a, b, c, d]:
+    for item in [a, b, c]:
         json.dumps(item)
     json.dumps(d.tolist())
 
