@@ -890,8 +890,11 @@ class ResultsFile:
         """ Safely write data to the file which is opened just before writing and closed immediately after to avoid
         data loss. Call this method at the end of each trial to save the response and trial state.
         Arguments:
-            data (any): data to save must be JSON serializable [string, list, dict, ...])
+            data (any): data to save must be JSON serializable [string, list, dict, ...]). If data is an object,
+                the __dict__ is extracted and saved.
             tag (str): The tag is prepended as a key. If None is provided, the current time is used. """
+        if isinstance(data, object):
+            data = data.__dict__
         try:
             data = json.loads(data)  # if payload is already json, parse it into python object
         except (json.JSONDecodeError, TypeError):
