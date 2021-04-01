@@ -43,7 +43,6 @@ A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound`
     :include-source:
     :context: close-figs
 
-    from matplotlib import pyplot as plt
     filters = []
     for i in range(n):
         filters.append(Filter.cutoff_filter(
@@ -55,6 +54,9 @@ A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound`
     sound_filt.spectrum(axis=ax, show=False)
     ax.set_xlim(100, 5000)
     plt.show()
+
+    .. plot::
+        :context: close-figs
 
 If the a one-channel filter is applied to a multi-channel signal, the filter will be applied to each
 channel individually. This can be used, for example, to easily pre-process a set of recordingss (where

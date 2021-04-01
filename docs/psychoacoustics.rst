@@ -31,7 +31,7 @@ kind of task and give a response. In the example above we could for instance ask
 was higher or lower in frequency than the previous one. The response is captured with the :meth:`~slab.psychoacoustics.Key`
 context manager which can record single button presses using the :mod:`curses` module. In our example, we instruct the
 subject to press "y" (yes) if the played tone was higher then the previous and "n" (no) if it was lower. After each
-trial we check if the response was correct and store that information as 1 (correct) or 0 (wrong) in the trial sequence.
+trial we check if the response was correct and store that information as 1 (correct) or 0 (wrong) in the trial sequence.::
 
   for freq in seq:
     stimulus = slab.Sound.tone(frequency=freq)
