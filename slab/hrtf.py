@@ -107,7 +107,7 @@ class HRTF:
 
     def __str__(self):
         return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations},' \
-               f'samples {self.data[0].nsamples}, samplerate {self.samplerate}'
+               f'samples {self.data[0].n_samples}, samplerate {self.samplerate}'
 
     # Static methods (used in __init__)
     @staticmethod

@@ -37,16 +37,22 @@ Inspecting the waveform of the sound (using the :meth:`~slab.Sound.waveform` met
 
 Filter banks
 ------------
-A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound` object. The :meth:`.cos_filterbank` and :meth:`.equalizing_filterbank` methods construct multi-channel filter banks for you, but you can also initialize a :class:`Filter` object with a list of filters, just as you can make a multi-channel sound by initializing a :class:`Sound` object with a list of sounds (both classes inherit this feature from the parent :class:`Signal` class):
+A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound` object. The :meth:`.cos_filterbank` and
+:meth:`.equalizing_filterbank` methods construct multi-channel filter banks for you, but you can also initialize a
+:class:`Filter` object with a list of filters, just as you can make a multi-channel sound by initializing a
+:class:`Sound` object with a list of sounds (both classes inherit this feature from the parent :class:`Signal` class).
+You can use a filter bank for example to divide a sound into frequency bands:
 
 .. plot::
     :include-source:
-
+    from matplotlib import pyplot as plt
+    sound = slab.Sound.whitenoise()
     filters = []
-    for i in range(n):
-        filters.append(Filter.cutoff_filter(
-            frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
-    fbank = Filter(filters)  # put the list into a single filter object
+    low_cutoff = [500, 1000, 1500]
+    high_cutoff = [1000, 1500, 2000]
+    for i in range(len(low_cutoff)):
+        filters.append(slab.Filter.band(frequency=[low_cutoff[i], high_cutoff[i]], kind='bp'))
+    fbank = slab.Filter(filters)  # put the list into a single filter object
     sound_filt = fbank.apply(sound)  # apply each filter to a copy of sound
     # plot the spectra, each color represents one channel of the filtered sound
     _, ax = plt.subplots(1)
@@ -85,8 +91,13 @@ If this multi-channel filter is applied to a one-channel signal, each filter cha
     fbank = slab.Filter.cos_filterbank()
     fbank.tf()
 
-A speech signal is filtered with this bank, and the envelopes of the subbands are computed using the :meth:`envelope` method of the :class:`Signal` class. The envelopes are filled with noise, and the subbands are collapsed back into one sound. This removes most spectral information but retains temporal information in a speech signal and sound a bit like whispered speech. Here is the code of the :meth:`~slab.Sound.vocode` method. Some arguments that make sure that all lengths and sample rates fit have been redacted for clarity::
+A speech signal is filtered with this bank, and the envelopes of the subbands are computed using the
+:meth:`envelope` method of the :class:`Signal` class. The envelopes are filled with noise, and the subbands are
+collapsed back into one sound. This removes most spectral information but retains temporal information in a speech
+signal and sound a bit like whispered speech. Here is the code of the :meth:`~slab.Sound.vocode` method. Some arguments
+that make sure that all lengths and sample rates fit have been redacted for clarity::
 
+    signal = slab.Sound.vowel("e")
     fbank = slab.Filter.cos_filterbank()
     subbands = fbank.apply(signal)
     envs = subbands.envelope()
@@ -113,13 +124,14 @@ Psychoacoustic experiments with stimuli that contain several frequencies require
     recording = tf.apply(sound)
     recording.spectrum()
 
-With the original sound and the simulated recording we can compute an inverse filter und pre-filter the sound (or in this case, just filter the recording) to achieve a nearly flat playback through our simulated bad loudspeaker:
+With the original sound and the simulated recording we can compute an inverse filter und pre-filter the sound
+(or in this case, just filter the recording) to achieve a nearly flat playback through our simulated bad loudspeaker:
 
 .. plot::
     :include-source:
     :context: close-figs
 
-    inverse = slab.Filter.equalizing_filterbank(target=sound, signal=recording)
+    inverse = slab.Filter.equalizing_filterbank(reference=sound, sound=recording)
     equalized = inverse.apply(recording)
     equalized.spectrum()
 

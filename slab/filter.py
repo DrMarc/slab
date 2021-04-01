@@ -80,7 +80,7 @@ class Filter(Signal):
         if fir:  # design a FIR filter
             if scipy is False:
                 raise ImportError('Generating FIR filters requires Scipy.')
-            if gain is None:  # design band filter
+            if gain is None:  # design band
                 if kind in ['lp', 'bs']:
                     pass_zero = True
                 elif kind in ['hp', 'bp']:
