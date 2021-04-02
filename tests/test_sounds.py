@@ -85,7 +85,6 @@ def test_crossfade():
 def test_frames():
     for _ in range(100):
         frame_dur = numpy.random.randint(1, 5000)
-        step_size = numpy.floor(frame_dur / numpy.sqrt(numpy.pi) / 8).astype(int)
         sound_dur = numpy.abs(numpy.random.randn())
         sound = slab.Sound.whitenoise(duration=sound_dur)
         window_centers = sound.frametimes(duration=frame_dur)
@@ -94,5 +93,3 @@ def test_frames():
             center1 = window[frame_dur][0]
             center2 = sound[numpy.where(sound.times == center)[0][0]][0]
             numpy.testing.assert_almost_equal(center1, center2, decimal=1)
-
-
