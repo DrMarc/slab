@@ -25,13 +25,13 @@ class Binaural(Sound):
         .duration: the duration of the sound in seconds. Equals `n_samples` / `samplerate`. """
     # instance properties
     def _set_left(self, other):
-        if hasattr(other, 'data'):
+        if hasattr(other, 'samplerate'):  # probably an slab object
             self.data[:, 0] = other.data[:, 0]
         else:
             self.data[:, 0] = numpy.array(other)
 
     def _set_right(self, other):
-        if hasattr(other, 'data'):
+        if hasattr(other, 'samplerate'):  # probably an slab object
             self.data[:, 1] = other.data[:, 0]
         else:
             self.data[:, 1] = numpy.array(other)
