@@ -22,10 +22,9 @@ class Filter(Signal):
             it must have a .data attribute containing an array. If it's a list, the elements can be arrays or objects.
             The output will be a multi-channel sound with each channel corresponding to an element of the list.
         samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
-        fir (bool): weather this is a finite impulse filter (True) or a Fourier filter (False),
+        fir (bool): whether this is a finite impulse filter (True) or a Fourier filter (False),
     Attributes:
-        .n_filters: technically, this is the same as `n_channels` in the `Signal` class, but here it represents
-            different filters which are stored together in one object.
+        .n_filters: number of filters in the object (overloads `n_channels` attribute in the parent `Signal` class)
         .n_taps: the number of taps in a finite impulse response filter. Analogous to `n_samples` in a `Signal`.
         .n_frequencies: the number of frequency bins in a Fourier filter. Analogous to `n_samples` in a `Signal`.
         .frequencies: the frequency axis of a Fourier filter.
