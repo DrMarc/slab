@@ -63,7 +63,7 @@ class Signal:
         if len(self.data.shape) == 1:
             self.data.shape = (len(self.data), 1)
         elif self.data.shape[1] > self.data.shape[0]:
-            if not len(data) == 0:  # dont transpose if data is an empty array
+            if not len(data) == 0:  # don't transpose if data is an empty array
                 self.data = self.data.T
 
     def __repr__(self):
