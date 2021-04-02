@@ -1086,7 +1086,7 @@ class Sound(Signal):
         frame = copy.deepcopy(self)
         if scipy is False:
             raise ImportError('Need scipy for time window processing.')
-        window_nsamp = min(15, Sound.in_samples(duration, self.samplerate) * 2)
+        window_nsamp = max(15, Sound.in_samples(duration, self.samplerate) * 2)
         # step duration optimal for Gaussian windows
         step_nsamp = numpy.floor(window_nsamp / numpy.sqrt(numpy.pi) / 8).astype(int)
         # make the window, Gaussian filter needs a minimum of 6σ - 1 samples.
@@ -1107,7 +1107,7 @@ class Sound(Signal):
             duration (int | float): half of the length of the returned frames in samples (int) or seconds (float), must be larger than 7 samples.
         Returns:
             (numpy.ndarray): the center of each frame in seconds. """
-        window_nsamp = min(15, Sound.in_samples(duration, self.samplerate) * 2)
+        window_nsamp = max(15, Sound.in_samples(duration, self.samplerate) * 2)
         step_nsamp = numpy.floor(window_nsamp / numpy.sqrt(numpy.pi) / 8).astype(int)
         samplepoints = []
         idx = 0
