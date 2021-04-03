@@ -893,7 +893,7 @@ class ResultsFile:
             data (any): data to save must be JSON serializable [string, list, dict, ...]). If data is an object,
                 the __dict__ is extracted and saved.
             tag (str): The tag is prepended as a key. If None is provided, the current time is used. """
-        if isinstance(data, object):
+        if hasattr(data, "__dict__"):
             data = data.__dict__
         try:
             data = json.loads(data)  # if payload is already json, parse it into python object

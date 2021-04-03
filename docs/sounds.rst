@@ -8,7 +8,6 @@ Generating sounds
 The :class:`Sound` class provides methods for generating, manipulating, displaying, and analysing sound stimuli.
 You can generate typical experimental stimuli with this class, including tones, noises, and click trains, and also more specialized stimuli, like equally-masking noises, Schroeder-phase harmonics, iterated ripple noise and synthetic vowels. For instance, let's make a 500 ms long 500 Hz pure tone signal with a band-limited (one octave below and above the tone) pink noise background with a 10 dB signal-to-noise ratio: ::
 
-  import slab
   tone = slab.Sound.tone(frequency=500, duration=0.5)
   tone.level = 80 # setting the intensity to 80 dB
   noise = slab.Sound.pinknoise(duration=0.5)
@@ -89,7 +88,7 @@ You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or 
 
 .. plot::
     :include-source:
-
+    from matplotlib import pyplot as plt
     a = slab.Sound.vowel(vowel='a')
     e = slab.Sound.vowel(vowel='e')
     i = slab.Sound.vowel(vowel='i')
@@ -108,6 +107,7 @@ You can also extract common features from sounds, such as the :meth:`.crest_fact
 
 For other time-frequency processing, the :meth:`.frames` provides an easy way to step through the signal in short windowed frames and compute some values from it. For instance, you could detect on- and offsets in the signal by computing the crest factor in each frame: ::
 
+    from matplotlib import pyplot as plt
     signal.pulse() # apply a 4 Hz pulse to the 3 vowels from above
     signal.waveform() # note the pulses
     crest = [] # the short-term crest factor will show on- and offsets
