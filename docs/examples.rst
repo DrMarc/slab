@@ -25,6 +25,7 @@ Audiogram
 ^^^^^^^^^
 Run a pure tone audiogram at the standard frequencies 125, 250, 500, 1000, 2000, 4000 Hz using an adaptive staircase: ::
 
+    from matplotlib import pyplot as plt
     freqs = [125, 250, 500, 1000, 2000, 4000]
     threshs = []
     for frequency in freqs:
@@ -44,6 +45,7 @@ Temporal modulation transfer function
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Measure temporal modulation transfer functions via detection thresholds for amplitude modulations. The parameters of the test replicate Fig. 2 in Viemeister [1979]_ and present sinusoidal 2 to 4000 Hz modulations in a 77-dB wideband noise carrier using an adaptive staircase. ::
 
+    from matplotlib import pyplot as plt
     mod_freqs = [2, 4, 8, 16, 32, 64, 125, 250, 500, 1000, 2000, 4000]
     threshs = []
     base_stimulus = slab.Sound.pinknoise(duration=1.)

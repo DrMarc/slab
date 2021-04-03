@@ -142,7 +142,7 @@ We can define a list of frequencies and run a staircase for each one. Afterwards
 .. audiogram:
 .. plot::
     :include-source:
-
+    from matplotlib import pyplot as plt
     freqs = [125, 250, 500, 1000, 2000, 4000]
     threshs = []
     for frequency in freqs:
@@ -195,8 +195,7 @@ should reduce the variability:
 
 .. plot::
     :include-source:
-
-    import matplotlib.pyplot as plt
+    from matplotlib import pyplot as plt
     stairs_iqr =[]
     for reversals in range(10,41,5):
         threshs = []
@@ -215,6 +214,7 @@ Many other useful simulations are possible. You could check whether a 1up-3down 
 
 Simulation is also useful for finding the hitrate (or point on the psychometric function) that a staircase converges on in cases that are difficult for calculate. For instance, it is not immediately obvious on what threshold a 1up-4down staircase with step_up_factor 1.5 and a 3-alternative forced choice presentation converges on::
 
+    import numpy
     threshs = []
     width = 2
     thresh = 3
@@ -225,7 +225,6 @@ Simulation is also useful for finding the hitrate (or point on the psychometric 
             stairs.add_response(resp)
         threshs.append(stairs.threshold())
     # now we have 100 thresholds, take mean and convert to equivalent hitrate:
-    import numpy
     hitrate = 1 / (1 + numpy.exp(4 * (0.5/width)  * (thresh - numpy.mean(threshs))))
     print(hitrate)
 
@@ -311,6 +310,7 @@ Sometimes it is necessary to control the transition probabilities between condit
 
 The diagonal of this array contains only zeroes, because a condition cannot follow itself in the default ``non_repeating`` trial sequence. The other entries are uneven; for instance, condition 1 is followed by condition 3 seven times, but never by condition 2. If you want near-equal transitions, then you could generate sequences in a loop until a set condition is fulfilled, for instance, no transition > 4::
 
+    import numpy
     trans = 5
     while numpy.any(trans>4):
         trials = slab.Trialsequence(conditions=4, n_reps=10)
@@ -350,6 +350,7 @@ Set the folder that will hold results files from all participants for the experi
 You can now use the :meth:`~Resultsfile.write` method to write any information to the file, to be precise, you can write any object that can be converted to JSON, like strings, lists, or dictionaries. Numpy data types need to be converted to python types. A numpy array can be converted to a list before saving by calling its :meth:`numpy.ndarray.tolist` method, and numpy ints or floats need to be converted by calling their :meth:`~numpy.int64.item` method. You can try out what the JSON representation of an item is by calling::
 
     import json
+    import numpy
     a = 'a string'
     b = [1, 2, 3, 4]
     c = {'frequency': 500, 'duration': 1.5}
