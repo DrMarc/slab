@@ -112,6 +112,6 @@ def test_results():
     results = slab.ResultsFile(subject="MrPink")
     for data in [[1, 2, 3], slab.Trialsequence()]:
         results.write(data)
-        results.read()
-        results = slab.ResultsFile.read_file(slab.ResultsFile.previous_file(subject="MrPink"))
-        results.clear()
+    results.read()
+    results = slab.ResultsFile.read_file(slab.ResultsFile.previous_file(subject="MrPink"))
+    results.clear()

@@ -84,7 +84,7 @@ def test_crossfade():
 
 def test_frames():
     for _ in range(100):
-        frame_dur = numpy.random.randint(1, 5000)
+        frame_dur = numpy.random.randint(10, 5000)
         sound_dur = numpy.abs(numpy.random.randn())
         sound = slab.Sound.whitenoise(duration=sound_dur)
         window_centers = sound.frametimes(duration=frame_dur)
