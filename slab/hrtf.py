@@ -22,6 +22,11 @@ try:
     import h5netcdf
 except ImportError:
     h5netcdf = False
+try:
+    import scipy.signal
+except ImportError:
+    scipy = False
+from slab.signal import Signal
 from slab.filter import Filter
 
 
@@ -192,6 +197,30 @@ class HRTF:
         if datatype != 'FIR':
             warnings.warn('Non-FIR data: ' + datatype)
         return numpy.array(f.variables['Data.IR'], dtype='float')
+
+    def apply(self, source, sound, allow_resampling=True):
+        """ Apply a filter from the HRTF set to a sound. The sound will be recast as slab.Binaural. If the samplerates
+        of the sound and the HRTF are unequal and `allow_resampling` is True, then the sound will be resampled to the
+        filter rate, filtered, and then resampled to the original rate.
+        The filtering is done with `scipy.signal.fftconvolve`.
+        Arguments:
+            source (int): the source index of the binaural filter in self.data.
+            sound (slab.Signal | slab.Sound | slab.Binaural): the sound to be rendered spatially.
+        Returns:
+            (slab.Binaural): a spatialized copy of `sound`. """
+        if (sound.samplerate != self.samplerate) and (not allow_resampling):
+            raise ValueError('Filter and sound must have same sampling rates.')
+        original_rate = sound.samplerate
+        sound = sound.resample(self.samplerate) # does nothing if samplerates are the same
+        left = scipy.signal.fftconvolve(sound[:, 0], self.data[source][:, 0])
+        if sound.n_channels == 1:
+            right = scipy.signal.fftconvolve(sound[:, 0], self.data[source][:, 1])
+        else:
+            right = scipy.signal.fftconvolve(sound[:, 1], self.data[source][:, 1])
+        convolved_sig = Signal([left, right], samplerate=self.samplerate)
+        out = copy.deepcopy(sound)
+        out.data = convolved_sig.data
+        return out.resample(original_rate)
 
     def elevations(self):
         """ Get all different elevations at which sources where recorded . Note: This currently only works as

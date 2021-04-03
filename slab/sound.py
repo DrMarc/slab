@@ -642,7 +642,7 @@ class Sound(Signal):
         pulse_period = sound.duration / n_pulses  # period in s, fits into stimulus duration
         pulse_samples = Sound.in_samples(pulse_period * duty, sound.samplerate)
         fall_samples = Sound.in_samples(rf_time, sound.samplerate)  # 5ms rise/fall time
-        if pulse_samples - 2 * fall_samples < 0:
+        if pulse_samples - 2 * fall_samples:
             raise ValueError(f"The pulse duration {pulse_samples} is shorter than the combined ramps, each with"
                              f"duration {fall_samples}. Reduce ´pulse_frequency´ or `rf_time`!")
         fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * fall_samples)) ** 2
@@ -1075,7 +1075,7 @@ class Sound(Signal):
         """ A generator that steps through the sound in overlapping, windowed frames.
         Get the frame center times by calling Sound's `frametimes` method.
         Arguments:
-            duration (int | float): half of the length of the returned frames in samples (int) or seconds (float)
+            duration (int | float): half of the length of the returned frames in samples (int) or seconds (float), must be larger than 7 samples.
         Returns:
             (generator): the generator object that yields frames which are of the same type as the object.
         Examples:
@@ -1086,7 +1086,7 @@ class Sound(Signal):
         frame = copy.deepcopy(self)
         if scipy is False:
             raise ImportError('Need scipy for time window processing.')
-        window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
+        window_nsamp = max(15, Sound.in_samples(duration, self.samplerate) * 2)
         # step duration optimal for Gaussian windows
         step_nsamp = numpy.floor(window_nsamp / numpy.sqrt(numpy.pi) / 8).astype(int)
         # make the window, Gaussian filter needs a minimum of 6σ - 1 samples.
@@ -1104,10 +1104,10 @@ class Sound(Signal):
     def frametimes(self, duration=1024):
         """ Returns the time points at the frame centers constructed by the `frames` method.
         Arguments:
-            duration (int | float): half of the length of the returned frames in samples (int) or seconds (float)
+            duration (int | float): half of the length of the returned frames in samples (int) or seconds (float), must be larger than 7 samples.
         Returns:
             (numpy.ndarray): the center of each frame in seconds. """
-        window_nsamp = Sound.in_samples(duration, self.samplerate) * 2
+        window_nsamp = max(15, Sound.in_samples(duration, self.samplerate) * 2)
         step_nsamp = numpy.floor(window_nsamp / numpy.sqrt(numpy.pi) / 8).astype(int)
         samplepoints = []
         idx = 0
