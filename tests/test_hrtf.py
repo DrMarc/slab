@@ -96,7 +96,7 @@ def test_tf_from_sources():
 def test_vsi():
     hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
     vsi = hrtf.vsi()
-    numpy.testing.assert_almost_equal(vsi, 0.82, decimal=2)
+    numpy.testing.assert_almost_equal(vsi, 0.73, decimal=2)
     vsis = []
     for i in range(10):
         sources = hrtf.cone_sources(cone=numpy.random.uniform(-180, 180))
@@ -109,4 +109,3 @@ def test_plot_sources():
         hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
         idx = numpy.random.choice(range(len(hrtf.sources)), numpy.random.randint(10))
         hrtf.plot_sources(idx=idx, show=False)
-
