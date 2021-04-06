@@ -77,7 +77,7 @@ class Filter(Signal):
             filt = slab.Filter.band(frequency=(100, 2000), kind='bs')  # bandstop filter
             filt = slab.Filter.band(frequency=[100, 1000, 3000, 6000], gain=[0., 1., 0., 1.])  # custom filter """
         if samplerate is None:
-            samplerate = slab.signal.default_samplerate
+            samplerate = slab.signal._default_samplerate
         if fir:  # design a FIR filter
             if scipy is False:
                 raise ImportError('Generating FIR filters requires Scipy.')
@@ -277,7 +277,7 @@ class Filter(Signal):
             # In this context, the channels are the signals sub-bands:
             sig_filt = fbank.apply(sig) """
         if samplerate is None:
-            samplerate = slab.signal.default_samplerate
+            samplerate = slab.signal._default_samplerate
         if not high_cutoff:
             high_cutoff = samplerate / 2
         freq_bins = numpy.fft.rfftfreq(length, d=1/samplerate)

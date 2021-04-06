@@ -6,12 +6,12 @@ try:
 except ImportError:
     scipy = False
 
-default_samplerate = 8000  #: The default samplerate in Hz; used by all methods if on samplerate argument is provided.
+_default_samplerate = 8000  #: The default samplerate in Hz; used by all methods if on samplerate argument is provided.
 
 
 def set_default_samplerate(samplerate):
-    global default_samplerate
-    default_samplerate = samplerate
+    global _default_samplerate
+    _default_samplerate = samplerate
 
 
 class Signal:
@@ -48,7 +48,7 @@ class Signal:
     # __methods (class creation, printing, and slice functionality)
     def __init__(self, data, samplerate=None):
         if samplerate is None:
-            samplerate = default_samplerate
+            samplerate = _default_samplerate
         self.samplerate = samplerate
         if isinstance(data, numpy.ndarray):
             self.data = numpy.array(data, dtype='float')
@@ -170,9 +170,9 @@ class Signal:
     @staticmethod
     def set_default_samplerate(samplerate):
         """ Sets the global default samplerate for Signal objects, by default 8000 Hz. """
-        global default_samplerate
-        default_samplerate = samplerate
-        return default_samplerate
+        global _default_samplerate
+        _default_samplerate = samplerate
+        return _default_samplerate
 
     # instance methods (belong to instances created from the class)
     def channel(self, n):
