@@ -10,6 +10,7 @@ try:
 except ImportError:
     scipy = False
 
+import slab.signal
 from slab.signal import Signal  # getting the base class
 
 
@@ -75,7 +76,8 @@ class Filter(Signal):
             filt = slab.Filter.band(frequency=3000, kind='lp')  # lowpass filter
             filt = slab.Filter.band(frequency=(100, 2000), kind='bs')  # bandstop filter
             filt = slab.Filter.band(frequency=[100, 1000, 3000, 6000], gain=[0., 1., 0., 1.])  # custom filter """
-        samplerate = Filter.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal.default_samplerate
         if fir:  # design a FIR filter
             if scipy is False:
                 raise ImportError('Generating FIR filters requires Scipy.')
@@ -274,7 +276,8 @@ class Filter(Signal):
             # filters in the bank. Every channel is a copy of the original sound with one filter applied.
             # In this context, the channels are the signals sub-bands:
             sig_filt = fbank.apply(sig) """
-        samplerate = Signal.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal.default_samplerate
         if not high_cutoff:
             high_cutoff = samplerate / 2
         freq_bins = numpy.fft.rfftfreq(length, d=1/samplerate)
