@@ -28,7 +28,6 @@ jobs:
         sudo apt-get update \
         && sudo apt-get install -y \
           sndfile-tools \
-          pulseaudio \
     - name: Install python dependencies
       run : |
         python -m pip install --upgrade pip
