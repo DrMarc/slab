@@ -77,8 +77,6 @@ def test_envelope():
         sig2 = sig.envelope(apply_envelope=env)
         assert numpy.abs(sig2.data.max() - sig.data.max() * numpy.abs(env).max()) < .001
 
-sig.data.max() * numpy.abs(env).max()
-
 
 def test_delay():
     dur_seconds = numpy.abs(numpy.random.randn(100))
