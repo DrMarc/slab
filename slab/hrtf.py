@@ -394,7 +394,7 @@ class HRTF:
                 list is returned. """
         idx = numpy.where((self.sources[:, 1] == elevation) & (
             (self.sources[:, 0] <= 90) | (self.sources[:, 0] >= 270)))
-        return idx[0]
+        return idx[0].tolist()
 
     def tfs_from_sources(self, sources, n_bins=96):
         """Get the transfer function from sources in the hrtf.
