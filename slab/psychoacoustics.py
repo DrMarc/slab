@@ -9,11 +9,15 @@ import json
 import pickle
 import zipfile
 import collections
+from sys import platform
 from contextlib import contextmanager
 from collections import Counter, abc
 from abc import abstractmethod
 try:
     import curses
+    if platform == "linux":  # these have to be set for curses to work on linux
+        os.environ["TERM"] = "linux"
+        os.environ["TERMINFO"] = "etc/terminfo"
 except ImportError:
     curses = None
 import numpy
@@ -482,7 +486,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                 iterations into the past/future. Returns None if attempting to go beyond the first/last trial """
         if n > self.n_remaining or self.this_n + n < 0:
             return None
-        return self.conditions[self.trials[self.this_n + n]]
+        return self.conditions[self.trials[self.this_n + n]-1]
 
     def transitions(self):
         """ Count the number of transitions between conditions.
