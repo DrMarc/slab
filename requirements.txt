@@ -3,4 +3,3 @@ scipy
 matplotlib
 h5netcdf
 SoundFile
-SoundCard
