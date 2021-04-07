@@ -181,6 +181,7 @@ class HRTF:
         lis = {'pos': numpy.array(f.variables['ListenerPosition'], dtype='float')[0],
                'view': numpy.array(f.variables['ListenerView'], dtype='float')[0],
                'up': numpy.array(f.variables['ListenerUp'], dtype='float')[0]}
+        lis['view'][0] *= -1 # invert x direction to align with the 0 azimuth source direction
         lis['viewvec'] = numpy.concatenate([lis['pos'], lis['pos']+lis['view']])
         lis['upvec'] = numpy.concatenate([lis['pos'], lis['pos']+lis['up']])
         return lis
@@ -375,7 +376,7 @@ class HRTF:
         eles = self.elevations()
         out = []
         for ele in eles:  # for each elevation, find the source closest to the reference y
-            subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x >= 0))
+            subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x <= 0))
             cmin = numpy.min(numpy.abs(y[subidx]-cone))
             if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                 idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
@@ -464,7 +465,7 @@ class HRTF:
         z = r * numpy.cos(elevation)
         ax.scatter(x, y, z, c='b', marker='.')
         ax.scatter(0, 0, 0, c='r', marker='o')
-        if self.listener:  # TODO: view dir is inverted!
+        if self.listener:
             x_, y_, z_, u, v, w = zip(*[self.listener['viewvec'], self.listener['upvec']])
             ax.quiver(x_, y_, z_, u, v, w, length=0.5, colors=['r', 'b', 'r', 'r', 'b', 'b'])
         if idx is not None:
