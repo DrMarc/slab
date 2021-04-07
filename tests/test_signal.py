@@ -75,7 +75,7 @@ def test_envelope():
     for i in range(100):
         env = numpy.random.uniform(-1, 1, 3)
         sig2 = sig.envelope(apply_envelope=env)
-        assert numpy.abs(sig2.data.max() - numpy.abs(env).max()) < .01
+        assert numpy.abs(sig2.data.max() - sig.data.max() * numpy.abs(env).max()) < .001
 
 
 def test_delay():
@@ -85,7 +85,7 @@ def test_delay():
         sig = slab.Signal(numpy.random.randn(numpy.random.randint(100, 10000), numpy.random.randint(1, 10)))
         channel = numpy.random.choice(sig.n_channels)
         for dur in [dur_samples[i], dur_seconds[i]]:
-            delay_n_samples = slab.Signal.in_samples(dur, slab.Signal.get_samplerate(None))
+            delay_n_samples = slab.Signal.in_samples(dur, slab.signal._default_samplerate)
         if delay_n_samples > sig.n_samples:
             numpy.testing.assert_raises(ValueError, sig.delay, dur, channel)
         else:

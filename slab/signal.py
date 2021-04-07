@@ -9,6 +9,11 @@ except ImportError:
 _default_samplerate = 8000  #: The default samplerate in Hz; used by all methods if on samplerate argument is provided.
 
 
+def set_default_samplerate(samplerate):
+    global _default_samplerate
+    _default_samplerate = samplerate
+
+
 class Signal:
     """ Base class for Signal data (from which the Sound and Filter class inherit).
     Provides arithmetic operations, slicing, and conversion between samples and times.
@@ -42,7 +47,9 @@ class Signal:
 
     # __methods (class creation, printing, and slice functionality)
     def __init__(self, data, samplerate=None):
-        self.samplerate = Signal.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = _default_samplerate
+        self.samplerate = samplerate
         if isinstance(data, numpy.ndarray):
             self.data = numpy.array(data, dtype='float')
         elif isinstance(data, (list, tuple)):
@@ -63,7 +70,7 @@ class Signal:
         if len(self.data.shape) == 1:
             self.data.shape = (len(self.data), 1)
         elif self.data.shape[1] > self.data.shape[0]:
-            if not len(data) == 0:  # don't transpose if data is an empty array
+            if not len(data) == 0:  # dont transpose if data is an empty array
                 self.data = self.data.T
 
     def __repr__(self):
@@ -159,14 +166,6 @@ class Signal:
             ValueError(
                 'Unsupported type for ctime (must be int, float, numpy.ndarray of ints or floats, list or tuple)!')
         return out
-
-    @staticmethod
-    def get_samplerate(samplerate):
-        """ Return samplerate if supplied, otherwise return the default samplerate. """
-        if samplerate is None:
-            return _default_samplerate
-        else:
-            return samplerate
 
     @staticmethod
     def set_default_samplerate(samplerate):

@@ -22,6 +22,7 @@ try:
 except ImportError:
     matplotlib, plt = False, False
 
+import slab.signal
 from slab.signal import Signal
 from slab.filter import Filter
 from slab import DATAPATH
@@ -33,6 +34,13 @@ try:  # try getting a previously set calibration intensity from file
     _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
 except FileNotFoundError:
     _calibration_intensity = 0  #: Difference between rms intensity and measured output intensity in dB
+
+_default_level = 70  # the default level for generated Sounds in dB
+
+
+def set_default_level(level):
+    global _default_level
+    _default_level = level
 
 
 class Sound(Signal):
@@ -79,9 +87,11 @@ class Sound(Signal):
     def _set_level(self, level):
         """ Sets level in dB SPL (RMS) assuming array is in Pascals.
         Arguments:
-            level (float | int | numpy.ndarray): the level in dB. Given a single float or int, all channels will be
-                set to this level.
-                should be a value in dB, or an array of levels, one for each channel. """
+            level (float | int | numpy.ndarray | None): the level in dB. Given a single float or int, all channels will
+                be set to this level. should be a value in dB, or an array of levels, one for each channel.
+                If None, use the value from _default_level. """
+        if level is None:
+            level = _default_level
         rms_decibel = self._get_level()
         if self.n_channels > 1:
             level = numpy.array(level)
@@ -140,7 +150,8 @@ class Sound(Signal):
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): the tone generated from the parameters. """
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         frequency = numpy.array(frequency)
         phase = numpy.array(phase)
@@ -155,7 +166,9 @@ class Sound(Signal):
         t = numpy.arange(0, duration, 1) / samplerate
         t.shape = (t.size, 1)  # ensures C-order
         x = numpy.sin(phase + 2 * numpy.pi * frequency * numpy.tile(t, (1, n_channels)))
-        return Sound(x, samplerate)
+        out = Sound(x, samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
     def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, n_channels=1):
@@ -180,8 +193,8 @@ class Sound(Signal):
         Examples:
             sig = slab.Sound.harmoniccomplex(f0=200, amplitude=[0,-10,-20,-30])  # generate the harmonic complex tone
             _ = sig.spectrum()  # plot it's spectrum """
-
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         phases = numpy.array(phase).flatten()
         amplitudes = numpy.array(amplitude).flatten()
         if len(phases) > 1 or len(amplitudes) > 1:
@@ -206,6 +219,7 @@ class Sound(Signal):
                              phase=phases[i], samplerate=samplerate, n_channels=n_channels)
             tmp.level = lvl + amplitudes[i]
             out += tmp
+        out.level = _default_level
         return out
 
     @staticmethod
@@ -220,10 +234,13 @@ class Sound(Signal):
             (slab.Sound): the white noise generated from the parameters.
         Examples:
             noise = slab.Sound.whitenoise(1.0, n_channels=2).  # generate a 1 second white noise with two channels """
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         x = numpy.random.randn(duration, n_channels)
-        return Sound(x, samplerate)
+        out = Sound(x, samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
     def powerlawnoise(duration=1.0, alpha=1, samplerate=None, n_channels=1):
@@ -245,7 +262,8 @@ class Sound(Signal):
                 noise = slab.Sound.powerlawnoise(0.2, alpha, samplerate=8000)
                 noise.spectrum(axis=ax, show=False)
             plt.show() """
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         n = duration
         n2 = int(n / 2)
@@ -269,7 +287,9 @@ class Sound(Signal):
                               numpy.flipud(numpy.conj(a2))))
         x = numpy.real(numpy.fft.ifft(d.flatten()))
         x.shape = (n, n_channels)
-        return Sound(x, samplerate)
+        out = Sound(x, samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
     def pinknoise(duration=1.0, samplerate=None, n_channels=1):
@@ -278,11 +298,11 @@ class Sound(Signal):
         Arguments:
             see `slab.Sound.powerlawnoise`
         Returns:
-            (slab.Sound): power law noise generated from the parameters with exponent alpha==1.
-        """
+            (slab.Sound): power law noise generated from the parameters with exponent alpha==1. """
         return Sound.powerlawnoise(duration, 1.0, samplerate=samplerate, n_channels=n_channels)
 
     @staticmethod
+    # TODO: why does the function have no n_channels argument?
     def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None):
         """
         Generate iterated ripple noise (IRN). IRN is a broadband noise with temporal regularities,
@@ -301,7 +321,8 @@ class Sound(Signal):
         Returns:
             (slab.Sound): ripple noise that has a perceived pitch at the given frequency.
         """
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         delay = 1 / frequency
         noise = Sound.whitenoise(duration, samplerate=samplerate)
         x = numpy.array(noise.data.T)[0]
@@ -313,7 +334,9 @@ class Sound(Signal):
             irn_add += (gain ** k) * irn_add * numpy.exp(-1j * w * k * d)
         irn_add = numpy.fft.ifft(irn_add)
         x = numpy.real(irn_add)
-        return Sound(x, samplerate)
+        out = Sound(x, samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
     def click(duration=0.0001, samplerate=None, n_channels=1):
@@ -323,11 +346,13 @@ class Sound(Signal):
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one.
         Returns:
-            (slab.Sound): click generated from the given parameters.
-            """
-        samplerate = Sound.get_samplerate(samplerate)
+            (slab.Sound): click generated from the given parameters. """
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
-        return Sound(numpy.ones((duration, n_channels)), samplerate)
+        out = Sound(numpy.ones((duration, n_channels)), samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
     def clicktrain(duration=1.0, frequency=500, clickduration=0.0001, samplerate=None):
@@ -339,14 +364,15 @@ class Sound(Signal):
                 samples (given an int). The number of clicks in the train is given by `duration` / `clickduration`.
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
         Returns:
-            (slab.Sound): click train generated from the given parameters.
-    """
-        samplerate = Sound.get_samplerate(samplerate)
+            (slab.Sound): click train generated from the given parameters. """
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         clickduration = Sound.in_samples(clickduration, samplerate)
         interval = int(numpy.rint(1 / frequency * samplerate))
         n = numpy.rint(duration / interval)
         oneclick = Sound.click(clickduration, samplerate=samplerate)
+        oneclick.level = _default_level
         oneclick.resize(interval)
         oneclick.repeat(n)
         return oneclick
@@ -362,12 +388,11 @@ class Sound(Signal):
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             kind (str): determines the type of ramp (see :func:`scipy.sound.chirp` for options).
         Returns:
-            (slab.Sound): chirp generated from the given parameters.
-        """
-
+            (slab.Sound): chirp generated from the given parameters. """
         if scipy is False:
             raise ImportError('Generating chirps requires Scipy.')
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         t = numpy.arange(0, duration, 1) / samplerate  # generate a time vector
         t.shape = (t.size, 1)  # ensures C-order
@@ -375,7 +400,9 @@ class Sound(Signal):
             to_frequency = samplerate / 2
         chirp = scipy.signal.chirp(
             t, from_frequency, t[-1], to_frequency, method=kind, vertex_zero=True)
-        return Sound(chirp, samplerate=samplerate)
+        out = Sound(chirp, samplerate=samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
     def silence(duration=1.0, samplerate=None, n_channels=1):
@@ -386,9 +413,12 @@ class Sound(Signal):
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): silence generated from the given parameters. """
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
-        return Sound(numpy.zeros((duration, n_channels)), samplerate)
+        out = Sound(numpy.zeros((duration, n_channels)), samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
     def vowel(vowel='a', gender=None, glottal_pulse_time=12, formant_multiplier=1,
@@ -408,7 +438,8 @@ class Sound(Signal):
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): vowel generated from the given parameters. """
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         formant_freqs = {'a': (0.73, 1.09, 2.44), 'e': (0.36, 2.25, 3.0), 'i': (0.27, 2.29, 3.01),
                          'o': (0.35, 0.5, 2.6), 'u': (0.3, 0.87, 2.24), 'ae': (0.86, 2.05, 2.85),
@@ -444,6 +475,7 @@ class Sound(Signal):
             out = numpy.tile(out, (n_channels, 1))
         vowel = Sound(data=out, samplerate=samplerate)
         vowel.filter(frequency=0.75 * samplerate / 2, kind='lp')
+        vowel.level = _default_level
         return vowel
 
     @staticmethod
@@ -469,7 +501,8 @@ class Sound(Signal):
                 noise = slab.Sound.powerlawnoise(0.2, alpha, samplerate=8000)
                 noise.spectrum(axis=ax, show=False)
             plt.show() """
-        samplerate = Sound.get_samplerate(samplerate)
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         freqs, _, _ = Filter._center_freqs(  # get center_freqs
             low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth)
@@ -477,11 +510,12 @@ class Sound(Signal):
         sig = Sound.tone(frequency=freqs, duration=duration,
                          phase=rand_phases, samplerate=samplerate)
         data = numpy.sum(sig.data, axis=1) / len(freqs)  # collapse across channels
-        return Sound(data, samplerate=samplerate)
+        out = Sound(data, samplerate=samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
-    # TODO: would be more consistent if the function would be called equally_masking_noise?"
-    def erb_noise(duration=1.0, low_cutoff=125, high_cutoff=4000, samplerate=None):
+    def equally_masking_noise(duration=1.0, low_cutoff=125, high_cutoff=4000, samplerate=None):
         """ Generate an equally-masking noise (ERB noise) within a given frequency band.
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
@@ -492,9 +526,9 @@ class Sound(Signal):
             (slab.Sound): equally masking noise noise, generated from the given parameters.
         Examples:
             sig = Sound.erb_noise()
-            sig.spectrum()
-        """
-        samplerate = Sound.get_samplerate(samplerate)
+            sig.spectrum() """
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         n = 2 ** (duration - 1).bit_length()  # next power of 2
         st = 1 / samplerate
@@ -512,7 +546,9 @@ class Sound(Signal):
         fnoise = numpy.real(numpy.fft.ifft(numpy.concatenate(
             (band, band[::-1])) * numpy.fft.fft(noise)))
         fnoise = fnoise[:duration]
-        return Sound(data=fnoise, samplerate=samplerate)
+        out = Sound(data=fnoise, samplerate=samplerate)
+        out.level = _default_level
+        return out
 
     @staticmethod
     def sequence(*sounds):
@@ -719,7 +755,8 @@ class Sound(Signal):
         Returns:
             (slab.Sound): The recorded sound. """
         if soundcard is not False:
-            samplerate = Sound.get_samplerate(samplerate)
+            if samplerate is None:
+                samplerate = slab.signal._default_samplerate
             duration = Sound.in_samples(duration, samplerate)
             mic = soundcard.default_microphone()
             data = mic.record(samplerate=samplerate, numframes=duration, channels=1)
