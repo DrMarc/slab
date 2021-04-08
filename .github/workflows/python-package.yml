@@ -40,4 +40,5 @@ jobs:
     - name: Test with pytest
       run: |
         python setup.py develop
+        pip uninstall soundcard
         pytest
