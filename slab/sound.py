@@ -732,7 +732,8 @@ class Sound(Signal):
             except FileNotFoundError:
                 raise ImportError(
                     'Recording without SoundCard module requires SoX.\n'
-                    'Install: sudo apt-get install sox libsox-fmt-all OR pip install SoundCard.')
+                    'Install: pip install SoundCard OR install SoX (Linux: sudo apt-get install sox libsox-fmt-all.\n'
+                    'Windows: see SoX website: http://sox.sourceforge.net/)')
             time.sleep(duration)
             out = Sound('tmp.wav')
         return out
