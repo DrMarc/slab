@@ -775,7 +775,7 @@ class Sound(Signal):
             out = Sound('tmp.wav')
         return out
 
-    def play(self, sleep=None):
+    def play(self):
         """Plays the sound through the default device. If the soundcard module is installed it is used
         to play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via the
         `play_file` method.
@@ -786,8 +786,6 @@ class Sound(Signal):
         else:
             self.write(_tmpdir / 'tmp.wav', normalise=False)
             Sound.play_file(_tmpdir / 'tmp.wav')
-        if sleep:  # all current play methods are blocking, there is no reason to sleep!  # TODO: so remove it?
-            time.sleep(self.duration)
 
     @staticmethod
     def play_file(filename):
