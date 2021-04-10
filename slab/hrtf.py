@@ -451,7 +451,7 @@ class HRTF:
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         if axis is None:
-            ax = Axes3D(plt.figure())
+            ax = plt.subplot(projection='3d')
         else:
             if not (isinstance(axis, Axes3D)):
                 raise ValueError("Axis must be instance of Axes3D!")

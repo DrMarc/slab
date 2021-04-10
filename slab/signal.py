@@ -47,9 +47,6 @@ class Signal:
 
     # __methods (class creation, printing, and slice functionality)
     def __init__(self, data, samplerate=None):
-        if samplerate is None:
-            samplerate = _default_samplerate
-        self.samplerate = samplerate
         if isinstance(data, numpy.ndarray):
             self.data = numpy.array(data, dtype='float')
         elif isinstance(data, (list, tuple)):
@@ -72,6 +69,11 @@ class Signal:
         elif self.data.shape[1] > self.data.shape[0]:
             if not len(data) == 0:  # dont transpose if data is an empty array
                 self.data = self.data.T
+        if not hasattr(self, 'samplerate'):  # if samplerate has not been set, use default
+            if samplerate is None:
+                self.samplerate = _default_samplerate
+            else:
+                self.samplerate = samplerate
 
     def __repr__(self):
         return f'{type(self)} (\n{repr(self.data)}\n{repr(self.samplerate)})'

@@ -69,7 +69,7 @@ def test_crossfade():
     samplerate = 44100
     noise_durations = [0.1, 0.5, 1.0]
     vowel_durations = [0.1, 0.5, 1.0]
-    overlaps = [0.0, 0.1]
+    overlaps = [0.0, 0.01]
     combinations = itertools.product(noise_durations, vowel_durations, overlaps)
     for noise_dur, vowel_dur, overlap in combinations:
         noise = slab.Sound.whitenoise(duration=noise_dur, samplerate=samplerate)

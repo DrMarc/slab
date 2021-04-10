@@ -630,8 +630,8 @@ class Sound(Signal):
             noise2vowel = Sound.crossfade(vowel, noise, vowel, overlap=0.4)
             noise2vowel.play() """
         sounds = list(sounds)
-        if any([sound.duration < overlap for sound in sounds]):
-            raise ValueError('The overlap can not be longer then the sound.')
+        if any([sound.duration < overlap * 2 for sound in sounds]):
+            raise ValueError('The overlap can not be longer then the half of the sound.')
         if len(set([sound.n_channels for sound in sounds])) != 1:
             raise ValueError('Cannot crossfade sounds with unequal numbers of channels.')
         if len(set([sound.samplerate for sound in sounds])) != 1:
@@ -647,16 +647,19 @@ class Sound(Signal):
                 sound = sound.ramp(duration=overlap, when="offset")  # for the first sound only add offset ramp
                 sounds[i] = sound.resize(n_total)
             else:
-                if i == len(sounds) - 1:
-                    sound = sound.ramp(duration=overlap, when="onset")  # for the first sound only add onset ramp
-                else:
-                    sound = sound.ramp(duration=overlap, when="both")  # for all other sounds add both
                 n_silence_before = n_previous - overlap * i
                 n_silence_after = n_total - n_silence_before - sound.n_samples
-                sounds[i] = Sound.sequence(
-                    Sound.silence(n_silence_before, samplerate=sound.samplerate, n_channels=sound.n_channels),
-                    sound,
-                    Sound.silence(n_silence_after, samplerate=sound.samplerate, n_channels=sound.n_channels))
+                if i == len(sounds) - 1:
+                    sound = sound.ramp(duration=overlap, when="onset")  # for the last sound only add onset ramp
+                    sounds[i] = Sound.sequence(
+                        Sound.silence(n_silence_before, samplerate=sound.samplerate, n_channels=sound.n_channels),
+                        sound)
+                else:
+                    sound = sound.ramp(duration=overlap, when="both")  # for all other sounds add both
+                    sounds[i] = Sound.sequence(
+                        Sound.silence(n_silence_before, samplerate=sound.samplerate, n_channels=sound.n_channels),
+                        sound,
+                        Sound.silence(n_silence_after, samplerate=sound.samplerate, n_channels=sound.n_channels))
             n_previous += n_samples
         sound = sum(sounds)
         return sound
