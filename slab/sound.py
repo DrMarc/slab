@@ -8,6 +8,11 @@ try:
     import soundfile
 except ImportError:
     soundfile = False
+except OSError as e:
+    soundfile = False
+    print(e)
+    print("If you use linux, libsndfile needs to be installed manually:"
+          "sudo apt-get install libsndfile1")
 try:
     import soundcard
 except ImportError:
