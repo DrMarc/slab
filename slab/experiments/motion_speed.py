@@ -24,7 +24,7 @@ _after_stim_pause = 0.1
 _speeds = [50, 100, 150, 200, 250]  # deg/sec
 _jnd_diff_thresh = 1.5
 
-slab.Resultsfile.results_folder = 'Results'
+slab.ResultsFile.results_folder = 'Results'
 
 
 def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
@@ -87,7 +87,7 @@ def familiarization():
         for dir in trials:
             stim = moving_gaussian(speed=_adapter_speed, SNR=100, direction=dir)
             stim.play()  # present
-            with slab.Key() as key:  # and get response
+            with slab.psychoacoustics.key() as key:  # and get response
                 resp = key.getch()
             if dir == 'left':  # transform response: left = key '1', right = key '2'
                 resp = resp == 49
@@ -185,7 +185,7 @@ def main_experiment(subject=None):
     # set up the results file
     if not subject:
         subject = input('Enter subject code: ')
-    _results_file = slab.Resultsfile(subject=subject)
+    _results_file = slab.ResultsFile(subject=subject)
     # _ = familiarization() # run the familiarization, the hitrate is saved in the results file
     practice_stairs()  # run the stairs practice
     print('The main part of the experiment starts now (motion direction thresholds).')
