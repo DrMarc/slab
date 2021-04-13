@@ -3,7 +3,7 @@ Zhenyu's experiment:
 Is motion adaptation speed-dependent?
 Use like this:
 >>> from slab.experiments import motion_speed
->>> motion_speed.day1('subject01')
+>>> motion_speed.main_experiment('subject01')
 '''
 
 import time
@@ -57,14 +57,14 @@ def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
     for i, speaker_position in enumerate(_speaker_positions):
         sig = slab.Binaural.pinknoise(duration=end_time)
         sig = sig.at_azimuth(azimuth=speaker_position)
-        sig = sig.envelope(envelope=speaker_amps[i, :], times=times, kind='dB')
+        sig = sig.envelope(apply_envelope=speaker_amps[i, :], times=times, kind='dB')
         speaker_signals.append(sig)
     sig = speaker_signals[0]
     for speaker_signal in speaker_signals[1:]:  # add sounds
         sig += speaker_signal
     sig /= len(_speaker_positions)
     sig.ramp(duration=end_time/3)  # ramp the sum
-    sig.filter(f=[500,14000], kind='bp')
+    sig.filter(frequency=[500,14000], kind='bp')
     sig = sig.externalize() # apply smooth KEMAR HRTF to move perceived source outside of the head
     sig.level = 75
     return sig
