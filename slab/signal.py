@@ -233,7 +233,7 @@ class Signal:
         """ Either apply an envelope to a sound or, if no `apply_envelope` was specified, compute the Hilbert envelope
         of the sound.
         Arguments:
-            apply_envelope (None | numpy.ndarray): data to multiply with the sound. the envelope is linearly
+            apply_envelope (None | numpy.ndarray): data to multiply with the sound. The envelope is linearly
                 interpolated to be the same length as the sound. If None, compute the sound's Hilbert envelope
             times (None | numpy.ndarray | list): If None a vector linearly spaced from 0 to the duration of the sound
                 is used. If time points (in seconds, clamped to the the sound duration) for the amplitude values
