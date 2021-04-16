@@ -23,8 +23,6 @@ setup(name='slab',
       license='MIT',
       python_requires='>=3.6',
       install_requires=['numpy', 'scipy', 'matplotlib', 'SoundFile'],
+      extras_require={'testing': ['h5netcdf'],},
       packages=find_packages(),
-      package_data={'slab': ['data/mit_kemar_normal_pinna.sofa',
-                             'data/KEMAR_interaural_level_spectrum.npy']},
-      include_package_data=True,
-      zip_safe=False)
+      zip_safe=True)
