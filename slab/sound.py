@@ -479,7 +479,7 @@ class Sound(Signal):
         return vowel
 
     @staticmethod
-    def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1 / 3, samplerate=None):
+    def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1/3, samplerate=None):
         """ Generate noise made of ERB-spaced random-phase pure tones. This noise does not have random amplitude
         variations and is useful for testing CI patients [Oxenham 2014, Trends Hear].
         Arguments:
@@ -493,19 +493,13 @@ class Sound(Signal):
         Examples:
             sig = Sound.multitone_masker()
             sig = sig.ramp()
-            sig.spectrum()
-            # Generate and plot power law noise with three different exponents
-            from matplotlib import pyplot as plt
-            fig, ax = plt.subplots()
-            for alpha in [1, 2, 3]:
-                noise = slab.Sound.powerlawnoise(0.2, alpha, samplerate=8000)
-                noise.spectrum(axis=ax, show=False)
-            plt.show() """
+            sig.spectrum()"""
         if samplerate is None:
             samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
-        freqs, _, _ = Filter._center_freqs(  # get center_freqs
+        erb_freqs, _, _ = Filter._center_freqs(  # get center_freqs
             low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth)
+        freqs = slab.Filter._erb2freq(erb_freqs)
         rand_phases = numpy.random.rand(len(freqs)) * 2 * numpy.pi
         sig = Sound.tone(frequency=freqs, duration=duration,
                          phase=rand_phases, samplerate=samplerate)
