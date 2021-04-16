@@ -31,6 +31,10 @@ On Linux, you may need to install libsndfile (required by SoundFile) using your 
 
     sudo apt-get install libsndfile1
 
+On Windows, you may need to install `windows-curses <https://pypi.org/project/windows-curses/>`_ (required for getting button presses in the psychoacoustics classes)::
+
+    pip install windows-curses
+
 Working with head related transfer functions requires the h5netcdf module (trying to load a hrtf file will raise an error and tell you to install::
 
     pip install h5netcdf
