@@ -134,7 +134,15 @@ Installation
 Install the current stable release from the python package index with pip:
 ```pip install slab```
 
-or get the latest development version directly from GitHub (if you have [git](https://git-scm.com)) by running:
+On Linux, you may need to install libsndfile (required by SoundFile) using your distribution’s package manager, for instance:
+
+```sudo apt-get install libsndfile1```
+
+On Windows, you may need to install windows-curses (required for getting button presses in the psychoacoustics classes):
+
+```pip install windows-curses```
+
+You can also get the latest development version directly from GitHub (if you have [git](https://git-scm.com)) by running:
 ```pip install git+https://github.com/DrMarc/slab.git```
 
 The releases use [semantic versioning](https://semver.org): major.minor.patch, where `major` increments for changes that break backwards compatibility, `minor` increments for added functionality, and `patch` increments for internal bug fixes.
