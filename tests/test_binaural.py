@@ -45,7 +45,7 @@ def test_at_azimuth():
             itd = slab.Sound.in_samples(slab.Binaural.azimuth_to_itd(azimuth), 8000)
             assert numpy.abs(itd - lateral.itd()) <= 1
             ild = slab.Binaural.azimuth_to_ild(azimuth)
-            numpy.testing.assert_almost_equal(ild, numpy.diff(lateral.level), decimal=0)
+            assert numpy.abs(ild - lateral.ild()) <= 3
 
 
 def test_itd_ramp():
@@ -96,4 +96,3 @@ def test_interaural_level_spectrum():
         subbands_left = fbank.apply(lateral.left)
         subbands_right = fbank.apply(lateral.right)
         assert -0.5 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 0.5
-
