@@ -453,9 +453,9 @@ class Binaural(Sound):
         return Binaural(Sound.multitone_masker(**kwargs))
 
     @staticmethod
-    def erb_noise(**kwargs):
+    def equally_masking_noise(**kwargs):
         """ Identical to slab.Sound.erb_noise, but with two channels. """
-        return Binaural(Sound.erb_noise(**kwargs))
+        return Binaural(Sound.equally_masking_noise(**kwargs))
 
     def aweight(self):
         """ Identical to slab.Sound.aweight, but with two channels. """
