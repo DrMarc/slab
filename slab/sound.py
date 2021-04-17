@@ -610,14 +610,14 @@ class Sound(Signal):
 
     @staticmethod
     def crossfade(*sounds, overlap=0.01):
-        """ Crossfade two sounds.
+        """ Crossfade several sounds.
         Arguments:
             *sounds (instances of slab.Sound): sounds to crossfade
             overlap (float | int): duration of the overlap between the cross-faded sounds in seconds (given a float)
                 or in samples (given an int).
         Returns:
             (slab.Sound): A single sound that contains all input sounds cross-faded. The duration will be the
-                sum of the input sound's durations minus the overlaps.
+                sum of the input sounds' durations minus the overlaps.
         Examples:
             noise = Sound.whitenoise(duration=1.0)
             vowel = Sound.vowel()
@@ -626,9 +626,9 @@ class Sound(Signal):
         sounds = list(sounds)
         if any([sound.duration < overlap for sound in sounds]):
             raise ValueError('The overlap can not be longer then the sound.')
-        if len(set([sound.n_channels for sound in sounds])) != 1:
+        if len({sound.n_channels for sound in sounds}) != 1:
             raise ValueError('Cannot crossfade sounds with unequal numbers of channels.')
-        if len(set([sound.samplerate for sound in sounds])) != 1:
+        if len({sound.samplerate for sound in sounds}) != 1:
             raise ValueError('Cannot crossfade sounds with unequal samplerates.')
         overlap = Sound.in_samples(overlap, samplerate=sounds[0].samplerate)
         n_total = sum([sound.n_samples for sound in sounds]) - overlap * (len(sounds) - 1)
