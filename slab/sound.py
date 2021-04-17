@@ -1,8 +1,10 @@
 import time
+import copy
 import pathlib
 import tempfile
+import platform
+import subprocess
 import numpy
-import copy
 
 try:
     import soundfile
@@ -26,6 +28,10 @@ try:
     import matplotlib.pyplot as plt
 except ImportError:
     matplotlib, plt = False, False
+
+_system = platform.system()
+if _system == 'Windows':
+    import winsound
 
 import slab.signal
 from slab.signal import Signal
@@ -177,7 +183,6 @@ class Sound(Signal):
 
     @staticmethod
     def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, n_channels=1):
-        # TODO: in tone() the phase argument refers to the channels, here it refers to the harmonics --> rename?
         """ Generate a harmonic complex tone composed of pure tones at integer multiples of the fundamental frequency.
         Arguments:
             f0 (int): the fundamental frequency. Harmonics will be generated at integer multiples of this value.
@@ -233,8 +238,8 @@ class Sound(Signal):
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
-            n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise sound will
-                be generated and they will be uncorrelated.
+            n_channels (int): number of channels, defaults to one. If channels > 1, several channels of uncorrelated
+                noise are generated.
         Returns:
             (slab.Sound): the white noise generated from the parameters.
         Examples:
@@ -255,8 +260,8 @@ class Sound(Signal):
             alpha (int) : power law exponent.
             samplerate: output samplerate
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
-            n_channels (int): number of channels, defaults to one. If channels > 1, a new white noise sound will
-                be generated and they will be uncorrelated.
+            n_channels (int): number of channels, defaults to one. If channels > 1, several channels of uncorrelated
+                noise are generated.
         Returns:
             (slab.Sound): the power law noise generated from the parameters.
         Examples:
@@ -307,15 +312,13 @@ class Sound(Signal):
         return Sound.powerlawnoise(duration, 1.0, samplerate=samplerate, n_channels=n_channels)
 
     @staticmethod
-    # TODO: why does the function have no n_channels argument?
-    def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None):
+    def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None, n_channels=1):
         """
         Generate iterated ripple noise (IRN). IRN is a broadband noise with temporal regularities,
         which can give rise to a perceptible pitch. Since the perceptual pitch to noise
         ratio of these stimuli can be altered without substantially altering their spectral
         content, they have been useful in exploring the role of temporal processing in pitch
-        perception [Yost 1996, JASA]. The noise is obtained by adding attenuated and delayed
-        versions of a white noise in the frequency domain.  # TODO: maybe this is a bit too much info for a docstring?
+        perception [Yost 1996, JASA].
         Arguments:
             frequency (int | float): the frequency of the signals perceived pitch in Hz.
             gain (int | float) : multiplicative factor of the repeated additions. Smaller values reduce the
@@ -323,23 +326,28 @@ class Sound(Signal):
             n_iter (int): number of iterations of additions. Higher values increase pitch saliency.
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one. If channels > 1, several channels with copies of
+                the noise are generated.
         Returns:
             (slab.Sound): ripple noise that has a perceived pitch at the given frequency.
         """
         if samplerate is None:
             samplerate = slab.signal._default_samplerate
         delay = 1 / frequency
-        noise = Sound.whitenoise(duration, samplerate=samplerate)
-        x = numpy.array(noise.data.T)[0]
-        irn_add = numpy.fft.fft(x)
-        n_samples, sample_dur = len(irn_add), float(1 / samplerate)
-        w = 2 * numpy.pi * numpy.fft.fftfreq(n_samples, sample_dur)
-        d = float(delay)
-        for k in range(1, n_iter + 1):
-            irn_add += (gain ** k) * irn_add * numpy.exp(-1j * w * k * d)
-        irn_add = numpy.fft.ifft(irn_add)
-        x = numpy.real(irn_add)
-        out = Sound(x, samplerate)
+        out = []
+        for _ in range(n_channels):
+            noise = Sound.whitenoise(duration, samplerate=samplerate)
+            x = numpy.array(noise.data.T)[0]
+            irn_add = numpy.fft.fft(x)
+            n_samples, sample_dur = len(irn_add), float(1 / samplerate)
+            w = 2 * numpy.pi * numpy.fft.fftfreq(n_samples, sample_dur)
+            d = float(delay)
+            for k in range(1, n_iter + 1):
+                irn_add += (gain ** k) * irn_add * numpy.exp(-1j * w * k * d)
+            irn_add = numpy.fft.ifft(irn_add)
+            x = numpy.real(irn_add)
+            out.append(x)
+        out = Sound(out, samplerate)
         out.level = _default_level
         return out
 
@@ -413,7 +421,7 @@ class Sound(Signal):
     def silence(duration=1.0, samplerate=None, n_channels=1):
         """ Generate silence (all samples equal zero).
         Arguments:
-            duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
+            duration (float | int): duration of the sound in seconds (float) or samples (int).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             n_channels (int): number of channels, defaults to one.
         Returns:
@@ -422,7 +430,6 @@ class Sound(Signal):
             samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         out = Sound(numpy.zeros((duration, n_channels)), samplerate)
-        out.level = _default_level
         return out
 
     @staticmethod
@@ -764,7 +771,6 @@ class Sound(Signal):
             data = mic.record(samplerate=samplerate, numframes=duration, channels=1)
             out = Sound(data, samplerate=samplerate)
         else:  # use sox
-            import subprocess
             try:
                 subprocess.call(
                     ['sox', '-d', '-r', str(samplerate), str(_tmpdir / 'tmp.wav'), 'trim', '0', str(duration)])
@@ -794,18 +800,13 @@ class Sound(Signal):
         """ Play a .wav file using the OS-specific mechanism for Windows, Linux or Mac.
         Arguments:
              filename (str | pathlib.Path): full path to the .wav file to be played. """
-        from platform import system
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
-        system = system()
-        if system == 'Windows':
-            import winsound
+        if _system == 'Windows':
             winsound.PlaySound(filename, winsound.SND_FILENAME)
-        elif system == 'Darwin':  # MacOS
-            import subprocess
+        elif _system == 'Darwin':  # MacOS
             subprocess.call(['afplay', filename])
         else:  # Linux
-            import subprocess
             try:
                 subprocess.call(['sox', filename, '-d'])
             except FileNotFoundError:
@@ -847,7 +848,7 @@ class Sound(Signal):
                     **kwargs):
         """ Plot a spectrogram of the sound or return the computed values.
         Arguments:
-            window_dur: duration of time window for short-term FFT, defaults to 0.005 seconds.
+            window_dur: duration in samples (int) or seconds (float) of time window for short-term FFT, default 0.005 s.
             dyn_range: dynamic range in dB to plot, defaults to 120.
             upper_frequency (int | float | None): The upper frequency limit of the plot. If None use the maximum.
             other (slab.Sound): if a sound object is given, subtract the waveform and plot the difference spectrogram.
@@ -866,11 +867,9 @@ class Sound(Signal):
             x = self.data.flatten() - other.data.flatten()
         else:
             x = self.data.flatten()
-        # set default for step_dur optimal for Gaussian windows.
-        step_dur = window_dur / numpy.sqrt(numpy.pi) / 8
         # convert window & step durations from seconds to numbers of samples
         window_n_samples = Sound.in_samples(window_dur, self.samplerate) * 2
-        step_n_samples = Sound.in_samples(step_dur, self.samplerate)
+        step_n_samples = window_dur / numpy.sqrt(numpy.pi) / 8  # optimal step duration for Gaussian windows.
         # make the window. A Gaussian filter needs a minimum of 6σ - 1 samples, so working
         # backward from window_n_samples we can calculate σ.
         window_sigma = (window_n_samples + 1) / 6
@@ -995,25 +994,24 @@ class Sound(Signal):
     def spectral_feature(self, feature='centroid', mean='rms', frame_duration=None, rolloff=0.85):
         """ Computes one of several features of the spectrogram of a sound for each channel.
         Arguments:
-            # TODO: every feature should only be described briefly, computational details go in the documentation
             feature (str): the kind of feature to compute, options are:
-                "centroid" which is the center of mass of the short-term spectrum,
-                "fwhm" which is the width of a Gaussian of the same variance as the spectrum around the centroid,
-                "flux" which is a measure of how quickly the power spectrum of a sound is changing, by
+                "centroid", the center of mass of the short-term spectrum,
+                "fwhm", the width of a Gaussian of the same variance as the spectrum around the centroid,
+                "flux", a measure of how quickly the power spectrum of a sound is changing, by
                 comparing the power spectrum for one frame against the power spectrum from the previous frame.
                 Returns the root-mean-square over the entire stimulus of the change in power spectrum between
                 adjacent time windows, measured as Euclidean distance.
-                "flatness", which measures how tone-like a sound is, as opposed to being noise-like
+                "flatness", measures how tone-like a sound is, as opposed to being noise-like
                 It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean.
                 (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" I
                 EEE Signal Processing Letters, 2004, Vol. 11.).
-                "rolloff", which is the frequency at which the spectrum rolls off and is typically used to find a
+                "rolloff", the frequency at which the spectrum rolls off, typically used to find a
                 suitable low-cutoff frequency that retains most of the sound power (given as fraction in `rolloff`)
             mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms"
                 (root means square), "average" or None. If None, a new sound with the feature value at each sample
                 is generated.
-            frame_duration (None):  # TODO: add parameter description
-            rolloff (float):  # TODO: add parameter description
+            frame_duration (0.05 s): duration of frames in samples (int) or seconds (float) in which to compute features
+            rolloff (float): only used if `feature` is "rolloff", fraction of spectral power below the rolloff frequency
         Returns:
             (list | slab.Signal): The mean feature for each channel in a list or a new sound with the feature value
                 at each sample. """
