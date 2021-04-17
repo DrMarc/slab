@@ -30,13 +30,13 @@ except ImportError:
 import slab.signal
 from slab.signal import Signal
 from slab.filter import Filter
-from slab import DATAPATH
+from slab import data_path
 
 # get a temporary directory for writing intermediate files
 _tmpdir = pathlib.Path(tempfile.gettempdir())
 
 try:  # try getting a previously set calibration intensity from file
-    _calibration_intensity = numpy.load(DATAPATH + 'calibration_intensity.npy')
+    _calibration_intensity = numpy.load(data_path(allow_download=False) + 'calibration_intensity.npy')
 except FileNotFoundError:
     _calibration_intensity = 0  #: Difference between rms intensity and measured output intensity in dB
 
@@ -1170,7 +1170,8 @@ def calibrate(intensity=None, make_permanent=False):
             by the sound's `level` attribute (For example: If `level` is 80 dB and you record 60 dB, the value of
             `intensity` should be -20). If None, a 1 kHz tone is played for five seconds after which you will be
             prompted to input the measured intensity.
-        make_permanent (bool): If True, save a calibration file in slab.DATAPATH that is loaded on import. """
+        make_permanent (bool): If True, save a calibration file in the data folder (from the slab.data_path method)
+            that is loaded on import. """
     global _calibration_intensity
     if intensity is None:
         tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
@@ -1181,7 +1182,7 @@ def calibrate(intensity=None, make_permanent=False):
     # set and save
     _calibration_intensity = intensity
     if make_permanent:
-        numpy.save(DATAPATH + 'calibration_intensity.npy', _calibration_intensity)
+        numpy.save(data_path(allow_download=False) + 'calibration_intensity.npy', _calibration_intensity)
 
 
 def apply_to_path(path='.', method=None, kwargs={}, out_path=None):

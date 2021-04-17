@@ -4,7 +4,7 @@ from slab.sound import Sound
 from slab.signal import Signal
 from slab.filter import Filter
 from slab.hrtf import HRTF
-
+from slab import data_path
 
 class Binaural(Sound):
     """
@@ -251,8 +251,7 @@ class Binaural(Sound):
         Returns:
             (slab.Binaural): externalized copy of the instance. """
         if not hrtf:
-            from slab import DATAPATH
-            hrtf = HRTF(DATAPATH+'mit_kemar_normal_pinna.sofa')  # load the hrtf file
+            hrtf = HRTF(data_path()+'mit_kemar_normal_pinna.sofa')  # load the hrtf file
         # get HRTF for [0,0] direction:
         idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[0][0]
         if not idx_frontal.size: # idx_frontal is empty
@@ -290,13 +289,12 @@ class Binaural(Sound):
             ils[0, 1:] # the sound source azimuth's for which the level difference was calculated
             ils[1:, 0]  # the sub-band frequencies
             ils[5, :]  # the level difference for each azimuth in the 5th sub-band """
-        from slab import DATAPATH
         if not hrtf:
             try:
-                ils = numpy.load(DATAPATH + 'KEMAR_interaural_level_spectrum.npy')
+                ils = numpy.load(data_path() + 'KEMAR_interaural_level_spectrum.npy')
                 return ils
             except FileNotFoundError:
-                hrtf = HRTF(DATAPATH+'mit_kemar_normal_pinna.sofa')  # load the hrtf file
+                hrtf = HRTF(data_path() +'mit_kemar_normal_pinna.sofa')  # load the hrtf file
                 save_standard = True
         elif isinstance(hrtf, HRTF):
             save_standard = False
@@ -324,7 +322,7 @@ class Binaural(Sound):
             ils[1:, n+1] = noise_bank_right.level - noise_bank_left.level
             ils[0, n+1] = azi[sort[n]]  # first entry is the angle
         if save_standard is True:
-            numpy.save(DATAPATH + 'KEMAR_interaural_level_spectrum.npy', ils)
+            numpy.save(data_path() + 'KEMAR_interaural_level_spectrum.npy', ils)
         return ils
 
     def interaural_level_spectrum(self, azimuth, level_spectrum_filter=None):

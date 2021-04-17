@@ -5,9 +5,9 @@ plt.ioff()
 
 
 def test_create_hrtf():
-    hrtf1 = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+    hrtf1 = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
     assert hrtf1.data[0].fir is True
-    hrtf2 = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+    hrtf2 = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
     for i in range(len(hrtf1.data)):
         numpy.testing.assert_equal(hrtf1.data[i].data, hrtf2.data[i].data)
     del hrtf2
@@ -34,7 +34,7 @@ def test_create_hrtf():
 
 
 def test_plot_hrtf():
-    hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+    hrtf = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
     for ear in ["left", "right", "both"]:
         if ear == "both":
             _, ax = plt.subplots(2)
@@ -46,7 +46,7 @@ def test_plot_hrtf():
 
 
 def test_diffuse_field():
-    hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+    hrtf = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
     dfs = hrtf.diffuse_field_avg()
     assert dfs.fir is False
     assert dfs.n_frequencies == hrtf.data[0].n_taps
@@ -58,7 +58,7 @@ def test_diffuse_field():
 
 
 def test_cone_sources():  # this is not working properly!
-    hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+    hrtf = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
     sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
     for _ in range(10):
         cone = numpy.random.uniform(-1000, 1000)
@@ -69,7 +69,7 @@ def test_cone_sources():  # this is not working properly!
 
 
 def test_elevation_sources():
-    hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+    hrtf = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
     elevations = numpy.unique(hrtf.sources[:, 1])
     elevations = numpy.concatenate([elevations, [-35, 3, 21]])
     for e in elevations:
@@ -82,7 +82,7 @@ def test_elevation_sources():
 
 
 def test_tf_from_sources():
-    hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+    hrtf = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
     for i in range(10):
         n_sources = numpy.random.randint(1, 100)
         n_bins = numpy.random.randint(100, 500)
@@ -93,7 +93,7 @@ def test_tf_from_sources():
 
 
 def test_vsi():
-    hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+    hrtf = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
     vsi = hrtf.vsi()
     numpy.testing.assert_almost_equal(vsi, 0.73, decimal=2)
     vsis = []
@@ -105,6 +105,6 @@ def test_vsi():
 
 def test_plot_sources():
     for i in range(10):
-        hrtf = slab.HRTF(slab.DATAPATH+"mit_kemar_normal_pinna.sofa")
+        hrtf = slab.HRTF(slab.data_path()+"mit_kemar_normal_pinna.sofa")
         idx = numpy.random.choice(range(len(hrtf.sources)), numpy.random.randint(10))
         hrtf.plot_sources(idx=idx, show=False)

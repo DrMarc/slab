@@ -9,6 +9,7 @@ import json
 import pickle
 import zipfile
 import collections
+import urllib.request
 from sys import platform
 from contextlib import contextmanager
 from collections import Counter, abc
@@ -29,6 +30,24 @@ import slab
 
 results_folder = 'Results'
 input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard 'or 'buttonbox'
+
+
+def data_path(allow_download=True):
+    """ Get the path where auxiliary data (like HRTF recordings, calibrations) are stored.
+    Arguments:
+        allow_download (bool): If true, check if the data folder contains the KEMAR HRTF-recordings and if not,
+            download them from the GitHub repository.
+    Returns:
+        (str): the path to the data folder. """
+    path = str(pathlib.Path(__file__).parent.resolve() / pathlib.Path('data')) + os.sep
+    if not os.path.exists(path):
+        os.mkdir(path)
+    if not os.path.exists(path + 'mit_kemar_normal_pinna.sofa'):
+        if allow_download:
+            print("downloading the KEMAR HRTF recodings from GitHub...")
+            url = "https://raw.githubusercontent.com/DrMarc/slab/master/slab/data/mit_kemar_normal_pinna.sofa"
+            urllib.request.urlretrieve(url, path + 'mit_kemar_normal_pinna.sofa')
+    return path
 
 
 class _Buttonbox:
