@@ -1,8 +1,8 @@
-import slab
-import numpy
 import pathlib
 import tempfile
+import numpy
 import scipy.signal
+import slab
 tmpdir = pathlib.Path(tempfile.gettempdir())
 
 
