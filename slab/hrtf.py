@@ -181,7 +181,6 @@ class HRTF:
         lis = {'pos': numpy.array(f.variables['ListenerPosition'], dtype='float')[0],
                'view': numpy.array(f.variables['ListenerView'], dtype='float')[0],
                'up': numpy.array(f.variables['ListenerUp'], dtype='float')[0]}
-        lis['view'][0] *= -1 # invert x direction to align with the 0 azimuth source direction
         lis['viewvec'] = numpy.concatenate([lis['pos'], lis['pos']+lis['view']])
         lis['upvec'] = numpy.concatenate([lis['pos'], lis['pos']+lis['up']])
         return lis
@@ -369,14 +368,14 @@ class HRTF:
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot """
         cone = numpy.sin(numpy.deg2rad(cone))
         azimuth = numpy.deg2rad(self.sources[:, 0])
-        elevation = numpy.deg2rad(self.sources[:, 1]-90)
+        elevation = numpy.deg2rad(90 - self.sources[:, 1])
         # the points defined by x and y are the source locations projected onto the azimuth plane
         x = numpy.sin(elevation) * numpy.cos(azimuth)
         y = numpy.sin(elevation) * numpy.sin(azimuth)
         eles = self.elevations()
         out = []
         for ele in eles:  # for each elevation, find the source closest to the reference y
-            subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x <= 0))
+            subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x >= 0))
             cmin = numpy.min(numpy.abs(y[subidx]-cone))
             if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                 idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
@@ -458,7 +457,7 @@ class HRTF:
             else:
                 ax = axis
         azimuth = numpy.deg2rad(self.sources[:, 0])
-        elevation = numpy.deg2rad(self.sources[:, 1]-90)
+        elevation = numpy.deg2rad(90 - self.sources[:, 1])
         r = self.sources[:, 2]
         x = r * numpy.sin(elevation) * numpy.cos(azimuth)
         y = r * numpy.sin(elevation) * numpy.sin(azimuth)

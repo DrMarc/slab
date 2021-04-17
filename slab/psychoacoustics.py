@@ -16,9 +16,6 @@ from collections import Counter, abc
 from abc import abstractmethod
 try:
     import curses
-    if platform == "linux":  # these have to be set for curses to work on linux
-        os.environ["TERM"] = "linux"
-        os.environ["TERMINFO"] = "etc/terminfo"
 except ImportError:
     curses = None
 import numpy

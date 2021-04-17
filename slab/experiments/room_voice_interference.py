@@ -16,7 +16,7 @@ import slab
 # configuration
 slab.Signal.set_default_samplerate(44100)
 _results_file = None
-slab.Resultsfile.results_folder = 'Results'
+slab.ResultsFile.results_folder = 'Results'
 slab.psychoacoustics.input_method = 'keyboard' # or 'buttonbox'
 # possible parameters:
 rooms = tuple(range(40, 161, 8)) # (40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160)
@@ -156,6 +156,10 @@ def main_experiment(subject=None, do_jnd=True, do_interference=True):
     parameters (glottal pulse rate and vocal tract length) are first measured, then 3-alternative-
     forced-choice trial are presented with the reference in a larger room. Does a simultaneous voice
     change impede the detection of the room change?
+    The experiment requires a set of recorded spoken word stimuli, each of which was offline manipulated
+    to change speaker identity (using the STRAIGHT algorithm) and then run through a room acoustics
+    simulation to add reverberation consistent with rooms of different sizes. The filenames of the recordings
+    contain the word and the voice and room parameters, so that the correct file is loaded for presentation.
 
     This experiment showcases participant data handling, AFC trials, prerecorded stimulus handling, among others.
     '''
@@ -163,7 +167,7 @@ def main_experiment(subject=None, do_jnd=True, do_interference=True):
     # set up the results file
     if not subject:
         subject = input('Enter subject code: ')
-    _results_file = slab.Resultsfile(subject=subject)
+    _results_file = slab.ResultsFile(subject=subject)
     if do_jnd:
         jnd('room', practise=True)  # run the stairs practice for the room condition
         jnd_room = jnd('room') # mesure
@@ -172,14 +176,14 @@ def main_experiment(subject=None, do_jnd=True, do_interference=True):
         jnd('itd', practise=True)  # run the stairs practice for the room condition
         jnd_itd = jnd('itd')
     else: # need to get the jnds from the resultsfile
-        prev = slab.Resultsfile.previous_file(subject=subject)
-        jnd_room = slab.Resultsfile.read_file(prev, tag='jnd_room')
+        prev = slab.ResultsFile.previous_file(subject=subject)
+        jnd_room = slab.ResultsFile.read_file(prev, tag='jnd_room')
         if not jnd_room:
             raise ValueError('jnd_room not found in previous results file. Please run the full experiment.')
-        jnd_voice = slab.Resultsfile.read_file(prev, tag='jnd_voice')
+        jnd_voice = slab.ResultsFile.read_file(prev, tag='jnd_voice')
         if not jnd_voice:
             raise ValueError('jnd_voice not found in previous results file. Please run the full experiment.')
-        jnd_itd = slab.Resultsfile.read_file(prev, tag='jnd_itd')
+        jnd_itd = slab.ResultsFile.read_file(prev, tag='jnd_itd')
         if not jnd_itd:
             raise ValueError('jnd_itd not found in previous results file. Please run the full experiment.')
     if do_interference:

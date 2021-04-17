@@ -224,7 +224,7 @@ class Binaural(Sound):
         Returns:
             (float): The interaural level difference for a sound source at a given azimuth in decibels.
         Examples:
-            ild = slab.Binaural.azimuth_to_ild(-90) # ILD equivalent to 90 deg leftward source using KEMAR HRTF.d """
+            ild = slab.Binaural.azimuth_to_ild(-90) # ILD equivalent to 90 deg leftward source using KEMAR HRTF."""
         ils = Binaural._make_level_spectrum_filter(hrtf=hrtf)
         freqs = ils[1:, 0]  # get vector of frequencies in ils filter bank
         azis = ils[0, 1:]  # get vector of azimuths in ils filter bank
@@ -451,9 +451,9 @@ class Binaural(Sound):
         return Binaural(Sound.multitone_masker(**kwargs))
 
     @staticmethod
-    def erb_noise(**kwargs):
+    def equally_masking_noise(**kwargs):
         """ Identical to slab.Sound.erb_noise, but with two channels. """
-        return Binaural(Sound.erb_noise(**kwargs))
+        return Binaural(Sound.equally_masking_noise(**kwargs))
 
     def aweight(self):
         """ Identical to slab.Sound.aweight, but with two channels. """
