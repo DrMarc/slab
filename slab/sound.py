@@ -997,16 +997,9 @@ class Sound(Signal):
             feature (str): the kind of feature to compute, options are:
                 "centroid", the center of mass of the short-term spectrum,
                 "fwhm", the width of a Gaussian of the same variance as the spectrum around the centroid,
-                "flux", a measure of how quickly the power spectrum of a sound is changing, by
-                comparing the power spectrum for one frame against the power spectrum from the previous frame.
-                Returns the root-mean-square over the entire stimulus of the change in power spectrum between
-                adjacent time windows, measured as Euclidean distance.
-                "flatness", measures how tone-like a sound is, as opposed to being noise-like
-                It is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean.
-                (Dubnov, Shlomo  "Generalization of spectral flatness measure for non-gaussian linear processes" I
-                EEE Signal Processing Letters, 2004, Vol. 11.).
-                "rolloff", the frequency at which the spectrum rolls off, typically used to find a
-                suitable low-cutoff frequency that retains most of the sound power (given as fraction in `rolloff`)
+                "flux", a measure of how quickly the power spectrum of a sound is changing.
+                "flatness", measures how tone-like a sound is, as opposed to being noise-like.
+                "rolloff", the frequency at which the spectrum rolls off.
             mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms"
                 (root means square), "average" or None. If None, a new sound with the feature value at each sample
                 is generated.
