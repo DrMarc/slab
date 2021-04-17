@@ -76,7 +76,7 @@ def test_ild_ramp():
 
 def test_externalize():
     for i in range(10):
-        hrtf = slab.HRTF(slab.DATAPATH+'mit_kemar_normal_pinna.sofa')
+        hrtf = slab.HRTF(slab.data_path()+'mit_kemar_normal_pinna.sofa')
         idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[0][0]
         sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
         filtered = hrtf.data[idx_frontal].apply(sound)
