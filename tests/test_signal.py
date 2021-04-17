@@ -1,10 +1,9 @@
-import slab
 import numpy
-
+import slab
 
 def test_signal_generation():
     # (numpy.ndarray | object | list)
-    for i in range(100):
+    for _ in range(100):
         n_samples = numpy.random.randint(100, 10000)
         n_channels = numpy.random.randint(1, 10)
         samplerate = numpy.random.randint(10, 1000)
@@ -32,7 +31,7 @@ def test_samplerate():
     dur_samples = numpy.random.randint(10, 100000, 100)
     for i in range(100):
         samplerate = numpy.random.randint(1, 100000)
-        assert numpy.abs(slab.Signal.in_samples(dur_seconds[i], samplerate) - int(dur_seconds[i]*samplerate)) <=1
+        assert numpy.abs(slab.Signal.in_samples(dur_seconds[i], samplerate) - int(dur_seconds[i]*samplerate)) <= 1
         assert slab.Signal.in_samples(dur_samples[i], samplerate) == dur_samples[i]
 
 
@@ -61,7 +60,7 @@ def test_resize():
 
 
 def test_resample():
-    for i in range(100):
+    for _ in range(100):
         sig = slab.Signal(numpy.random.randn(numpy.random.randint(100, 10000)))
         samplerate = numpy.random.randint(10, 1000)
         sig_resampled = sig.resample(samplerate)
@@ -72,7 +71,7 @@ def test_envelope():
     sig = slab.Sound.tone()
     _ = sig.envelope(kind="gain")
     _ = sig.envelope(kind="dB")
-    for i in range(100):
+    for _ in range(100):
         env = numpy.random.uniform(-1, 1, 3)
         sig2 = sig.envelope(apply_envelope=env)
         assert numpy.abs(sig2.data.max() - sig.data.max() * numpy.abs(env).max()) < .001

@@ -218,16 +218,15 @@ class Signal:
             raise ImportError('Resampling requires scipy.sound.')
         if self.samplerate == samplerate:
             return self
-        else:
-            out = copy.deepcopy(self)
-            new_n_samples = int(numpy.rint(samplerate*self.duration))
-            new_signal = numpy.zeros((new_n_samples, self.n_channels))
-            for chan in range(self.n_channels):
-                new_signal[:, chan] = scipy.signal.resample(
-                    self.channel(chan), new_n_samples).flatten()
-            out.data = new_signal
-            out.samplerate = samplerate
-            return out
+        out = copy.deepcopy(self)
+        new_n_samples = int(numpy.rint(samplerate*self.duration))
+        new_signal = numpy.zeros((new_n_samples, self.n_channels))
+        for chan in range(self.n_channels):
+            new_signal[:, chan] = scipy.signal.resample(
+                self.channel(chan), new_n_samples).flatten()
+        out.data = new_signal
+        out.samplerate = samplerate
+        return out
 
     def envelope(self, apply_envelope=None, times=None, kind='gain'):
         """ Either apply an envelope to a sound or, if no `apply_envelope` was specified, compute the Hilbert envelope
