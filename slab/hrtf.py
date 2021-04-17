@@ -53,11 +53,11 @@ class HRTF:
             is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
         .samplerate (float): sampling rate at which the HRTF data was acquired.
     Example:
-        from slab import DATAPATH, HRTF
-        hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
+        from slab import data_path, HRTF
+        hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
         sourceidx = hrtf.cone_sources(20)
         hrtf.plot_sources(sourceidx)
-        hrtf.plot_tf(sourceidx,ear='left') """
+        hrtf.plot_tf(sourceidx, ear='left') """
     # instance properties
     n_sources = property(fget=lambda self: len(self.sources),
                          doc='The number of sources in the HRTF.')
@@ -361,8 +361,8 @@ class HRTF:
         Returns:
             (list): elements of the list are the indices of sound sources on the frontal half of the cone.
         Examples:
-            from slab import DATAPATH, HRTF
-            hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
+            from slab import data_path, HRTF
+            hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
             sourceidx = hrtf.cone_sources(20)  # get the source indices
             print(hrtf.sources[sourceidx])  # print the coordinates of the source indices
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot """
@@ -450,7 +450,7 @@ class HRTF:
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         if axis is None:
-            ax = Axes3D(plt.figure())
+            ax = plt.subplot(projection='3d')
         else:
             if not (isinstance(axis, Axes3D)):
                 raise ValueError("Axis must be instance of Axes3D!")
