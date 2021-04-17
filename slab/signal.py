@@ -47,6 +47,8 @@ class Signal:
 
     # __methods (class creation, printing, and slice functionality)
     def __init__(self, data, samplerate=None):
+        if hasattr(data, 'samplerate') and samplerate is not None:
+            warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
         if samplerate is None:
             samplerate = _default_samplerate
         self.samplerate = samplerate
@@ -63,8 +65,6 @@ class Signal:
         elif hasattr(data, 'data') and hasattr(data, 'samplerate'):
             self.data = data.data
             self.samplerate = data.samplerate
-            if samplerate is not None:
-                warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
         else:
             raise TypeError('Cannot initialise Signal with data of class ' + str(data.__class__))
         if len(self.data.shape) == 1:
