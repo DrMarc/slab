@@ -310,7 +310,7 @@ class Filter(Signal):
                                ref_freq)  # convert erb_spacing to octaves
         return center_freqs, bandwidth, erb_spacing
 
-    @staticmethod  # TODO: why must this be a static method?
+    @staticmethod
     def collapse_subbands(subbands, filter_bank=None):
         """ Sum a sound that has been filtered with a filterbank and which channels represent the sub-bands of
         the original sound. For each sound channel, the fourier transform is calculated and the result is

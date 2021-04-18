@@ -113,8 +113,8 @@ Count for how many steps you can hear the signal tone: ::
         stimulus.play()
         time.sleep(0.5)
 
-I can hear all of the steps without the masker, but only the first 6 or 7 with the masker. This will depend on the
-intensity at which you play the demo (see :ref:`Calibrating the output<calibration>` below).
+Many listeners can hear all of the steps without the masker, but only the first 6 or 7 steps with the masker. This
+depends on the intensity at which you play the demo (see :ref:`Calibrating the output<calibration>` below).
 The :meth:`.sequence` method is an example of list unpacking---you can provide any number of sounds to be concatenated.
 If you have a list of sounds, call the method like so: ``slab.Sound.sequence(*[list_of_sound_objects])``
 to unpack the list into function arguments.
@@ -164,15 +164,33 @@ You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or 
 Instead of plotting, :meth:`.spectrum` and :meth:`.spectrogram` will return the time frequency bins and spectral power
 values for further analysis if you set the :attr:`show` argument to False. All plotting functions can draw into an
 existing matplotlib.pyplot axis supplied with the :attr:`axis` argument.
+
 .. _spectral_features:
 You can also extract common features from sounds, such as the :meth:`.crest_factor` (a measure of how 'peaky'
 the waveform is), or the average :meth:`.onset_slope` (a measure of how fast the on-ramps in the sound are---important
 for sound localization). Features of the spectral content are bundled in the :meth:`.spectral_feature` method.
-It can compute spectral centroid, flux, flattness, and roll-off. When working with environmental sounds or other
-recorded stimuli, one often needs to compute relevant features for collections of recordings in different experimental
-conditions. The slab module contains a function :func:`slab.apply_to_path`, which applies a function to all wav files
-in a given folder and returns a dictionary of file names and computed features. In fact, you can also use that
-function to modify (for instance ramp and filter) all files in a folder.
+It can compute spectral centroid, flux, flattness, and roll-off, either for an entire sound (suitable for stationary
+sounds), or for successive time windows (frames, suitable for time-varying sounds).
+* The centroid is a measure of the center of mass of a spectrum (i.e. the 'center' frequency).
+* The flux measures how quickly the power spectrum is changing by comparing the power spectrum for one frame against the
+power spectrum from the previous frame; flatness measures how tone-like a sound is, as opposed to being noise-like, and
+is calculated by dividing the geometric mean of the power spectrum by the arithmetic mean (see `Dubnov (2004) <https://ieeexplore.ieee.org/document/1316889>`_).
+* The rolloff measures the frequency at which the spectrum rolls off, typically used to find a suitable low-cutoff
+frequency that retains most of the sound power.
+These particular features are integrated in slab because we find them useful in our daily work. Many more features are
+available in packages specialised on audio processing, for instance `librosa <https://librosa.org>`_. librosa interfaces
+easily with slab, you can just hand the sample data and the sample rate of an slab object separately to most of its
+methods::
+
+    import librosa
+    sig = slab.Sound('music.wav') # load wav file into slab.Sound object
+    librosa.beat.beat_track(y=sig.data, sr=sig.samplerate)
+
+When working with environmental sounds or other recorded stimuli, one often needs to compute relevant features for
+collections of recordings in different experimental conditions. The slab module contains a function
+:func:`slab.apply_to_path`, which applies a function to all wav files in a given folder and returns a dictionary of file
+names and computed features. In fact, you can also use that function to modify (for instance ramp and filter) all files
+in a folder.
 
 For other time-frequency processing, the :meth:`.frames` provides an easy way to step through the signal in short
 windowed frames and compute some values from it. For instance, you could detect on- and offsets in the signal
@@ -193,7 +211,7 @@ Binaural sounds
 ^^^^^^^^^^^^^^^
 For experiments in spatial hearing, or any other situation that requires differential manipulation of the left and
 right channel of a sound, you can use the :class:`Binaural` class. It inherits all methods from :class:`Sound` and
-sprovides additional methods for generating and manipulating binaural sounds, including advanced interaural time
+provides additional methods for generating and manipulating binaural sounds, including advanced interaural time
 and intensity manipulation.
 
 Generating binaural sounds

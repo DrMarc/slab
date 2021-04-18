@@ -402,6 +402,18 @@ class Binaural(Sound):
         return out
 
     @staticmethod
+    def irn(frequency=100, gain=1, n_iter=4, duration=1.0, kind='diotic', samplerate=None):
+        """ Generate iterated ripple noise (IRN). `kind`='diotic' produces the same noise samples in both channels,
+        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.irn`. """
+        out = Binaural(Sound.irn(frequency=frequency, gain=gain, n_iter=n_iter, duration=duration,
+            samplerate=samplerate, n_channels=2))
+        if kind == 'diotic':
+            out.left = out.right
+        else:
+            raise ValueError("kind must be 'dichotic' or 'diotic'.")
+        return out
+
+    @staticmethod
     def tone(frequency=500, duration=1., phase=0, samplerate=None):
         """ Identical to slab.Sound.tone, but with two channels. """
         return Binaural(Sound.tone(frequency=frequency, duration=duration, phase=phase, samplerate=samplerate,
@@ -412,11 +424,6 @@ class Binaural(Sound):
         """ Identical to slab.Sound.harmoniccomplex, but with two channels. """
         return Binaural(Sound.harmoniccomplex(f0=f0, duration=duration, amplitude=amplitude, phase=phase,
                                               samplerate=samplerate, n_channels=2))
-
-    @staticmethod
-    def irn(**kwargs):
-        """ Identical to slab.Sound.irn, but with two channels. """
-        return Binaural(Sound.irn(**kwargs))
 
     @staticmethod
     def click(duration=0.0001, samplerate=None):

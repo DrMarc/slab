@@ -1,7 +1,7 @@
 include README.md
 graft slab/experiments/
-include slab/data/mit_kemar_normal_pinna.sofa
-include slab/data/KEMAR_interaural_level_spectrum.npy
+prune slab/data/mit_kemar_normal_pinna.sofa
+prune slab/data/KEMAR_interaural_level_spectrum.npy
 prune slab/data/aachen/
 prune slab/data/ari/
 prune slab/data/cipic/

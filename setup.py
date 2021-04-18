@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-import sys
 import re
 
 with open('README.md') as f:
