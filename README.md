@@ -1,5 +1,5 @@
 ![Package](https://github.com/DrMarc/slab/workflows/Python%20package/badge.svg)
-[![PyPI](https://github.com/DrMarc/slab/workflows/PyPi/badge.svg)](https://pypi.org/project/slab/)
+[![PyPI](https://github.com/DrMarc/slab/workflows/PyPi/badge.svg)](https://test.pypi.org/project/slab/)
 [![Documentation Status](https://readthedocs.org/projects/slab/badge/?version=latest)](https://slab.readthedocs.io/en/latest/?badge=latest)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/slab/graphs/commit-activity)
 ![PyPI pyversions](https://img.shields.io/badge/python-%3E%3D3.6-blue)
