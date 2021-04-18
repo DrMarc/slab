@@ -52,7 +52,8 @@ class Signal:
         elif isinstance(data, (list, tuple)):
             channels = tuple(Signal(c, samplerate=samplerate) for c in data)
             self.data = numpy.hstack(channels)
-            self.samplerate = channels[0].samplerate
+            if hasattr(data[0], 'samplerate'):
+                self.samplerate = data[0].samplerate
         # any object with data and samplerate attributes can be recast as Signal
         elif hasattr(data, 'data') and hasattr(data, 'samplerate'):
             self.data = data.data
@@ -65,7 +66,7 @@ class Signal:
             if not len(data) == 0:  # don't transpose if data is an empty array
                 self.data = self.data.T
         # set samplerate from data.samplerate, samplerate argument, or _default_samplerate:
-        if hasattr(data, 'samplerate'):
+        if hasattr(self, 'samplerate'):
             if samplerate is not None:
                 warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
         else:
