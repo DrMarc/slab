@@ -39,7 +39,7 @@ env = sig2.envelope() # returns a new sound containing the lowpass Hilbert envel
 sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
 ```
 
-**Sound**: Inherits from Signal and provides methods for generating, manipulating, displaying, and analysing sound stimuli. Can compute descriptive sound features and apply manipulations to all sounds in a folder.
+**Sound**: Inherits from Signal and provides methods for generating, manipulating, displaying, and analysing sound stimuli. Can compute descriptive sound features and apply manipulations to all sounds in a folder.<sup id="a1">[1](#f1)</sup>
 ```python
 vowel = slab.Sound.vowel(vowel='a', duration=.5) # make a 0.5-second synthetic vowel sound
 vowel.ramp() # apply default raised-cosine onset and offset ramps
@@ -126,7 +126,7 @@ stims.save('stims.zip') # save the sounds as zip file
 stims = slab.Precomputed.read('stims.zip') # reloads the file into a Precomputed object
 ```
 
-The basic functionality of the Signal class and many of the sound generation methods in the Sound class were based on the brian.hears Sound class (now [brain2hears](https://brian2hears.readthedocs.io/en/stable/), an auditory modelling package).
+<b id="f1">1)</b> The basic functionality of the Signal class and some of the sound generation methods in the Sound class were based on the brian.hears Sound class (now [brain2hears](https://brian2hears.readthedocs.io/en/stable/), an auditory modelling package). [↩](#a1)
 
 Installation
 ------------

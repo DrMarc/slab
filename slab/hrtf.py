@@ -324,7 +324,6 @@ class HRTF:
         distributed around the head.
         Returns:
              (Filter): the diffuse field average as FFR filter object. """
-        # TODO: could make the contribution of each HRTF depend on local density of sources.
         dfa = []
         for source in range(self.n_sources):
             filt = self.data[source]
@@ -334,13 +333,16 @@ class HRTF:
         dfa = 10 ** (numpy.mean(dfa, axis=0)/20)  # average and convert from dB to gain
         return Filter(dfa, fir=False, samplerate=self.samplerate)
 
-    def diffuse_field_equalization(self):
+    def diffuse_field_equalization(self, dfa=None):
         """ Equalize the HRTF by dividing each filter by the diffuse field average. The resulting filters have a mean
-        close to 0 and they are Fourier filters.
+        close to 0 and are Fourier filters.
+        Arguments:
+            dfa (None): Filter object containing the diffuse field average transfer function of the HRTF.
+                If none is provided, the `diffuse_field_avg` method is called to obtain it.
         Returns:
             (HRTF): diffuse field equalized version of the HRTF. """
-        # TODO: the filter mean is not 0 after equalization
-        dfa = self.diffuse_field_avg()
+        if dfa is None:
+            dfa = self.diffuse_field_avg()
         # invert the diffuse field average
         dfa.data = 1/dfa.data
         dtfs = copy.deepcopy(self)

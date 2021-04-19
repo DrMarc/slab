@@ -47,20 +47,13 @@ class Signal:
 
     # __methods (class creation, printing, and slice functionality)
     def __init__(self, data, samplerate=None):
-        if hasattr(data, 'samplerate') and samplerate is not None:
-            warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
-        if samplerate is None:
-            samplerate = _default_samplerate
-        self.samplerate = samplerate
         if isinstance(data, numpy.ndarray):
             self.data = numpy.array(data, dtype='float')
         elif isinstance(data, (list, tuple)):
-            kwds = {}
-            if samplerate is not None:
-                kwds['samplerate'] = samplerate
-            channels = tuple(Signal(c, **kwds) for c in data)
+            channels = tuple(Signal(c, samplerate=samplerate) for c in data)
             self.data = numpy.hstack(channels)
-            self.samplerate = channels[0].samplerate
+            if hasattr(data[0], 'samplerate'):
+                self.samplerate = data[0].samplerate
         # any object with data and samplerate attributes can be recast as Signal
         elif hasattr(data, 'data') and hasattr(data, 'samplerate'):
             self.data = data.data
@@ -70,9 +63,13 @@ class Signal:
         if len(self.data.shape) == 1:
             self.data.shape = (len(self.data), 1)
         elif self.data.shape[1] > self.data.shape[0]:
-            if not len(data) == 0:  # dont transpose if data is an empty array
+            if not len(data) == 0:  # don't transpose if data is an empty array
                 self.data = self.data.T
-        if not hasattr(self, 'samplerate'):  # if samplerate has not been set, use default
+        # set samplerate from data.samplerate, samplerate argument, or _default_samplerate:
+        if hasattr(self, 'samplerate'):
+            if samplerate is not None:
+                warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
+        else:
             if samplerate is None:
                 self.samplerate = _default_samplerate
             else:
