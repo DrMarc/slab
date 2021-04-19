@@ -5,6 +5,7 @@ import tempfile
 import platform
 import subprocess
 import numpy
+import copy
 
 try:
     import soundfile
@@ -183,6 +184,7 @@ class Sound(Signal):
 
     @staticmethod
     def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, n_channels=1):
+        # TODO: in tone() the phase argument refers to the channels, here it refers to the harmonics --> rename?
         """ Generate a harmonic complex tone composed of pure tones at integer multiples of the fundamental frequency.
         Arguments:
             f0 (int): the fundamental frequency. Harmonics will be generated at integer multiples of this value.
@@ -629,15 +631,15 @@ class Sound(Signal):
                 or in samples (given an int).
         Returns:
             (slab.Sound): A single sound that contains all input sounds cross-faded. The duration will be the
-                sum of the input sounds' durations minus the overlaps.
+                sum of the input sound's durations minus the overlaps.
         Examples:
             noise = Sound.whitenoise(duration=1.0)
             vowel = Sound.vowel()
             noise2vowel = Sound.crossfade(vowel, noise, vowel, overlap=0.4)
             noise2vowel.play() """
         sounds = list(sounds)
-        if any([sound.duration < overlap for sound in sounds]):
-            raise ValueError('The overlap can not be longer then the sound.')
+        if any([sound.duration < overlap * 2 for sound in sounds]):
+            raise ValueError('The overlap can not be longer then the half of the sound.')
         if len({sound.n_channels for sound in sounds}) != 1:
             raise ValueError('Cannot crossfade sounds with unequal numbers of channels.')
         if len({sound.samplerate for sound in sounds}) != 1:

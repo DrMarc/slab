@@ -47,6 +47,11 @@ class Signal:
 
     # __methods (class creation, printing, and slice functionality)
     def __init__(self, data, samplerate=None):
+        if hasattr(data, 'samplerate') and samplerate is not None:
+            warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
+        if samplerate is None:
+            samplerate = _default_samplerate
+        self.samplerate = samplerate
         if isinstance(data, numpy.ndarray):
             self.data = numpy.array(data, dtype='float')
         elif isinstance(data, (list, tuple)):
@@ -63,13 +68,9 @@ class Signal:
         if len(self.data.shape) == 1:
             self.data.shape = (len(self.data), 1)
         elif self.data.shape[1] > self.data.shape[0]:
-            if not len(data) == 0:  # don't transpose if data is an empty array
+            if not len(data) == 0:  # dont transpose if data is an empty array
                 self.data = self.data.T
-        # set samplerate from data.samplerate, samplerate argument, or _default_samplerate:
-        if hasattr(self, 'samplerate'):
-            if samplerate is not None:
-                warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
-        else:
+        if not hasattr(self, 'samplerate'):  # if samplerate has not been set, use default
             if samplerate is None:
                 self.samplerate = _default_samplerate
             else:

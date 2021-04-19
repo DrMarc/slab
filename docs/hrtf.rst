@@ -15,11 +15,13 @@ Reading sounds
 Typically the :class:`HRTF` class is instantiated by loading a file. The canonical format for HRTF-data is called
 sofa (Spatially Oriented Format for Acoustics). To read sofa files, you need to install the h5netcdf module:
 `pip install h5netcdf`. The module includes a set of standard HRTF recordings from the KEMAR (a mannequin for acoustic
-recordings) in the :data:`DATAPATH` folder. It can be read by calling the :class:`HRTF` class with the name of the
-file as an argument. Print the resulting object to obtain information about the structure of the HRTF data ::
+recordings). You can get the path to the folder containing the recordings with the :func:`data_path` function. The
+first time you call this function, the recordings will be downloaded from the sofa website. You can read them by
+calling the :class:`HRTF` class with the name of the file as an argument. Print the resulting object to obtain
+information about the structure of the HRTF data ::
 
-    from slab import DATAPATH
-    hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')
+    from slab import data_path
+    hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
     print(hrtf)
     Out: <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
 
@@ -57,9 +59,9 @@ source, print it's coordinates and plot the corresponding transfer function.
 .. plot::
     :include-source:
     :context: close-figs
-    from slab import DATAPATH
+    from slab import data_path
     from matplotlib import pyplot as plt
-    hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
     fig, ax = plt.subplots(1)
     idx = 10
     source = hrtf.sources[idx]  # the source's azimuth, elevation and distance
@@ -79,9 +81,9 @@ components of the HRTF, which makes the features of the HRTF that change with di
 .. plot::
     :include-source:
     :context: close-figs
-    from slab import DATAPATH
+    from slab import data_path
     from matplotlib import pyplot as plt
-    hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
     fig, ax = plt.subplots(2)
     dtf = hrtf.diffuse_field_equalization()
     sourceidx = hrtf.cone_sources(0)
@@ -138,11 +140,11 @@ sources at different elevations along the central cone to generated white noise.
 .. plot::
     :include-source:
     :context: close-figs
-    from slab import DATAPATH, Sound
+    from slab import data_path, Sound
     from matplotlib import pyplot as plt
     sound = slab.Sound.whitenoise(samplerate=44100)  # the sound to be displayed
     fig, ax = plt.subplots(3)
-    hrtf = slab.HRTF(data=DATAPATH+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
     sourceidx = [0, 260, 536]  # sources at elevations -40, 0 and 40
     spatial_sounds = []
     for i, index in enumerate(sourceidx):
