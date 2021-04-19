@@ -29,11 +29,11 @@ The primary aim of slab is to enable these students to learn Python, implement n
 To enable quick implementation of experiments, slab implements many of the procedures for psychoacoustic research and experiment control and is easily combined with other Python software. To encourage Python learning, slab provides building blocks rather than ready-made solutions, so that students still need to carefully consider stimulation, sequencing and data management. This also makes slab very flexible and easy to customise. In the documentation (see soundlab.readthedocs.io), we provide tutorials suitable for new students. We also provide actual experiments conducted in our lab using slab as worked examples.
 
 Slab can:
-* generate and manipulate single- and multi-channel sounds
-* analyse sound by extracting basic sound features
-* aid experimental design through stimulus sequence management and response simulation
-* calibrate the experimental setup (loudness calibration and frequency equalisation)
-* display and manipulate head-related transfer functions
+- generate and manipulate single- and multi-channel sounds
+- analyse sound by extracting basic sound features
+- aid experimental design through stimulus sequence management and response simulation
+- calibrate the experimental setup (loudness calibration and frequency equalisation)
+- display and manipulate head-related transfer functions
 
 Below is an example script that estimates the detection threshold for a small change in the location of a sound source (minimum audible angle) with an amplitude-modulated pink noise and a staircase procedure. It illustrates the use of the `Binaural` and `Staircase` classes. The method `present_afc_trial` is a higher-level convenience function to present several sounds and acquire a response from the participant, but each of these steps can be performed separately in a line of code or two when implementing non-standard paradigms.
 ```
