@@ -513,7 +513,6 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
             the diagonal is 0 because no condition transitions into itself. """
         transitions = numpy.zeros((self.n_conditions, self.n_conditions))
         for i, j in zip(self.trials, self.trials[1:]):
-            print(i, j)
             transitions[i-1, j-1] += 1
         return transitions
 
