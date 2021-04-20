@@ -28,7 +28,7 @@ For an example, lets generate pure tones with different frequencies and play the
 
 Usually, we do not only want to play sounds to the subjects in our experiment. Instead, we want them to perform some
 kind of task and give a response. In the example above we could for instance ask after every tone if that tone
-was higher or lower in frequency than the previous one. The response is captured with the :meth:`~slab.psychoacoustics.Key`
+was higher or lower in frequency than the previous one. The response is captured with the :meth:`~slab.psychoacoustics.key`
 context manager which can record single button presses using the :mod:`curses` module. In our example, we instruct the
 subject to press "y" (yes) if the played tone was higher then the previous and "n" (no) if it was lower. After each
 trial we check if the response was correct and store that information as 1 (correct) or 0 (wrong) in the trial sequence.::
@@ -37,7 +37,7 @@ trial we check if the response was correct and store that information as 1 (corr
     stimulus = slab.Sound.tone(frequency=freq)
     stimulus.play()
     if seq.this_n > 0:  # don't get response for first trial
-      previous = seq.conditions[seq.trials[seq.this_n-1]-1]
+      previous = seq.get_future_trial(-1)
       with slab.key() as key:  # wait for a key press
         response = key.getch()
       # check if the response was correct, if so store a 1, else store 0
@@ -233,8 +233,14 @@ As you can see, even through the threshold in the response simulation is 3 (that
 Recording responses
 ^^^^^^^^^^^^^^^^^^^
 When you use a staircase in a listening experiment, you need to record responses from the participant,
-usually in the form of button presses. The :meth:`~slab.psychoacoustics.Key` context manager can record single button presses
-from the computer keyboard (or an attached number pad) using the :mod:`curses` module, or from a custom USB buttonbox. The input is selected by setting :attr:`slab.psychoacoustics.input_method` to 'keyboard' or 'buttonbox'. This allow you to test your code on your laptop and switch to button box input at the lab computer by changing a single line of code. Getting a button press from the keyboard will clear your terminal while waiting for the response, and restore it afterwards. Here is an example of how to use the function in a staircase that finds the detection threshold for a 500 Hz tone:
+usually in the form of button presses. The :meth:`~slab.psychoacoustics.key` context manager can record single button presses
+from the computer keyboard (or an attached number pad) using the :mod:`curses` module, or from a custom USB buttonbox.
+The input is selected by setting :attr:`slab.psychoacoustics.input_method` to 'keyboard' or 'buttonbox'.
+This allow you to test your code on your laptop and switch to button box input at the lab computer by changing a
+single line of code. Getting a button press from the keyboard will clear your terminal while waiting for the response,
+and restore it afterwards. Here is an example of how to use the function in a staircase that finds the
+detection threshold for a 500 Hz tone, after every trial you have to indicate whether you could or could not hear the
+sound py pressing "y" for yes or any other button for no:
 
 .. _detection_example:
 
@@ -245,10 +251,13 @@ from the computer keyboard (or an attached number pad) using the :mod:`curses` m
     for level in stairs:
         stimulus.level = level
         stimulus.play()
-        with slab.Key() as key:
+        with slab.key() as key:
             response = key.getch()
-        stairs.add_response(response) # initiates calculation of next stimulus value
-        stairs.plot()
+        if response == 121:  # 121 is the unicode for the "y" key
+            stairs.add_response(True) # initiates calculation of next stimulus value
+        else:
+            stairs.add_response(False)
+    stairs.plot()
     stairs.threshold()
 
 Note that slab is not optimal for measuring reaction times due to the timing uncertainties in the millisecond range introduced by modern multi-tasking operating systems. If you are serious about reaction times, you should use an external DSP device to ensure accurate timing. A ubiquitous in auditory research is a realtime processor from Tucker-Davies Technologies.
@@ -274,7 +283,7 @@ The list of trials is contained in the :attr:`trials` of the :class:`Trialsequen
     for level in trials:
         stimulus.level = level
         stimulus.play()
-        with slab.Key() as key:
+        with slab.key() as key:
             response = key.getch()
         trials.add_response(response)
     trials.response_summary()
@@ -339,7 +348,7 @@ If you present white noise in an experiment, you probably do not want to play th
 
 Results files
 -------------
-In most experiments, the performance of the listener, experimental settings, the presented stimuli, and other information need to be saved to disk during the experiment. The :class:`Resultsfile` class helps with several typical functions of these files, like generating timestamps, creating the necessary folders, and ensuring that the file is readable if the experiment is interrupted writing to the file after each trial. Information is written incrementally to the file in single lines of JSON (a `JSON Lines <http://jsonlines.org>`_ file).
+In most experiments, the performance of the listener, experimental settings, the presented stimuli, and other information need to be saved to disk during the experiment. The :class:`ResultsFile` class helps with several typical functions of these files, like generating timestamps, creating the necessary folders, and ensuring that the file is readable if the experiment is interrupted writing to the file after each trial. Information is written incrementally to the file in single lines of JSON (a `JSON Lines <http://jsonlines.org>`_ file).
 
 Set the folder that will hold results files from all participants for the experiment somewhere at the top of your script with the :data:`.results_folder`. Then you can create a file by initializing a class instance with a subject name::
 
@@ -347,7 +356,7 @@ Set the folder that will hold results files from all participants for the experi
     file = slab.ResultsFile(subject='MS')
     print(file.name)
 
-You can now use the :meth:`~Resultsfile.write` method to write any information to the file, to be precise, you can write any object that can be converted to JSON, like strings, lists, or dictionaries. Numpy data types need to be converted to python types. A numpy array can be converted to a list before saving by calling its :meth:`numpy.ndarray.tolist` method, and numpy ints or floats need to be converted by calling their :meth:`~numpy.int64.item` method. You can try out what the JSON representation of an item is by calling::
+You can now use the :meth:`~ResultsFile.write` method to write any information to the file, to be precise, you can write any object that can be converted to JSON, like strings, lists, or dictionaries. Numpy data types need to be converted to python types. A numpy array can be converted to a list before saving by calling its :meth:`numpy.ndarray.tolist` method, and numpy ints or floats need to be converted by calling their :meth:`~numpy.int64.item` method. You can try out what the JSON representation of an item is by calling::
 
     import json
     import numpy
@@ -363,7 +372,7 @@ You can now use the :meth:`~Resultsfile.write` method to write any information t
 
     file.write(trials, tag='trials')
 
-The :meth:`~Resultsfile.write` method writes a dictionary with a single key-value pair, where the key is supplied as ``tag`` argument argument (default is a time stamp in the format '%Y-%m-%d-%H-%M-%S'), and the value is the json-serialized data you want to save. The information can be read back from the file, either while the experiment is running and you need to access a previously saved result (:meth:`~Resultsfile.read`), or for later data analysis (:meth:`Resultsfile.read_file`). Both methods can take a ``tag`` argument to extract all instances saved under that tag in a list.
+The :meth:`~ResultsFile.write` method writes a dictionary with a single key-value pair, where the key is supplied as ``tag`` argument argument (default is a time stamp in the format '%Y-%m-%d-%H-%M-%S'), and the value is the json-serialized data you want to save. The information can be read back from the file, either while the experiment is running and you need to access a previously saved result (:meth:`~ResultsFile.read`), or for later data analysis (:meth:`ResultsFile.read_file`). Both methods can take a ``tag`` argument to extract all instances saved under that tag in a list.
 
 Configuration files
 -------------------

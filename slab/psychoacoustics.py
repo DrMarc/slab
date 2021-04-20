@@ -422,7 +422,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         """ Convenience method for printing current trial information. """
         print(f'{self.label} | trial # {self.this_n} of {"inf" if self.kind=="infinite" else self.n_trials} '
               f'({"inf" if self.kind=="infinite" else self.n_remaining} remaining): condition {self.this_trial}, '
-              f'last response: {self.data[-1] if self.data else None}')
+              f'last response: {self.data[self.this_n-1]}')
 
     @staticmethod
     def _create_simple_sequence(n_conditions, n_reps, dont_start_with=None):
