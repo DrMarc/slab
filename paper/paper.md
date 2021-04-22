@@ -11,7 +11,6 @@ authors:
     orcid: 0000-0002-2023-1207
     affiliation: "1, 2"
   - name: Ole Bialas
-    orcid:
     affiliation: 1
 affiliations:
 - index: 1
