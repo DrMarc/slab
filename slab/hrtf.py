@@ -124,7 +124,9 @@ class HRTF:
             (h5netcdf.core.File): the data from the .sofa file. """
         if h5netcdf is False:
             raise ImportError('Reading from sofa files requires h5py and h5netcdf.')
-        f = h5netcdf.File(filename, 'r')
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            f = h5netcdf.File(filename, 'r')
         if verbose:
             f.items()
         return f
