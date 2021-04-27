@@ -33,7 +33,7 @@ Slab can:
 - calibrate the experimental setup (loudness calibration and frequency equalisation)
 - display and manipulate head-related transfer functions
 
-Below is an example script that estimates the detection threshold for a small change in the location of a sound source (minimum audible angle) with an amplitude-modulated pink noise and a staircase procedure. It illustrates the use of the `Binaural` and `Staircase` classes. The method `present_afc_trial` is a higher-level convenience function to present several sounds and acquire a response from the participant, but each of these steps can be performed separately in a line of code or two when implementing non-standard paradigms.
+Below is an example script that estimates the detection threshold for a small change in the location of a sound source (minimum audible angle) with an amplitude-modulated pink noise and a staircase procedure. It illustrates the use of the `Binaural` and `Staircase` classes. The method `present_afc_trial` is a higher-level convenience function to present several sounds and acquire a response from the participant, but each of these steps can be performed separately in one or two lines when implementing non-standard paradigms.
 ```
 # 1up-2down staircase, starting at 20˚ separation:
 stairs = slab.Staircase(start_val=20, min_val=0, n_reversals=18)
@@ -62,6 +62,6 @@ The architecture of the `Signal` class and some of the sound generation methods 
 
 # Audience
 Slab is directed towards students and researchers of all levels studying the perception of sound.
-Researchers and incoming students at our lab use it routinely in behavioral and neuroimaging experiments, and the package and has been used in several graduate courses psychophysics and auditory neuroscience.
+Researchers and incoming students at our lab use it routinely in behavioural and neuroimaging experiments, and the package and has been used in several graduate courses psychophysics and auditory neuroscience.
 
 # References
