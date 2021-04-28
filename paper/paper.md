@@ -23,7 +23,7 @@ bibliography: paper.bib
 
 ---
 # Summary
-Slab enables researchers and students to prototype and implement psychoacoustic experiments quickly. Slab implements many of the procedures for psychoacoustic research and experiment control and is easily combined with other Python software. A secondary aim of slab is to enable researchers and students without prior training in computer programming and digital signal processing to implement and conduct these experiments. Slab provides building blocks rather than ready-made solutions, so that experimenters still need to carefully consider stimulation, sequencing and data management. This also makes slab very flexible and easy to customise. In the documentation (see soundlab.readthedocs.io), we provide tutorials suitable for beginners. We also provide experiments conducted in our lab as worked examples.
+Slab enables researchers and students to prototype and implement psychoacoustic experiments quickly. Slab implements many of the procedures for psychoacoustic research and experiment control and is easily combined with other Python software. A secondary aim of slab is to enable researchers and students without prior training in computer programming and digital signal processing to implement and conduct these experiments. Slab provides building blocks rather than ready-made solutions, so that experimenters still need to carefully consider stimulation, sequencing and data management. This also makes slab very flexible and easy to customise. In the documentation (see slab.readthedocs.io), we provide tutorials suitable for beginners. We also provide experiments conducted in our lab as worked examples.
 
 Slab can:
 
