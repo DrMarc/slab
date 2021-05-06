@@ -15,8 +15,10 @@ from slab.signal import Signal  # getting the base class
 
 
 class Filter(Signal):
-    """ Class for generating and manipulating filter banks and transfer functions. Filters can be either finite impulse
+    """
+    Class for generating and manipulating filter banks and transfer functions. Filters can be either finite impulse
     response (FIR) or Fourier filters.
+
     Arguments:
         data (numpy.ndarray | slab.Signal | list): samples of the filter. If it is an array, the first dimension
             should represent the number of samples and the second one the number of channels. If it's an object,
@@ -29,8 +31,7 @@ class Filter(Signal):
         .n_taps: the number of taps in a finite impulse response filter. Analogous to `n_samples` in a `Signal`.
         .n_frequencies: the number of frequency bins in a Fourier filter. Analogous to `n_samples` in a `Signal`.
         .frequencies: the frequency axis of a Fourier filter.
-
-    Examples. """
+    """
     # instance properties
     n_filters = property(fget=lambda self: self.n_channels, doc='The number of filters in the bank.')
     n_taps = property(fget=lambda self: self.n_samples , doc='The number of filter taps.')
@@ -54,8 +55,10 @@ class Filter(Signal):
 
     @staticmethod
     def band(kind='hp', frequency=100, gain=None, samplerate=None, length=1000, fir=True):
-        """ Generate simple passband or stopband filters, or filters with a transfer function defined by  pairs
+        """
+        Generate simple passband or stopband filters, or filters with a transfer function defined by  pairs
         of `frequency` and `gain` values.
+
         Arguments:
             kind: The type of filter to generate. Can be 'lp' (lowpass), 'hp' (highpass), 'bp' (bandpass)
                 or 'bs' (bandstop/notch). If `gain` is specified the `kind` argument is ignored.
@@ -71,10 +74,12 @@ class Filter(Signal):
             fir: If true generate a finite impulse response filter, else generate a Fourier filter.
         Returns:
             (slab.Filter): a filter with the specified properties
-        Examples:
+        Examples::
+
             filt = slab.Filter.band(frequency=3000, kind='lp')  # lowpass filter
             filt = slab.Filter.band(frequency=(100, 2000), kind='bs')  # bandstop filter
-            filt = slab.Filter.band(frequency=[100, 1000, 3000, 6000], gain=[0., 1., 0., 1.])  # custom filter """
+            filt = slab.Filter.band(frequency=[100, 1000, 3000, 6000], gain=[0., 1., 0., 1.])  # custom filter
+        """
         if samplerate is None:
             samplerate = slab.signal._default_samplerate
         if fir:  # design a FIR filter
@@ -121,20 +126,24 @@ class Filter(Signal):
         return Filter(data=filt, samplerate=samplerate, fir=fir)
 
     def apply(self, sig):
-        """ Apply the filter to a sound. If sound and filter have the same number of channels,
+        """
+        Apply the filter to a sound. If sound and filter have the same number of channels,
         each filter channel will be applied to the corresponding channel in the sound.
         If the filter has multiple channels and the sound only 1, each filter is applied to the same sound.
         In that case the filtered sound wil contain the same number of channels as the filter with every
         channel being a copy of the original sound with one filter channel applied. If the filter has only
         one channel and the sound has multiple channels, the same filter is applied to each sound channel.
+
         Arguments:
             sig (slab.Signal | slab.Sound): The sound to be filtered.
         Returns:
             (slab.Signal | slab.Sound): a filtered copy of `sig`.
-        Examples:
+        Examples::
+
             filt = slab.Filter.band(frequency=(100, 1500), kind='bp')  # bandpass filter
             sound = slab.Sound.whitenoise()  # generate sound
-            filtered_sound = filt.apply(sound)  # apply the filter to the sound """
+            filtered_sound = filt.apply(sound)  # apply the filter to the sound
+        """
         if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
             raise ValueError('Filter and sound have different sampling rates.')
         out = copy.deepcopy(sig)
@@ -181,7 +190,9 @@ class Filter(Signal):
         return out
 
     def tf(self, channels='all', n_bins=None, show=True, axis=None, **kwargs):
-        """ Compute a filter's transfer function (magnitude over frequency) and optionally plot it.
+        """
+        Compute a filter's transfer function (magnitude over frequency) and optionally plot it.
+
         Arguments:
             channels (str | list | int): the filter channels to compute the transfer function for. Defaults to the
                 string "all" which includes all channels. To compute the transfer function for multiple channels, pass
@@ -195,10 +206,12 @@ class Filter(Signal):
             (numpy.ndarray): the frequency bins in the range from 0 Hz to the Nyquist frequency.
             (numpy.ndarray: the magnitude of each frequency in `w`.
             None: If `show` is True OR and `axis` was specified, a plot is drawn and nothing is returned.
-        Examples:
+        Examples::
+
             filt = slab.Filter.band(frequency=(100, 1500), kind='bp')  # bandpass filter
             filt.tf(show=True)  # compute and plot the transfer functions
-            w, h = filt.tf(show=False)  # compute and return the transfer functions """
+            w, h = filt.tf(show=False)  # compute and return the transfer functions
+        """
         if isinstance(channels, int):
             if channels > self.n_filters:  # check chan is in range of n_filters
                 raise IndexError("Channel index out of range!")
@@ -251,11 +264,13 @@ class Filter(Signal):
     @staticmethod
     # TODO: oversampling factor needed for cochleagram!
     def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, samplerate=None):
-        """ Generate a set of Fourier filters. Each filter's transfer function is given by the positive phase of a
+        """
+        Generate a set of Fourier filters. Each filter's transfer function is given by the positive phase of a
         cosine wave. The amplitude of the cosine is that filters central frequency. Following the organization of the
         cochlea, the width of the filter increases in proportion to it's center frequency. This increase is defined
         by Moore & Glasberg's formula for the equivalent rectangular bandwidth (ERB) of auditory filters. This
         functions is used for example to divide a sound into bands for equalization.
+
         Attributes:
             length (int): The number of bins in each filter, determines the frequency resolution.
             bandwidth (float): Width of the sub-filters in octaves. The smaller the bandwidth, the more filters
@@ -266,7 +281,8 @@ class Filter(Signal):
                 If True, allows reconstruction of original bandwidth when collapsing subbands.
             samplerate (int | None): the samplerate of the sound that the filter shall be applied to.
                 If None, use the default samplerate.s
-        Examples:
+        Examples::
+
             sig = slab.Sound.pinknoise(samplerate=44100)
             fbank = slab.Filter.cos_filterbank(length=sig.n_samples, bandwidth=1/10, low_cutoff=100,
                                           samplerate=sig.samplerate)
@@ -274,7 +290,8 @@ class Filter(Signal):
             # apply the filter bank to the data. The filtered sound will contain as many channels as there are
             # filters in the bank. Every channel is a copy of the original sound with one filter applied.
             # In this context, the channels are the signals sub-bands:
-            sig_filt = fbank.apply(sig) """
+            sig_filt = fbank.apply(sig)
+        """
         if samplerate is None:
             samplerate = slab.signal._default_samplerate
         if not high_cutoff:
@@ -312,25 +329,29 @@ class Filter(Signal):
 
     @staticmethod
     def collapse_subbands(subbands, filter_bank=None):
-        """ Sum a sound that has been filtered with a filterbank and which channels represent the sub-bands of
+        """
+        Sum a sound that has been filtered with a filterbank and which channels represent the sub-bands of
         the original sound. For each sound channel, the fourier transform is calculated and the result is
         multiplied with the corresponding filter in the filter bank. For the resulting spectrum, and inverse
         fourier transform is performed. The resulting sound is summed over the all channels.
-         Arguments:
-             subbands (slab.Signal): The sound which is divided into subbands by filtering. The number of channels
+
+        Arguments:
+            subbands (slab.Signal): The sound which is divided into subbands by filtering. The number of channels
                 in the sound must be equal to the number of filters in the filter bank.
-             filter_bank (None | slab.Filter): The filter bank applied to the sound's subbands. The number of
+            filter_bank (None | slab.Filter): The filter bank applied to the sound's subbands. The number of
                 filters must be equal to the number of channels in the sound. If None a filter bank with the default
                 parameters is generated. Note that the filters must have a number of frequency bins equal to the
                 number of samples in the sound.
         Returns:
             (slab.Signal): A sound generated from summing the spectra of the subbands.
-        Examples:
+        Examples::
+
             sig = slab.Sound.whitenoise()  # generate a sound
             fbank = slab.Filter.cos_filterbank(length=sig.n_samples)  # generate a filter bank
             subbands = fbank.apply(sig)  # divide the sound into subbands by applying the filter
             # by collapsing the subbands, a new sound is generated that is (almost) equal to the original sound:
-            collapsed = fbank.collapse_subbands(subbands, fbank)"""
+            collapsed = fbank.collapse_subbands(subbands, fbank)
+        """
         new = copy.deepcopy(subbands)
         if not filter_bank:
             filter_bank = Filter.cos_filterbank(
@@ -346,11 +367,14 @@ class Filter(Signal):
         return new
 
     def filter_bank_center_freqs(self):
-        """ Get the maximum of each filter in a filter bank. For filter banks generated with the `cos_filterbank`
+        """
+        Get the maximum of each filter in a filter bank. For filter banks generated with the `cos_filterbank`
         method this corresponds to the filters center frequency.
+
         Returns:
             (numpy.ndarray): array with length equal to the number of filters in the bank, containing each filter's
-                center frequency."""
+                center frequency.
+        """
         if self.fir:
             raise NotImplementedError('Not implemented for FIR filter banks.')
         freqs = self.frequencies
@@ -363,11 +387,13 @@ class Filter(Signal):
     @staticmethod
     def equalizing_filterbank(reference, sound, length=1000, bandwidth=1/8, low_cutoff=200, high_cutoff=None,
                               alpha=1.0):
-        """ Generate an equalizing filter from the spectral difference between a `sound` and a `reference`. Both are
+        """
+        Generate an equalizing filter from the spectral difference between a `sound` and a `reference`. Both are
         divided into sub-bands using the `cos_filterbank` and the level difference per sub-band is calculated. The
         sub-band frequencies and level differences are then used to generate an equalizing filter that makes the
         spectrum of the `sound` more equal to the one of the `reference`. The main use case is equalizing the
         differences between transfer functions of individual loudspeakers.
+
         Arguments:
             reference (slab.Sound): The reference for equalization, i.e. what the sound should look like after
                 applying the equalization. Must have exactly one channel.
@@ -382,7 +408,8 @@ class Filter(Signal):
         Returns:
             (slab.Filter): An equalizing filter bank with a number of filters equal to the number of channels in the
                 equalized `sound`.
-        Example:
+        Example::
+
             # generate a sound and apply some arbitrary filter to it
             sound = slab.Sound.pinknoise(samplerate=44100)
             filt = slab.Filter.band(frequency=[100., 800., 2000., 4300., 8000., 14500., 18000.],
@@ -390,7 +417,8 @@ class Filter(Signal):
             filtered = filt.apply(sound)
             # make an equalizing filter and apply it to the filtered signal. The result looks more like the original
             fbank = slab.Filter.equalizing_filterbank(sound, filtered, low_cutoff=200, high_cutoff=16000)
-            equalized = fbank.apply(sound) """
+            equalized = fbank.apply(sound)
+        """
         if scipy is False:
             raise ImportError('Generating equalizing filter banks requires Scipy.')
         if reference.n_channels > 1:
@@ -433,9 +461,11 @@ class Filter(Signal):
         return Filter(data=filts, samplerate=reference.samplerate, fir=True)
 
     def save(self, filename):
-        """ Save the filter in Numpy's .npy format to a file.
+        """
+        Save the filter in Numpy's .npy format to a file.
         Arguments:
-            filename(str | pathlib.Path): Full path to which the data is saved. """
+            filename(str | pathlib.Path): Full path to which the data is saved.
+        """
         fs = numpy.tile(self.samplerate, reps=self.n_filters)
         fir = numpy.tile(self.fir, reps=self.n_filters)
         fs = fs[numpy.newaxis, :]
@@ -445,11 +475,14 @@ class Filter(Signal):
 
     @staticmethod
     def load(filename):
-        """ Load a filter from a .npy file.
+        """
+        Load a filter from a .npy file.
+
         Arguments:
             filename(str | pathlib.Path): Full path to the file to load.
         Returns:
-            (slab.Filter): The `Filter` loaded from the file. """
+            (slab.Filter): The `Filter` loaded from the file.
+        """
         data = numpy.load(filename)
         samplerate = data[0][0]  # samplerate is in the first filter
         fir = bool(data[1][0])  # fir is in the first filter

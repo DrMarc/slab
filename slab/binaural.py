@@ -12,6 +12,7 @@ class Binaural(Sound):
     generation functions  from the Sound class, but returns binaural signals. Recasting an object of class sound or
     sound with 1 or 3+ channels calls Sound.copychannel to return a binaural sound with two channels identical
     to the first channel of the original sound.
+
     Arguments:
         data (slab.Signal | numpy.ndarray | list | str): see documentation of slab.Sound for details. the `data` must
             have either one or two channels. If it has one, that channel is duplicated
@@ -22,7 +23,8 @@ class Binaural(Sound):
         .data: the data-array of the Sound object which has the shape `n_samples` x `n_channels`.
         .n_channels: the number of channels in `data`. Must be 2 for a binaural sound.
         .n_samples: the number of samples in `data`. Equals `duration` * `samplerate`.
-        .duration: the duration of the sound in seconds. Equals `n_samples` / `samplerate`. """
+        .duration: the duration of the sound in seconds. Equals `n_samples` / `samplerate`.
+    """
     # instance properties
     def _set_left(self, other):
         if hasattr(other, 'samplerate'):  # probably an slab object
@@ -71,9 +73,11 @@ class Binaural(Sound):
             ValueError('Binaural sounds must have two channels!')
 
     def itd(self, duration=None, max_lag=0.001):
-        """ Either estimate the interaural time difference of the sound or generate a new sound with the specified
-            interaural time difference. The resolution for computing the ITD is 1/samplerate seconds. A negative
-            ITD value means that the right channel is delayed, meaning the sound source is to the left.
+        """
+        Either estimate the interaural time difference of the sound or generate a new sound with the specified
+        interaural time difference. The resolution for computing the ITD is 1/samplerate seconds. A negative
+        ITD value means that the right channel is delayed, meaning the sound source is to the left.
+
         Arguments:
             duration (None| int | float): Given None, the instance's ITD is computed. Given another value, a new sound
                 with the desired interaural time difference in samples (given an integer) or seconds (given a float)
@@ -83,10 +87,12 @@ class Binaural(Sound):
         Returns:
              (int | slab.Binaural): The interaural time difference in samples or a copy of the instance with the
                 specified interaural time difference.
-        Examples:
+        Examples::
+
             sound = slab.Binaural.whitenoise()
             lateral = sound.itd(duration=0.0005)  # generate a sound with 0.5 ms ITD
-            lateral.itd()  # estimate the ITD of the sound """
+            lateral.itd()  # estimate the ITD of the sound
+        """
         if duration is None:
             return self._get_itd(max_lag)
         else:
@@ -110,18 +116,22 @@ class Binaural(Sound):
         return self.delay(duration=abs(duration), channel=channel)
 
     def ild(self, dB=None):
-        """ Either estimate the interaural level difference of the sound or generate a new sound with the specified
-            interaural level difference. Negative ILD value means that the left channel is louder than the right
-            channel, meaning that the sound source is to the left.
+        """
+        Either estimate the interaural level difference of the sound or generate a new sound with the specified
+        interaural level difference. Negative ILD value means that the left channel is louder than the right
+        channel, meaning that the sound source is to the left.
+
         Arguments:
             dB (None | int | float): If None, estimate the sound's ITD. Given a value, a new sound is generated with
                 the desired interaural level difference in decibels.
         Returns:
             (float | slab.Binaural): The sound's aural level difference or a new instance with the specified ILD.
-        Examples:
+        Examples::
+
             sig = Binaural.whitenoise()
             lateral_right = sig.ild(3) # attenuate left channel by 3 dB
-            lateral_left = sig.ild(-3) # attenuate right channel by 3 dB """
+            lateral_left = sig.ild(-3) # attenuate right channel by 3 dB
+        """
         if dB is None:
             return self.right.level - self.left.level
         else:
@@ -135,19 +145,22 @@ class Binaural(Sound):
         return new
 
     def itd_ramp(self, from_itd=-6e-4, to_itd=6e-4):
-        """ Generate a sound with a linearly increasing or decreasing interaural time difference.
-        This is achieved by sinc interpolation of one channel with a dynamic delay. The resulting virtual sound source
-        moves to the left or right.
+        """
+        Generate a sound with a linearly increasing or decreasing interaural time difference. This is achieved by sinc
+        interpolation of one channel with a dynamic delay. The resulting virtual sound source moves left or right.
+
         Arguments:
             from_itd (float): interaural time difference in seconds at the start of the sound.
                 Negative numbers correspond to sources to the left of the listener.
             to_itd (float): interaural time difference in seconds at the end of the sound.
         Returns:
             (slab.Binaural): a copy of the instance wit the desired ITD ramp.
-        Examples:
+        Examples::
+
             sig = Binaural.whitenoise()
             moving = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
-            moving.play() """
+            moving.play()
+        """
         new = copy.deepcopy(self)
         # make the ITD ramps
         left_ramp = numpy.linspace(from_itd / 2, to_itd / 2, self.n_samples)
@@ -163,8 +176,10 @@ class Binaural(Sound):
         return new
 
     def ild_ramp(self, from_ild=-50, to_ild=50):
-        """ Generate a sound with a linearly increasing or decreasing interaural level difference. The resulting
+        """
+        Generate a sound with a linearly increasing or decreasing interaural level difference. The resulting
         virtual sound source moves to the left or right.
+
         Arguments:
             from_ild (int | float): interaural level difference in decibels at the start of the sound.
                 Negative numbers correspond to sources to the left of the listener.
@@ -172,10 +187,12 @@ class Binaural(Sound):
         Returns:
             (slab.Binaural): a copy of the instance with the desired ILD ramp. Any previously existing level difference
                 is removed.
-        Examples:
+        Examples::
+
             sig = Binaural.whitenoise()
             moving = sig.ild_ramp(from_ild=-10, to_ild=10)
-            move.play() """
+            move.play()
+        """
         new = self.ild(0)  # set ild to zero
         # make ramps
         left_ramp = numpy.linspace(-from_ild / 2, -to_ild / 2, self.n_samples)
@@ -189,9 +206,11 @@ class Binaural(Sound):
 
     @staticmethod
     def azimuth_to_itd(azimuth, frequency=2000, head_radius=8.75):
-        """ Compute the ITD for a sound source at a given azimuth. For frequencies >= 2 kHz the Woodworth (1962)
+        """
+        Compute the ITD for a sound source at a given azimuth. For frequencies >= 2 kHz the Woodworth (1962)
         formula is used. For frequencies <= 500 Hz the low-frequency approximation mentioned in Aronson and Hartmann
         (2014) is used. For frequencies in between, we interpolate linearly between the two formulas.
+
         Arguments:
             azimuth (int | float): The azimuth angle of the sound source, negative numbers refer to sources to the left.
             frequency (int | float): Frequency in Hz for which the ITD is estimated.
@@ -199,9 +218,11 @@ class Binaural(Sound):
             head_radius (int | float): Radius of the head in centimeters. The bigger the head, the larger the ITD.
         Returns:
             (float): The interaural time difference for a sound source at a given azimuth.
-        Examples:
+        Examples::
+
             # compute the ITD for a sound source 90 degrees to the left for a large head
-            itd = slab.Binaural.azimuth_to_itd(-90, head_radius=10) """
+            itd = slab.Binaural.azimuth_to_itd(-90, head_radius=10)
+        """
         head_radius = head_radius / 100
         azimuth_radians = numpy.radians(azimuth)
         speed_of_sound = 344  # m/s
@@ -214,7 +235,9 @@ class Binaural(Sound):
 
     @staticmethod
     def azimuth_to_ild(azimuth, frequency=2000, hrtf=None):
-        """ Get the interaural level difference corresponding to a sound source at a given azimuth.
+        """
+        Get the interaural level difference corresponding to a sound source at a given azimuth.
+
         Arguments:
             azimuth (int | float): The azimuth angle of the sound source, negative numbers refer to sources to the left.
             frequency (int | float): Frequency in Hz for which the ITD is estimated.
@@ -223,8 +246,10 @@ class Binaural(Sound):
                 If None use the MIT KEMAR mannequin.
         Returns:
             (float): The interaural level difference for a sound source at a given azimuth in decibels.
-        Examples:
-            ild = slab.Binaural.azimuth_to_ild(-90) # ILD equivalent to 90 deg leftward source using KEMAR HRTF."""
+        Examples::
+
+            ild = slab.Binaural.azimuth_to_ild(-90) # ILD equivalent to 90 deg leftward source using KEMAR HRTF.
+        """
         ils = Binaural._make_level_spectrum_filter(hrtf=hrtf)
         freqs = ils[1:, 0]  # get vector of frequencies in ils filter bank
         azis = ils[0, 1:]  # get vector of azimuths in ils filter bank
@@ -233,9 +258,11 @@ class Binaural(Sound):
         return numpy.interp(frequency, freqs, levels)*-1   # interpolate level difference at frequency
 
     def at_azimuth(self, azimuth=0):
-        """ Convenience function for adding ITD and ILD corresponding to the given `azimuth` to the sound source.
-            Values are obtained from azimuth_to_itd and azimuth_to_ild.
-            Frequency parameters for these functions are generated from the centroid frequency of the sound. """
+        """
+        Convenience function for adding ITD and ILD corresponding to the given `azimuth` to the sound source.
+        Values are obtained from azimuth_to_itd and azimuth_to_ild.
+        Frequency parameters for these functions are generated from the centroid frequency of the sound.
+        """
         centroid = numpy.array(self.spectral_feature(feature='centroid')).mean()
         itd = Binaural.azimuth_to_itd(azimuth, frequency=centroid)
         ild = Binaural.azimuth_to_ild(azimuth, frequency=centroid)
@@ -243,13 +270,16 @@ class Binaural(Sound):
         return out.ild(dB=ild)
 
     def externalize(self, hrtf=None):
-        """ Convolve the sound with a smoothed HRTF to evoke the impression of an external sound source without adding
-         directional information, see Kulkarni & Colburn (1998) for why that works.
+        """
+        Convolve the sound with a smoothed HRTF to evoke the impression of an external sound source without adding
+        directional information, see Kulkarni & Colburn (1998) for why that works.
+
         Arguments:
             hrtf (None | slab.HRTF): The HRTF to use. If None use the one from the MIT KEMAR mannequin. The sound
                 source at zero azimuth and elevation is used for convolution so it has to be present in the HRTF.
         Returns:
-            (slab.Binaural): externalized copy of the instance. """
+            (slab.Binaural): externalized copy of the instance.
+        """
         if not hrtf:
             hrtf = HRTF(data_path()+'mit_kemar_normal_pinna.sofa')  # load the hrtf file
         # get HRTF for [0,0] direction:
@@ -268,10 +298,12 @@ class Binaural(Sound):
 
     @staticmethod
     def _make_level_spectrum_filter(hrtf=None):
-        """ Compute the frequency band specific interaural intensity differences for all sound source azimuth's in
+        """
+        Compute the frequency band specific interaural intensity differences for all sound source azimuth's in
         a head-related transfer function. For every azimuth in the hrtf, the respective transfer function is applied
         to a sound. This sound is then divided into frequency sub-bands. The interaural level spectrum is the level
         difference between right and left for each of these sub-bands for each azimuth.
+
         Arguments:
             hrtf (None | slab.HRTF): The head-related transfer function used to compute the level spectrum. If None,
                 use the recordings from the KEMAR mannequin. For the KEMAR, the level spectrum is saved to a file
@@ -283,12 +315,14 @@ class Binaural(Sound):
                 is the sampling frequency and the other elements of the first row contain the azimuth of the respective
                 column. In the remaining rows, the first element is the frequency of the sub-band and the other elements
                 are the interaural level differences for each azimuth.
-        Examples:
+        Examples::
+
             ils = slab.Binaural.make_level_spectrum_filter()  # get the ils from the KEMAR recordings
             ils[0, 0] # the sampling rate
             ils[0, 1:] # the sound source azimuth's for which the level difference was calculated
             ils[1:, 0]  # the sub-band frequencies
-            ils[5, :]  # the level difference for each azimuth in the 5th sub-band """
+            ils[5, :]  # the level difference for each azimuth in the 5th sub-band
+        """
         if not hrtf:
             try:
                 ils = numpy.load(data_path() + 'KEMAR_interaural_level_spectrum.npy')
@@ -326,22 +360,26 @@ class Binaural(Sound):
         return ils
 
     def interaural_level_spectrum(self, azimuth, level_spectrum_filter=None):
-        """ Apply a interaural level spectrum, corresponding to a sound sources azimuth, to a
-         binaural sound. The interaural level spectrum consists of frequency specific interaural level differences
-         which are computed from a head related transfer function (see the _make_level_spectrum_filter method).
-         The binaural sound is divided into frequency sub-bands and the levels of each sub-band are set according to
-         the respective level in the interaural level spectrum. Then, the sub-bands are summed up again into one
-         binaural sound.
-         Arguments:
-             azimuth (int | float): azimuth for which the interaural level spectrum is calculated.
-             level_spectrum_filter (None | numpy.ndarray): If None, the method _make_level_spectrum_filter is called
+        """
+        Apply a interaural level spectrum, corresponding to a sound sources azimuth, to a
+        binaural sound. The interaural level spectrum consists of frequency specific interaural level differences
+        which are computed from a head related transfer function (see the _make_level_spectrum_filter method).
+        The binaural sound is divided into frequency sub-bands and the levels of each sub-band are set according to
+        the respective level in the interaural level spectrum. Then, the sub-bands are summed up again into one
+        binaural sound.
+
+        Arguments:
+            azimuth (int | float): azimuth for which the interaural level spectrum is calculated.
+            level_spectrum_filter (None | numpy.ndarray): If None, the method _make_level_spectrum_filter is called
                 which returns the interaural level spectrum of the KEMAR mannequin's head related transfer function.
                 Any array given for this argument should be generated with the _make_level_spectrum_filter as well.
         Returns:
             (slab.Binaural): A binaural sound with the interaural level spectrum corresponding to the given azimuth.
-        Examples:
+        Examples::
+
             noise = Binaural.pinknoise(kind='diotic')
-            noise.interaural_level_spectrum(azimuth=-45).play() """
+            noise.interaural_level_spectrum(azimuth=-45).play()
+        """
         if not level_spectrum_filter:
             ils = Binaural._make_level_spectrum_filter()
         elif not isinstance(level_spectrum_filter, numpy.ndarray):
@@ -370,8 +408,10 @@ class Binaural(Sound):
 
     @staticmethod
     def whitenoise(duration=1.0, kind='diotic', samplerate=None):
-        """ Generate binaural white noise. `kind`='diotic' produces the same noise samples in both channels,
-        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.whitenoise`. """
+        """
+        Generate binaural white noise. `kind`='diotic' produces the same noise samples in both channels,
+        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.whitenoise`.
+        """
         out = Binaural(Sound.whitenoise(duration=duration, n_channels=2, samplerate=samplerate))
         if kind == 'diotic':
             out.left = out.right
@@ -379,15 +419,19 @@ class Binaural(Sound):
 
     @staticmethod
     def pinknoise(duration=1.0, kind='diotic', samplerate=None):
-        """ Generate binaural pink noise. `kind`='diotic' produces the same noise samples in both channels,
-        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.pinknoise`. """
+        """
+        Generate binaural pink noise. `kind`='diotic' produces the same noise samples in both channels,
+        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.pinknoise`.
+        """
         return Binaural.powerlawnoise(
                 duration=duration, alpha=1, samplerate=samplerate)
 
     @staticmethod
     def powerlawnoise(duration=1.0, alpha=1, kind='diotic', samplerate=None):
-        """ Generate binaural power law noise. `kind`='diotic' produces the same noise samples in both channels,
-        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.powerlawnoise`. """
+        """
+        Generate binaural power law noise. `kind`='diotic' produces the same noise samples in both channels,
+        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.powerlawnoise`.
+        """
         if kind == 'dichotic':
             out = Binaural(Sound.powerlawnoise(
                 duration=duration, alpha=alpha, samplerate=samplerate, n_channels=2))
@@ -403,8 +447,10 @@ class Binaural(Sound):
 
     @staticmethod
     def irn(frequency=100, gain=1, n_iter=4, duration=1.0, kind='diotic', samplerate=None):
-        """ Generate iterated ripple noise (IRN). `kind`='diotic' produces the same noise samples in both channels,
-        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.irn`. """
+        """
+        Generate iterated ripple noise (IRN). `kind`='diotic' produces the same noise samples in both channels,
+        `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.irn`.
+        """
         out = Binaural(Sound.irn(frequency=frequency, gain=gain, n_iter=n_iter, duration=duration,
             samplerate=samplerate, n_channels=2))
         if kind == 'diotic':
