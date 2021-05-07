@@ -1,6 +1,6 @@
 import numpy
-import slab
 import pytest
+import slab
 
 def test_signal_generation():
     # (numpy.ndarray | object | list)
@@ -70,12 +70,12 @@ def test_trim():
         if start == stop:
             start -= 1
         if numpy.random.rand() < 0.5:
-            trimmed = sig.trim(start, stop)
+            trimmed = sig.trim(start=start, stop=stop)
         else:
-            trimmed = sig.trim(start/samplerate, stop/samplerate)
+            trimmed = sig.trim(start=start/samplerate, stop=stop/samplerate)
         assert numpy.abs(trimmed.n_samples - (stop-start)) < 1
     with pytest.raises(ValueError):  # testing start not preceding stop case
-        trimmed = sig.trim(stop, start)
+        trimmed = sig.trim(start=stop, stop=start)
 
 
 def test_resample():
