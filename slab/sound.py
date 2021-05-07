@@ -813,7 +813,7 @@ class Sound(Signal):
 
     def aweight(self):
         """
-        Returns A-weighted sound. A-weighting is applied to instrument-recorded sounds
+        Returns A-weighted version of the sound. A-weighting is applied to instrument-recorded sounds
         to account for the relative loudness of different frequencies perceived by the
         human ear. See: https://en.wikipedia.org/wiki/A-weighting.
         """
@@ -830,11 +830,9 @@ class Sound(Signal):
         denominators = numpy.convolve(numpy.convolve(
             denominators, [1, 2 * numpy.pi * f3]), [1, 2 * numpy.pi * f2])
         b, a = scipy.signal.filter_design.bilinear(numerators, denominators, self.samplerate)
-        data_chans = []
-        for chan in self.channels():
-            data = scipy.signal.lfilter(b, a, chan.data.flatten())
-            data_chans.append(data)  # concatenate channel data
-        return Sound(data_chans, self.samplerate)
+        out = copy.deepcopy(self)
+        out.data = scipy.signal.lfilter(b, a, self.data, axis=0)
+        return out
 
     @staticmethod
     def record(duration=1.0, samplerate=None):
