@@ -6,7 +6,7 @@ try:
 except ImportError:
     scipy = False
 
-_default_samplerate = 8000  #: The default samplerate in Hz; used by all methods if on samplerate argument is provided.
+_default_samplerate = 8000  # default samplerate in Hz; used by all methods if on samplerate argument is provided.
 
 
 def set_default_samplerate(samplerate):
@@ -15,8 +15,10 @@ def set_default_samplerate(samplerate):
 
 
 class Signal:
-    """ Base class for Signal data (from which the Sound and Filter class inherit).
+    """
+    Base class for Signal data (from which the Sound and Filter class inherit).
     Provides arithmetic operations, slicing, and conversion between samples and times.
+
     Arguments:
         data (numpy.ndarray | slab.Signal | list): samples of the sound. If it is an array, the first dimension
             should represent the number of samples and the second one the number of channels. If it's an object,
@@ -28,13 +30,15 @@ class Signal:
         .n_samples: duration of the sound in samples
         .n_channels: number of channels in the sound
         .times: list with the time point of each sample
-    Examples:
+    Examples::
+
         import slab, numpy
         sig = slab.Signal(numpy.ones([10,2]),samplerate=10)  # create a sound
         sig[:5] = 0  # set the first 5 samples to 0
         sig[:,1]  # select the data from the second channel
         sig2 = sig * 2  # multiply each sample by 2
-        sig_inv = -sig  # invert the phase """
+        sig_inv = -sig  # invert the phase
+    """
     # instance properties
     n_samples = property(fget=lambda self: self.data.shape[0],
                          doc='The number of samples in the Signal.')
@@ -142,13 +146,16 @@ class Signal:
     # static methods (belong to the class, but can be called without creating an instance)
     @staticmethod
     def in_samples(ctime, samplerate):
-        """ Converts time values in seconds to samples. This is used to enable input in either samples (integers) or
+        """
+        Converts time values in seconds to samples. This is used to enable input in either samples (integers) or
         seconds (floating point numbers) in the class.
+
         Arguments:
             ctime (int | float | numpy | ndarray): the time(s) to convert to samples.
             samplerate (int): the samplerate of the sound.
         Returns:
-             (int | numpy.ndarray): the time(s) in samples. """
+             (int | numpy.ndarray): the time(s) in samples.
+        """
         out = None
         if isinstance(ctime, (int, numpy.int64)):  # single int is treated as samples
             out = ctime
@@ -179,7 +186,9 @@ class Signal:
 
     # instance methods (belong to instances created from the class)
     def channel(self, n):
-        """ Get a single data channel.
+        """
+        Get a single data channel.
+
         Arguments:
             n (int): channel index
         Returns:
@@ -195,11 +204,14 @@ class Signal:
         return (self.channel(i) for i in range(self.n_channels))
 
     def resize(self, duration):
-        """ Change the duration by padding with zeros or cutting the data.
+        """
+        Change the duration by padding with zeros or cutting the data.
+
         Arguments:
             duration (float | int): new duration of the sound in seconds (given a float) or in samples (given an int).
         Returns:
-            (slab.Signal): a new instance of the same class with the specified duration. """
+            (slab.Signal): a new instance of the same class with the specified duration.
+        """
         duration = Signal.in_samples(duration, self.samplerate)
         resized = copy.deepcopy(self)
         if duration == len(self.data):
@@ -212,11 +224,14 @@ class Signal:
         return resized
 
     def resample(self, samplerate):
-        """ Resample the sound.
+        """
+        Resample the sound.
+
         Arguments:
             samplerate (int): the samplerate of the resampled sound.
         Returns:
-            (slab.Signal): a new instance of the same class with the specified samplerate. """
+            (slab.Signal): a new instance of the same class with the specified samplerate.
+        """
         if scipy is False:
             raise ImportError('Resampling requires scipy.sound.')
         if self.samplerate == samplerate:
@@ -232,19 +247,22 @@ class Signal:
         return out
 
     def envelope(self, apply_envelope=None, times=None, kind='gain'):
-        """ Either apply an envelope to a sound or, if no `apply_envelope` was specified, compute the Hilbert envelope
+        """
+        Either apply an envelope to a sound or, if no `apply_envelope` was specified, compute the Hilbert envelope
         of the sound.
+
         Arguments:
             apply_envelope (None | numpy.ndarray): data to multiply with the sound. The envelope is linearly
                 interpolated to be the same length as the sound. If None, compute the sound's Hilbert envelope
             times (None | numpy.ndarray | list): If None a vector linearly spaced from 0 to the duration of the sound
                 is used. If time points (in seconds, clamped to the the sound duration) for the amplitude values
                 in envelope are supplied, then the interpolation is piecewise linear between pairs of time and envelope
-                 valued (must have same length).
+                valued (must have same length).
             kind (str): determines the unit of the envelope value
         Returns:
             (slab.Signal): Either a copy of the instance with the specified envelope applied or the sound's
-                Hilbert envelope. """
+                Hilbert envelope.
+        """
         if apply_envelope is None:  # get the signals envelope
             return self._get_envelope(kind)
         else:  # apply the envelope to the sound
@@ -283,7 +301,9 @@ class Signal:
         return new
 
     def delay(self, duration=1, channel=0, filter_length=2048):
-        """ Add a delay to one channel.
+        """
+        Add a delay to one channel.
+
         Arguments:
             duration (int | float | array-like): duration of the delay in seconds (given a float) or samples (given
                 an int). Given an array with the same length as the sound, each sample is delayed by the
@@ -291,6 +311,8 @@ class Signal:
             channel (int): The index of the channel to add the delay to
             filter_length (int): Must be and even number. determines the accuracy of the reconstruction when
                 using fractional sample delays. Defaults to 2048, or the sound length for shorter signals.
+        Returns:
+            (slab.Signal): a copy of the instance with the specified delay.
         """
         new = copy.deepcopy(self)
         if channel >= self.n_channels:

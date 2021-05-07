@@ -37,17 +37,20 @@ Inspecting the waveform of the sound (using the :meth:`~slab.Sound.waveform` met
 
 Filter banks
 ------------
-A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound` object. The :meth:`.cos_filterbank` and :meth:`.equalizing_filterbank` methods construct multi-channel filter banks for you, but you can also initialize a :class:`Filter` object with a list of filters, just as you can make a multi-channel sound by initializing a :class:`Sound` object with a list of sounds (both classes inherit this feature from the parent :class:`Signal` class):
+A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound` object. The :meth:`.cos_filterbank` and :meth:`.equalizing_filterbank` methods
+construct multi-channel filter banks for you, but you can also initialize a :class:`Filter` object with a list of filters, just as you can make a multi-channel
+sound by initializing a :class:`Sound` object with a list of sounds (both classes inherit this feature from the parent :class:`Signal` class):
 
 .. plot::
     :include-source:
     :context: close-figs
 
     filters = []
-    for i in range(n):
-        filters.append(Filter.cutoff_filter(
-            frequency=(low_cutoff[i], high_cutoff[i]), kind='bp'))
-    fbank = Filter(filters)  # put the list into a single filter object
+    low_cutoff_freqs = [500, 1000, 1500]
+    high_cutoff_freqs = [1000, 1500, 2000]
+    for low, high in zip(low_cutoff_freqs, high_cutoff_freqs):
+        filters.append(slab.Filter.band(frequency=(low, high), kind='bp'))
+    fbank = slab.Filter(filters)  # put the list into a single filter object
     sound_filt = fbank.apply(sound)  # apply each filter to a copy of sound
     # plot the spectra, each color represents one channel of the filtered sound
     _, ax = plt.subplots(1)
@@ -55,8 +58,8 @@ A :class:`Filter` objects can hold multiple channels, just like a :class:`Sound`
     ax.set_xlim(100, 5000)
     plt.show()
 
-    .. plot::
-        :context: close-figs
+.. plot::
+    :context: close-figs
 
 If the a one-channel filter is applied to a multi-channel signal, the filter will be applied to each
 channel individually. This can be used, for example, to easily pre-process a set of recordingss (where
@@ -127,7 +130,7 @@ With the original sound and the simulated recording we can compute an inverse fi
     :include-source:
     :context: close-figs
 
-    inverse = slab.Filter.equalizing_filterbank(target=sound, signal=recording)
+    inverse = slab.Filter.equalizing_filterbank(reference=sound, sound=recording)
     equalized = inverse.apply(recording)
     equalized.spectrum()
 

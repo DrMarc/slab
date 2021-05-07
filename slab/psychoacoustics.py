@@ -30,12 +30,15 @@ input_method = 'keyboard'  #: sets the input for the Key context manager to 'key
 
 
 def data_path(allow_download=True):
-    """ Get the path where auxiliary data (like HRTF recordings, calibrations) are stored.
+    """
+    Get the path where auxiliary data (like HRTF recordings, calibrations) are stored.
+
     Arguments:
         allow_download (bool): If true, check if the data folder contains the KEMAR HRTF-recordings and if not,
             download them from the GitHub repository.
     Returns:
-        (str): the path to the data folder. """
+        (str): the path to the data folder.
+    """
     path = str(pathlib.Path(__file__).parent.resolve() / pathlib.Path('data')) + os.sep
     if not os.path.exists(path):
         os.mkdir(path)
@@ -48,10 +51,11 @@ def data_path(allow_download=True):
 
 
 class _Buttonbox:
-    """ Adapter class to allow easy switching between input from the keyboard via curses and from the custom buttonbox
+    """
+    Adapter class to allow easy switching between input from the keyboard via curses and from the custom buttonbox
     adapter (custom arduino device that sends a keystroke followed by a return keystroke when pressing a button on
-    the arduino)."""
-
+    the arduino).
+    """
     @staticmethod
     def getch():
         input_key = input()  # buttonbox adapter has to return the keycode of intended keys!
@@ -60,12 +64,12 @@ class _Buttonbox:
 
 
 class _FigChar:
-    """ Adapter class to allow easy switching to input via the current_character attribute of stairs figure.
+    """
+    Adapter class to allow easy switching to input via the current_character attribute of stairs figure.
     Set slab.psychoacoustics.input_method = 'figure' to use. A figure with the name 'stairs' will be opened if it is not
     already present. If used together with the plot method of the Staircase class, input is acquired through the stairs
     plot. Depending on the operating system, you may have to click once into the figure to give it focus.
     """
-
     import warnings # necessary for matplotlib versions <3.5 to suppress a MatplotlibDeprecationWarning
     import matplotlib.cbook
     warnings.filterwarnings("ignore", category=matplotlib.cbook.MatplotlibDeprecationWarning)
@@ -86,11 +90,15 @@ class _FigChar:
 
 @contextmanager
 def key():
-    """ Wrapper for curses module to simplify getting a single keypress from the terminal (default) or a buttonbox.
+    """
+    Wrapper for curses module to simplify getting a single keypress from the terminal (default) or a buttonbox.
     Set slab.psychoacoustics.input_method = 'buttonbox' to use a custom USB buttonbox.
-    Example:
+
+    Example::
+
         with slab.Key() as key:
-        response = key.getch() """
+        response = key.getch()
+    """
 
     if input_method == 'keyboard':
         if curses is None:
@@ -116,12 +124,15 @@ class LoadSaveMixin:
     """ Mixin to provide loading and saving functions. Supports JSON the pickle format """
 
     def save_pickle(self, file_name, overwrite=False):
-        """ Save the object as pickle file.
+        """
+        Save the object as pickle file.
+
         Arguments:
             file_name (str | pathlib.Path): name of the file to create.
             overwrite (bool): overwrite existing file with the same name, defaults to False.
         Returns:
-            (bool): True if writing was successful, False if not """
+            (bool): True if writing was successful, False if not
+        """
         if isinstance(file_name, pathlib.PosixPath):
             file_name = str(file_name)
         if os.path.isfile(file_name):
@@ -133,9 +144,12 @@ class LoadSaveMixin:
             return True
 
     def load_pickle(self, file_name):
-        """ Read pickle file and deserialize the object into `self.__dict__`.
+        """
+        Read pickle file and deserialize the object into `self.__dict__`.
+
         Attributes:
-            file_name (str | pathlib.Path): name of the file to read. """
+            file_name (str | pathlib.Path): name of the file to read.
+        """
         if isinstance(file_name, pathlib.PosixPath):
             file_name = str(file_name)
         if not os.path.isfile(file_name):
@@ -144,10 +158,13 @@ class LoadSaveMixin:
             self.__dict__ = pickle.load(fp)
 
     def save_json(self, file_name=None):
-        """ Save the object as JSON file. If the file exists, it is overwritten.
+        """
+        Save the object as JSON file. If the file exists, it is overwritten.
+
         Arguments:
             file_name (str | pathlib.Path): name of the file to create or append.
-                If None or 'stdout', returns an in-memory JSON object. """
+                If None or 'stdout', returns an in-memory JSON object.
+        """
         # self_copy = copy.deepcopy(self) use if reading the json file sometimes fails
         def default(i): return int(i) if isinstance(i, numpy.int64) else i
         if isinstance(file_name, pathlib.PosixPath):
@@ -164,9 +181,12 @@ class LoadSaveMixin:
             return False
 
     def load_json(self, file_name):
-        """ Read JSON file and deserialize the object into `self.__dict__`.
+        """
+        Read JSON file and deserialize the object into `self.__dict__`.
+
         Attributes:
-            file_name (str | pathlib.Path): name of the file to read. """
+            file_name (str | pathlib.Path): name of the file to read.
+        """
         if isinstance(file_name, pathlib.PosixPath):
             file_name = str(file_name)
         if not os.path.isfile(file_name):
@@ -176,9 +196,10 @@ class LoadSaveMixin:
 
 
 class TrialPresentationOptionsMixin:
-    """ Mixin to provide alternative forced-choice (AFC) and Same-Different trial presentation methods and
-    response simulation to `Trialsequence` and `Staircase`."""
-
+    """
+    Mixin to provide alternative forced-choice (AFC) and Same-Different trial presentation methods and
+    response simulation to `Trialsequence` and `Staircase`.
+    """
     @abstractmethod
     def add_response(self, response):
         pass
@@ -188,9 +209,11 @@ class TrialPresentationOptionsMixin:
         pass
 
     def present_afc_trial(self, target, distractors, key_codes=(range(49, 58)), isi=0.25, print_info=True):
-        """ Present the reference and distractor sounds in random order and acquire a response keypress.
+        """
+        Present the reference and distractor sounds in random order and acquire a response keypress.
         The subject has to identify at which position the reference was played. The result (True if response was correct
         or False if response was wrong) is stored in the sequence via the `add_response` method.
+
         Arguments:
             target (instance of slab.Sound): sound that ought to be identified in the trial
             distractors (instance or list of slab.Sound): distractor sound(s)
@@ -199,7 +222,8 @@ class TrialPresentationOptionsMixin:
                 played in this trial". Defaults to the key codes for buttons '1' to '9'
             isi (int or float): inter stimulus interval which is the pause between the end of one sound and the start
             of the next one.
-            print_info (bool): If true, call the `print_trial_info` method afterwards """
+            print_info (bool): If true, call the `print_trial_info` method afterwards
+        """
         if isinstance(distractors, list):
             stims = [target] + distractors  # assuming sound object and list of sounds
         else:
@@ -219,15 +243,18 @@ class TrialPresentationOptionsMixin:
             self.print_trial_info()
 
     def present_tone_trial(self, stimulus, correct_key_idx=0, key_codes=(range(49, 58)), print_info=True):
-        """ Present the reference and distractor sounds in random order and acquire a response keypress.
+        """
+        Present the reference and distractor sounds in random order and acquire a response keypress.
         The result (True if response was correct or False if response was wrong) is stored in the sequence via the
         `add_response` method.
+
         Arguments:
-            stimulus (slab.Sound): sound played in the trial
+            stimulus (slab.Sound): sound played in the trial.
             correct_key_idx (int): index of the key in `key_codes` that represents a correct response.
-                Response is correct if `response == key_codes[correct_key_idx]`
-            key_codes (list of int): ascii codes for the response keys (get code for button '1': ord('1') --> 49)
-            print_info (bool): If true, call the `print_trial_info` method afterwards """
+                Response is correct if `response == key_codes[correct_key_idx]`.
+            key_codes (list of int): ascii codes for the response keys (get code for button '1': ord('1') --> 49).
+            print_info (bool): If true, call the `print_trial_info` method afterwards.
+        """
         stimulus.play()
         with slab.key() as k:
             response = k.getch()
@@ -237,9 +264,11 @@ class TrialPresentationOptionsMixin:
             self.print_trial_info()
 
     def simulate_response(self, threshold=None, transition_width=2, intervals=1, hitrates=None):
-        """Return a simulated response to the current condition index value by calculating the hitrate from a
+        """
+        Return a simulated response to the current condition index value by calculating the hitrate from a
         psychometric (logistic) function. This is only sensible if trials is numeric and an interval scale representing
         a continuous stimulus value.
+
         Arguments:
             threshold(None | int | float): Midpoint of the psychometric function for adaptive testing. When the
                 intensity of the current trial is equal to the `threshold` the hitrate is 50 percent.
@@ -249,7 +278,8 @@ class TrialPresentationOptionsMixin:
              choice trial. The number of choices determines the probability for a correct response by chance.
             hitrates (None | list | numpy.ndarray): list or numpy array of hitrates for the different conditions,
                 to allow custom rates instead of simulation. If given, `threshold` and `transition_width` are not used.
-                If a single value is given, this value is used. """
+                If a single value is given, this value is used.
+        """
         slope = 0.5 / transition_width
         if isinstance(self, slab.psychoacoustics.Trialsequence): # check which class the mixin is in
             current_condition = self.trials[self.this_n]
@@ -273,7 +303,9 @@ class TrialPresentationOptionsMixin:
 
 
 class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOptionsMixin):
-    """ Randomized, non-adaptive trial sequences.
+    """
+    Randomized, non-adaptive trial sequences.
+
     Arguments:
         conditions (list | int | str): defines the different stimuli appearing the sequence. If given a list,
             every element is one condition. The elements can be anything - strings, dictionaries, objects etc.
@@ -308,8 +340,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         .data: list with the same length as the one in the `trials` attribute. On sequence generation, `data` is a
             list of empty lists. Then , one can use the `add_response` method to append to the list belonging to the
             current trial
-"""
-
+    """
     def __init__(self, conditions=2, n_reps=1, trials=None, kind=None, deviant_freq=None, label=''):
         self.label = label
         self.n_reps = int(n_reps)
@@ -383,10 +414,12 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                f'remaining {"inf" if self.kind=="infinite" else self.n_remaining}, current condition {self.this_trial}'
 
     def __next__(self):
-        """ Is called when iterating trough a sequenceAdvances to next trial and returns it. Updates attributes
+        """
+        Is called when iterating trough a sequenceAdvances to next trial and returns it. Updates attributes
         `this_trial` and `this_n`. If the trials have ended this method will raise a StopIteration.
-         Returns:
-             (int): current element of the list in `trials` """
+        Returns:
+             (int): current element of the list in `trials`
+        """
         self.this_n += 1
         self.n_remaining -= 1
         if self.n_remaining < 0:  # all trials complete
@@ -409,10 +442,13 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         return self.this_trial
 
     def add_response(self, response):
-        """ Append response to the list in the `data` attribute belonging to the current trial (see Trialsequence doc).
+        """
+        Append response to the list in the `data` attribute belonging to the current trial (see Trialsequence doc).
+
         Attributes:
              response (any): data to append to the list. Can be anything but save_json method won't be available if
-                the content of `response` is not JSON serializable (if it's an object for example)."""
+                the content of `response` is not JSON serializable (if it's an object for example).
+        """
         if self.this_n < 0:
             print("Can't add response because trial hasn't started yet!")
         else:
@@ -426,7 +462,9 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
 
     @staticmethod
     def _create_simple_sequence(n_conditions, n_reps, dont_start_with=None):
-        """ Create a randomized sequence of integers without direct repetitions of any element.
+        """
+        Create a randomized sequence of integers without direct repetitions of any element.
+
         Arguments:
             n_conditions (int): the number of conditions in the list. The array returned contains integers from 1
                 to the value of `n_conditions`.
@@ -436,7 +474,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                 element of the next sequence.
         Returns:
             (numpy.ndarray): randomized sequence of length n_conditions * n_reps without direct repetitions of any
-            element """
+            element.
+        """
         permute = list(range(1, n_conditions+1))
         if dont_start_with is not None:
             trials = [dont_start_with]
@@ -454,14 +493,17 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
 
     @staticmethod
     def _deviant_indices(n_standard, deviant_freq=.1):
-        """ Create sequence for an oddball experiment which contains two conditions: standards (1) and deviants (0).
+        """
+        Create sequence for an oddball experiment which contains two conditions: standards (1) and deviants (0).
+
         Arguments:
             n_standard (int): number of standard trials, encoded as 1, in the sequence.
             deviant_freq (float): frequency of deviants, encoded as 0, in the sequence. Also determines the minimum
             number of standards between two deviants which is 3 if deviant_freq <= .1, 2 if deviant_freq <= .2 and
             1 if deviant_freq <= .3. A deviant frequency > .3 is not supported.
         Returns:
-            (numpy.ndarray): sequence of length n_standard+(n_standard*deviant_freq) with deviants. """
+            (numpy.ndarray): sequence of length n_standard+(n_standard*deviant_freq) with deviants.
+        """
         if deviant_freq <= .1:
             min_dist = 3
         elif deviant_freq <= .2:
@@ -484,43 +526,55 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
 
     @staticmethod
     def _create_random_permutation(n_conditions, n_reps):
-        """ Create a completely random sequence of integers.
+        """
+        Create a completely random sequence of integers.
+
         Arguments:
             n_conditions (int): the number of conditions in the list. The array returned contains integers from 1
                 to the value of `n_conditions`.
             n_reps (int): number that each element is repeated. Length of the returned array is n_conditions * n_reps.
         Returns:
-            (numpy.ndarray): randomized sequence. """
+            (numpy.ndarray): randomized sequence.
+        """
         return numpy.random.permutation(numpy.tile(list(range(1, n_conditions+1)), n_reps))
 
     def get_future_trial(self, n=1):
-        """ Returns the condition of a trial n iterations into the future or past, without advancing the trials.
+        """
+        Returns the condition of a trial n iterations into the future or past, without advancing the trials.
+
         Arguments:
             n (int): number of iterations into the future or past (negative numbers).
         Returns:
             (any): element of the list stored in the `conditions` attribute belonging to the trial n
-                iterations into the past/future. Returns None if attempting to go beyond the first/last trial """
+                iterations into the past/future. Returns None if attempting to go beyond the first/last trial
+        """
         if n > self.n_remaining or self.this_n + n < 0:
             return None
         return self.conditions[self.trials[self.this_n + n]-1]
 
     def transitions(self):
-        """ Count the number of transitions between conditions.
+        """
+        Count the number of transitions between conditions.
+
         Returns:
             (numpy.ndarray): table of shape `n_conditions` x `n_conditions` where the rows represent the condition
             transitioning from and the columns represent the condition transitioning to. For example [0, 2] shows the
             number of transitions from condition 1 to condition 3. If the `kind` of the sequence is "non_repeating",
-            the diagonal is 0 because no condition transitions into itself. """
+            the diagonal is 0 because no condition transitions into itself.
+        """
         transitions = numpy.zeros((self.n_conditions, self.n_conditions))
         for i, j in zip(self.trials, self.trials[1:]):
             transitions[i-1, j-1] += 1
         return transitions
 
     def condition_probabilities(self):
-        """ Return the frequency with which each condition appears in the sequence.
+        """
+        Return the frequency with which each condition appears in the sequence.
+
         Returns:
              (list): list of floats floats, where every element represents the frequency of one condition.
-                The fist element is the frequency of the first condition and so on."""
+                The fist element is the frequency of the first condition and so on.
+        """
         probabilities = []
         for i in range(self.n_conditions):
             num = self.trials.count(i)
@@ -529,13 +583,16 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         return probabilities
 
     def response_summary(self):
-        """ Generate a summary of the responses for each condition. The function counts how often a specific response
+        """
+        Generate a summary of the responses for each condition. The function counts how often a specific response
         was given to a condition for all conditions and each possible response (including None).
+
         Returns:
             (list of lists | None): indices of the outer list represent the conditions in the sequence.Each inner
             list contains the number of responses per response key, with the response keys sorted in ascending order,
             the last element always represents None. If the sequence is not finished yet, None is returned.
-        Example:
+        Examples::
+
             import slab
             import random
             sequence = slab.Trialsequence(conditions=3, n_reps=10)  # a sequence with three conditions
@@ -548,7 +605,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
             # Out: [[1, 1, 7], [2, 5, 3], [4, 4, 2]]
             # The first sublist shows that the subject responded to the first condition once with no (0),
             # once with yes (1) and did not give a response seven times, the second and third list show
-            # prevalence of the same response keys for conditions two and three. """
+            # prevalence of the same response keys for conditions two and three.
+        """
         if self.finished:
             # list of used response key codes (add None in case it's not present):
             response_keys = [item for sublist in self.data for item in sublist]
@@ -569,11 +627,14 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
             return None
 
     def plot(self, axis=None, show=True, **kwargs):
-        """ Plot the trial sequence as scatter plot.
+        """
+        Plot the trial sequence as scatter plot.
+
         Arguments:
             axis (matplotlib.pyplot.Axes): plot axis to draw on, if none a new plot is generated
             show (bool): show the plot immediately, defaults to True
-            **kwargs: pyplot.plot keyword arguments, see matplotlib documentation"""
+            **kwargs: pyplot.plot keyword arguments, see matplotlib documentation
+        """
         if plt is None:
             raise ImportError('Plotting requires matplotlib!')
         if axis is None:
@@ -585,8 +646,10 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
 
 
 class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOptionsMixin):
-    """Class to handle adaptive testing which means smoothly the selecting next trial, report current values and so on.
+    """
+    Class to handle adaptive testing which means smoothly the selecting next trial, report current values and so on.
     The sequence will terminate after a certain number of reverals have been exceeded.
+
     Arguments:
         start_val (int | float): initial stimulus value for the staircase
         n_reversals (int): number of reversals needed to terminate the staircase
@@ -614,7 +677,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         .reversal_points: indices of reversal trials
         .reversal_intensities: stimulus values at the reversals (used to compute threshold)
         .finished: True/False: have we finished yet?
-    Examples:
+    Examples::
+
         stairs = Staircase(start_val=50, n_reversals=10, step_type='lin',
             step_sizes=[4,2], min_val=10, max_val=60, n_up=1, n_down=1)
         print(stairs)
@@ -622,7 +686,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             response = stairs.simulate_response(30)
             stairs.add_response(response)
         print(f'reversals: {stairs.reversal_intensities}')
-        print(f'mean of final 6 reversals: {stairs.threshold()}') """
+        print(f'mean of final 6 reversals: {stairs.threshold()}')
+    """
     def __init__(self, start_val, n_reversals=None, step_sizes=1, step_up_factor=1, n_pretrials=0, n_up=1,
                  n_down=2, step_type='lin', min_val=-numpy.Inf, max_val=numpy.Inf, label=''):
         self.label = label
@@ -665,9 +730,14 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         self.pf_responses_per_intensity = None  # psychometric function, auto set when finished
 
     def __next__(self):
-        """ Is called when iterating trough a sequenceAdvances to next trial and returns it. Updates attributes
+        """
+        Is called when iterating trough a sequenceAdvances to next trial and returns it. Updates attributes
         this_trial, this_n, and this_index. If the trials have ended this method will raise a StopIteration.
-        Returns: """
+
+        Returns:
+            (int | float | StopIteration): the intensity for the next trial which is calculated by the
+                `_next_intensity` method. If the sequence is finished a StopIteration is returned instead.
+        """
         if not self.finished:
             self.this_trial_n += 1  # update pointer for next trial
             self.intensities.append(self._next_intensity)
@@ -684,7 +754,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
                f' {len(self.reversal_intensities)} reversals of {self.n_reversals}'
 
     def add_response(self, result, intensity=None):
-        """Add a True or 1 to indicate a correct/detected trial
+        """
+        Add a True or 1 to indicate a correct/detected trial
         or False or 0 to indicate an incorrect/missed trial.
         This is essential to advance the staircase to a new intensity level.
         Supplying an `intensity` value indicates that you did not use
@@ -713,8 +784,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             self.calculate_next_intensity()
 
     def calculate_next_intensity(self):
-        """ Based on current intensity, counter of correct responses, and current direction.
-        TODO: description of how the current intensity is calculated"""
+        """ Based on current intensity, counter of correct responses, and current direction. """
+        # TODO: description of how the current intensity is calculated
         if not self.reversal_intensities:  # no reversals yet
             if self.data[-1] is True:  # last answer correct
                 reversal = bool(self.current_direction == 'up')  # got it right
@@ -779,11 +850,14 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             self._next_intensity = self.min_val  # check we haven't gone out of the legal range
 
     def threshold(self, n=0):
-        """ Returns the average of the last n reversals.
+        """
+        Returns the average of the last n reversals.
+
         Arguments:
             n (int): number of reversals to average over, if 0 use all reversals `n_reversals` - 1.
         Returns:
-            the arithmetic (if `step_type`==='lin') or geometric mean of the `reversal_intensities`. """
+            the arithmetic (if `step_type`==='lin') or geometric mean of the `reversal_intensities`.
+        """
         if self.finished:
             if n == 0 or n > self.n_reversals:
                 n = int(self.n_reversals) - 1
@@ -800,11 +874,14 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             f' going {self.current_direction}, response {self.data[-1] if self.data else None}')
 
     def save_csv(self, filename):
-        """ Write a csv text file with the stimulus values in the 1st line and the corresponding responses in the 2nd.
+        """
+        Write a csv text file with the stimulus values in the 1st line and the corresponding responses in the 2nd.
+
         Arguments:
             filename (str): the name under which the csv file is saved.
         Returns:
-            (bool): True if saving was successful, False if there are no trials to save."""
+            (bool): True if saving was successful, False if there are no trials to save.
+        """
         if self.this_trial_n < 1:
             return False  # no trials to save
         with open(filename, 'w') as f:
@@ -819,10 +896,14 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         return True
 
     def plot(self, axis=None, show=True, **kwargs):
-        """Plot the staircase. If called after each trial, one plot is created and updated.
+        """
+        Plot the staircase. If called after each trial, one plot is created and updated.
+
         Arguments:
             axis (matplotlib.pyplot.Axes): plot axis to draw on, if none a new plot is generated
-            **kwargs: pyplot.plot keyword arguments, see matplotlib documentation """
+            show (bool): whether to show the plot right after drawing.
+            **kwargs: pyplot.plot keyword arguments, see matplotlib documentation.
+        """
         if plt is None:
             raise ImportError('Plotting requires matplotlib!')
         if self.intensities:  # plotting only after first response
@@ -857,7 +938,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         plt.close('stairs')
 
     def _psychometric_function(self):
-        """Create a psychometric function by binning data from a staircase procedure.
+        """
+        Create a psychometric function by binning data from a staircase procedure.
         Called automatically when staircase is finished. Sets attributes `pf_intensites` (array of intensity values
         where each is the center of an intensity bin), `pf_percent_correct` (array of mean percent correct in each bin),
         `pf_responses_per_intensity` (array of number of responses contributing to each mean).
@@ -880,19 +962,23 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
 
 
 class ResultsFile:
-    """ A class for simplifying the typical use cases of results files, including generating the name,
+    """
+    A class for simplifying the typical use cases of results files, including generating the name,
     creating the folders, and writing to the file after each trial. Writes a JSON Lines file,
     in which each line is a valid self-contained JSON string (see http://jsonlines.org).
+
     Arguments:
         subject (str): determines the name of the sub-folder and files.
         folder (None | str): folder in which all results are saved, if None use the global variable results_folder.
     Attributes:
         .path: full path to the results file.
         .subject: the subject's name.
-    Example:
+    Example::
+
         ResultsFile.results_folder = 'MyResults'
         file = ResultsFile(subject='MS')
-        print(file.name) """
+        print(file.name)
+    """
 
     name = property(fget=lambda self: self.path.name, doc='The name of the results file.')
 
@@ -906,12 +992,15 @@ class ResultsFile:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def write(self, data, tag=None):
-        """ Safely write data to the file which is opened just before writing and closed immediately after to avoid
+        """
+        Safely write data to the file which is opened just before writing and closed immediately after to avoid
         data loss. Call this method at the end of each trial to save the response and trial state.
+
         Arguments:
             data (any): data to save must be JSON serializable [string, list, dict, ...]). If data is an object,
                 the __dict__ is extracted and saved.
-            tag (str): The tag is prepended as a key. If None is provided, the current time is used. """
+            tag (str): The tag is prepended as a key. If None is provided, the current time is used.
+        """
         if hasattr(data, "__dict__"):
             data = data.__dict__
         try:
@@ -926,14 +1015,17 @@ class ResultsFile:
 
     @staticmethod
     def read_file(filename, tag=None):
-        """ Read a results file and return the content.
+        """
+        Read a results file and return the content.
+
         Arguments:
             filename (str | pathlib.Path):
             tag (None | str):
         Returns:
             (list | dict): The content of the file. If tag is None, the whole file is returned, else only the
                 dictionaries with that tag as a key are returned. The content will be a list of dictionaries or a
-                dictionary if there is only a single element. """
+                dictionary if there is only a single element.
+        """
         content = []
         with open(filename) as file:
             if tag is None:
@@ -954,12 +1046,15 @@ class ResultsFile:
 
     @staticmethod
     def previous_file(subject=None):
-        """ Returns the name of the most recently used results file for a given subject.
+        """
+        Returns the name of the most recently used results file for a given subject.
         Intended for extracting information from a previous file when running partial experiments.
+
         Arguments:
             subject (str): the subject name name under which the file is stored.
         Returns:
-            (pathlib.Path): full path to the most recent results file."""
+            (pathlib.Path): full path to the most recent results file.
+        """
         path = pathlib.Path(results_folder) / pathlib.Path(subject)
         files = [f for f in path.glob(subject + '*') if f.is_file()]
         files.sort()
@@ -972,22 +1067,26 @@ class ResultsFile:
 
 
 class Precomputed(list):
-    """ This class is a list of pre-computed sound stimuli which simplifies their generation and presentation. It is
+    """
+    This class is a list of pre-computed sound stimuli which simplifies their generation and presentation. It is
     typically used when stimulus generation takes too long to happen in each trial. In this case, a list of stimuli is
     precomputed and a random stimulus from the list is presented in each trial, ideally without direct repetition.
     The Precomputed list has a play method which automatically selects an
     element other than the previous one for playing, and can be used like an `slab.Sound` object.
+
     Arguments:
         sounds (list | callable | iterator): sequence of Sound objects (each must have a play method).
         n: only used if sounds is a callable, calls it n times to make the stimuli.
     Attributes:
         .sequence: a list of all the elements that have been played already.
-    Examples:
+    Examples::
+
         stims = slab.Precomputed(sound_list) # using a pre-made list
         # using a lambda function to make 10 examples of pink noise
         stims = slab.Precomputed(lambda: slab.Sound.pinknoise(), n=10)
         stims = slab.Precomputed( (slab.Sound.vowel(vowel=v) for v in ['a','e','i']) ) # using a generator
-        stims.play() # playing a sound from the list """
+        stims.play() # playing a sound from the list
+    """
 
     def __init__(self, sounds, n=10):
         if isinstance(sounds, (list, tuple)):  # a list was passed, use as is
@@ -1025,18 +1124,24 @@ class Precomputed(list):
         self[idx].play()
 
     def random_choice(self, n=1):
-        """ Pick (without replacement) random elements from the list.
-         Arguments:
+        """
+        Pick (without replacement) random elements from the list.
+
+        Arguments:
              n (int): number of elements to pick.
         Returns:
-            (list): list of n random elements."""
+            (list): list of n random elements.
+        """
         idxs = numpy.random.randint(0, len(self), size=n)
         return [self[i] for i in idxs]
 
     def write(self, filename):
-        """ Save the Precomputed object as a zip file containing all sounds as wav files.
+        """
+        Save the Precomputed object as a zip file containing all sounds as wav files.
+
         Arguments:
-            filename (str | pathlib.Path): full path to under which the file is saved. """
+            filename (str | pathlib.Path): full path to under which the file is saved.
+        """
         with zipfile.ZipFile(filename, mode='a') as zip_file:  # open an empty zip file in 'append' mode
             for idx, sound in enumerate(self):
                 f = io.BytesIO()  # open a virtual file (file-like memory buffer)
@@ -1047,11 +1152,14 @@ class Precomputed(list):
 
     @staticmethod
     def read(filename):
-        """ Read a zip file containing wav files.
+        """
+        Read a zip file containing wav files.
+
         Arguments:
             filename (str | pathlib.Path): full path to the file to be read.
         Returns:
-            (slab.Precomputed): the file content."""
+            (slab.Precomputed): the file content.
+        """
 
         stims = Precomputed([])
         with zipfile.ZipFile(filename, 'r') as zipped:
@@ -1065,19 +1173,22 @@ class Precomputed(list):
 def load_config(filename):
     """
     Reads a text file with variable assignments.
+
     Arguments:
         filename (str | pathlib.Path): full path to the file to be read.
     Returns:
         (collections.namedtuple): a tuple containing the variables and values defined in the text file.
-    Example:
-    # assuming there is a file named "example.txt" with the folloeing content:
-    samplerate = 32000
-    pause_duration = 30
-    speeds = [60,120,180]
-    # call load_config to parse the file into a named tuple:
-    conf = load_config('example.txt')
-    conf.speeds
-    Out: [60, 120, 180] """
+    Example::
+
+        # assuming there is a file named  with the following content:
+        samplerate = 32000
+        pause_duration = 30
+        speeds = [60,120,180]
+        # call load_config to parse the file into a named tuple:
+        conf = load_config('example.txt')  # the file 'example.txt' must be created before
+        conf.speeds
+        # Out: [60, 120, 180]
+    """
     from collections import namedtuple
     with open(filename, 'r') as f:
         lines = f.readlines()

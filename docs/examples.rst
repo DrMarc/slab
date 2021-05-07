@@ -19,7 +19,7 @@ Currently available are:
 Quick standard experiments:
 ---------------------------
 
-.. audiogram:
+.. _audiogram:
 
 Audiogram
 ^^^^^^^^^

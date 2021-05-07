@@ -49,11 +49,11 @@ Psychoacoustic procedures
    :members:
    :member-order: bysource
 
-.. autoclass:: Resultsfile
+.. autoclass:: ResultsFile
    :members:
    :member-order: bysource
 
-.. automethod:: slab.psychoacoustics.Key
+.. automethod:: slab.psychoacoustics.key
 
 .. automethod:: slab.psychoacoustics.load_config
 

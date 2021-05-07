@@ -31,7 +31,9 @@ from slab.filter import Filter
 
 
 class HRTF:
-    """ Class for reading and manipulating head-related transfer functions with attributes and functions to manage them.
+    """
+    Class for reading and manipulating head-related transfer functions with attributes and functions to manage them.
+
     Arguments:
         data (str | Filter | numpy.ndarray): Typically, this is the path to a file in the .sofa format.
             The file is then loaded and the data of each source for which the transfer function was recorded is stored
@@ -52,12 +54,14 @@ class HRTF:
         .listener (dict): a dictionary containing the position of the listener ("pos"), the point which the listener
             is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
         .samplerate (float): sampling rate at which the HRTF data was acquired.
-    Example:
+    Example::
+
         from slab import data_path, HRTF
         hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
         sourceidx = hrtf.cone_sources(20)
         hrtf.plot_sources(sourceidx)
-        hrtf.plot_tf(sourceidx, ear='left') """
+        hrtf.plot_tf(sourceidx, ear='left')
+    """
     # instance properties
     n_sources = property(fget=lambda self: len(self.sources),
                          doc='The number of sources in the HRTF.')
@@ -117,22 +121,29 @@ class HRTF:
     # Static methods (used in __init__)
     @staticmethod
     def _sofa_load(filename, verbose=False):
-        """ Read a SOFA file.
+        """
+        Read a SOFA file.
+
         Arguments:
             filename (str): full path to the .sofa file.
         Returns:
-            (h5netcdf.core.File): the data from the .sofa file. """
+            (h5netcdf.core.File): the data from the .sofa file.
+        """
         if h5netcdf is False:
             raise ImportError('Reading from sofa files requires h5py and h5netcdf.')
-        f = h5netcdf.File(filename, 'r')
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            f = h5netcdf.File(filename, 'r')
         if verbose:
             f.items()
         return f
 
     @staticmethod
     def _sofa_get_samplerate(f):
-        """ Returns the sampling rate of the recordings. If the sampling rate is not given in Hz, the function assumes
+        """
+        Returns the sampling rate of the recordings. If the sampling rate is not given in Hz, the function assumes
         it is given in kHz and multiplies by 1000 to convert to Hz.
+
         Arguments:
             f (h5netcdf.core.File): data as returned by the `_sofa_load` method.
         Returns:
@@ -147,7 +158,9 @@ class HRTF:
 
     @staticmethod
     def _sofa_get_sourcepositions(f):
-        """ Returns an array of positions of all sound sources.
+        """
+        Returns an array of positions of all sound sources.
+
         Arguments:
             f (h5netcdf.core.File): data as returned by the _sofa_load method.
         Returns:
@@ -172,12 +185,15 @@ class HRTF:
 
     @staticmethod
     def _sofa_get_listener(f):
-        """ Returns dict with listeners positional information - used for plotting.
+        """
+        Returns dict with listeners positional information - used for plotting.
+
         Attributes:
             f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
         Returns:
             (dict): position of the listener ("pos"), the point which the listener is fixating ("view")
-                the point 90° above the listener ("up") and vectors from the listener to those points. """
+                the point 90° above the listener ("up") and vectors from the listener to those points.
+        """
         lis = {'pos': numpy.array(f.variables['ListenerPosition'], dtype='float')[0],
                'view': numpy.array(f.variables['ListenerView'], dtype='float')[0],
                'up': numpy.array(f.variables['ListenerUp'], dtype='float')[0]}
@@ -187,27 +203,33 @@ class HRTF:
 
     @staticmethod
     def _sofa_get_FIR(f):
-        """ Returns an array of FIR filters for all source positions.
+        """
+        Returns an array of FIR filters for all source positions.
+
         Attributes:
             f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
         Returns:
             (numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
-                which data was recorded and the second dimension represents the left and right ear. """
+                which data was recorded and the second dimension represents the left and right ear.
+        """
         datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
         if datatype != 'FIR':
             warnings.warn('Non-FIR data: ' + datatype)
         return numpy.array(f.variables['Data.IR'], dtype='float')
 
     def apply(self, source, sound, allow_resampling=True):
-        """ Apply a filter from the HRTF set to a sound. The sound will be recast as slab.Binaural. If the samplerates
+        """
+        Apply a filter from the HRTF set to a sound. The sound will be recast as slab.Binaural. If the samplerates
         of the sound and the HRTF are unequal and `allow_resampling` is True, then the sound will be resampled to the
         filter rate, filtered, and then resampled to the original rate.
         The filtering is done with `scipy.signal.fftconvolve`.
+
         Arguments:
             source (int): the source index of the binaural filter in self.data.
             sound (slab.Signal | slab.Sound | slab.Binaural): the sound to be rendered spatially.
         Returns:
-            (slab.Binaural): a spatialized copy of `sound`. """
+            (slab.Binaural): a spatialized copy of `sound`.
+        """
         if (sound.samplerate != self.samplerate) and (not allow_resampling):
             raise ValueError('Filter and sound must have same sampling rates.')
         original_rate = sound.samplerate
@@ -223,15 +245,20 @@ class HRTF:
         return out.resample(original_rate)
 
     def elevations(self):
-        """ Get all different elevations at which sources where recorded . Note: This currently only works as
+        """
+        Get all different elevations at which sources where recorded . Note: This currently only works as
         intended for HRTFs recorded in horizontal rings.
-         Returns:
-             (list): a sorted list of source elevations."""
+
+        Returns:
+             (list): a sorted list of source elevations.
+        """
         return sorted(list(set(numpy.round(self.sources[:, 1]))))
 
     def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), n_bins=None, kind='waterfall',
                 linesep=20, xscale='linear', show=True, axis=None):
-        """ Plot transfer functions of FIR filters at a list of source indices.
+        """
+        Plot transfer functions of FIR filters at a list of source indices.
+
         Arguments:
             ear (str): the ear from which data is plotted. Can be 'left', 'right', or 'both'.
             sourceidx (list of int): sources to plot. Typically be generated using the `hrtf.cone_sources` Method.
@@ -322,8 +349,10 @@ class HRTF:
         Compute the diffuse field average transfer function, i.e. the constant non-spatial portion of a set of HRTFs.
         The filters for all sources are averaged, which yields an unbiased average only if the sources are uniformly
         distributed around the head.
+
         Returns:
-             (Filter): the diffuse field average as FFR filter object. """
+             (Filter): the diffuse field average as FFR filter object.
+        """
         dfa = []
         for source in range(self.n_sources):
             filt = self.data[source]
@@ -334,13 +363,16 @@ class HRTF:
         return Filter(dfa, fir=False, samplerate=self.samplerate)
 
     def diffuse_field_equalization(self, dfa=None):
-        """ Equalize the HRTF by dividing each filter by the diffuse field average. The resulting filters have a mean
+        """
+        Equalize the HRTF by dividing each filter by the diffuse field average. The resulting filters have a mean
         close to 0 and are Fourier filters.
+
         Arguments:
             dfa (None): Filter object containing the diffuse field average transfer function of the HRTF.
                 If none is provided, the `diffuse_field_avg` method is called to obtain it.
         Returns:
-            (HRTF): diffuse field equalized version of the HRTF. """
+            (HRTF): diffuse field equalized version of the HRTF.
+        """
         if dfa is None:
             dfa = self.diffuse_field_avg()
         # invert the diffuse field average
@@ -355,19 +387,23 @@ class HRTF:
         return dtfs
 
     def cone_sources(self, cone=0):
-        """ Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
+        """
+        Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
         Note: This currently only works as intended for HRTFs recorded in horizontal rings.
+
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
         Returns:
             (list): elements of the list are the indices of sound sources on the frontal half of the cone.
-        Examples:
+        Examples::
+
             from slab import data_path, HRTF
             hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
             sourceidx = hrtf.cone_sources(20)  # get the source indices
             print(hrtf.sources[sourceidx])  # print the coordinates of the source indices
-            hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot """
+            hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot
+        """
         cone = numpy.sin(numpy.deg2rad(cone))
         azimuth = numpy.deg2rad(self.sources[:, 0])
         elevation = numpy.deg2rad(90 - self.sources[:, 1])
@@ -386,26 +422,32 @@ class HRTF:
         return sorted(out, key=lambda x: self.sources[x, 1])
 
     def elevation_sources(self, elevation=0):
-        """ Get the indices of sources along a horizontal sphere slice at the given `elevation`.
+        """
+        Get the indices of sources along a horizontal sphere slice at the given `elevation`.
+
         Arguments:
             elevation (int | float): The elevation of the sources in degree. The default returns sources along
                 the frontal horizon.
         Returns:
             (list): indices of the sound sources. If the hrtf does not contain the specified `elevation` an empty
-                list is returned. """
+                list is returned.
+        """
         idx = numpy.where((self.sources[:, 1] == elevation) & (
             (self.sources[:, 0] <= 90) | (self.sources[:, 0] >= 270)))
         return idx[0].tolist()
 
     def tfs_from_sources(self, sources, n_bins=96):
-        """Get the transfer function from sources in the hrtf.
+        """
+        Get the transfer function from sources in the hrtf.
+
         Arguments:
             sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method), for
                 which the transfer function is extracted.
             n_bins (int): The number of frequency bins for each transfer function
         Returns:
             (numpy.ndarray): 2-dimensional array where the first dimension represents the frequency bins and the
-                second dimension represents the sources. """
+                second dimension represents the sources.
+        """
         n_sources = len(sources)
         tfs = numpy.zeros((n_bins, n_sources))
         for idx, source in enumerate(sources):
@@ -414,18 +456,21 @@ class HRTF:
         return tfs
 
     def vsi(self, sources=None, equalize=True):
-        """ Compute  the "vertical spectral information" which is a measure of the dissimilarity of spectral profiles
-         at different elevations. The vsi relates to behavioral localization accuracy in the vertical dimension
-         (Trapeau and Schönwiesner, 2016). It is computed as one minus the average of the correlation coefficients
-         between all combinations of directional transfer functions of the specified `sources`. A set of identical
-         transfer functions results in a vsi of 0 whereas highly different transfer functions will result in a high VSI
+        """
+        Compute  the "vertical spectral information" which is a measure of the dissimilarity of spectral profiles
+        at different elevations. The vsi relates to behavioral localization accuracy in the vertical dimension
+        (Trapeau and Schönwiesner, 2016). It is computed as one minus the average of the correlation coefficients
+        between all combinations of directional transfer functions of the specified `sources`. A set of identical
+        transfer functions results in a vsi of 0 whereas highly different transfer functions will result in a high VSI
         (empirical maximum is ~1.07, KEMAR has a VSI of 0.82).
+
         Arguments:
             sources (None | list): indices of sources for which to compute the VSI. If None use the vertical midline.
             equalize (bool): If True, apply the `diffuse_field_equalization` method (set to False if the hrtf object
                 is already diffuse-field equalized).
         Returns:
-            (float): the vertical spectral information between the specified `sources`. """
+            (float): the vertical spectral information between the specified `sources`.
+        """
         if sources is None:
             sources = self.cone_sources()
         if equalize:
@@ -444,7 +489,8 @@ class HRTF:
     def plot_sources(self, idx=None, show=True, axis=None):
         """
         Plot source locations in 3D.
-        Args:
+
+        Arguments:
             idx (list of int): Indices to highlight in den plot
             show (bool): Whether to show plot or
             axis (mpl_toolkits.mplot3d.axes3d.Axes3D): Axis to draw the plot on
