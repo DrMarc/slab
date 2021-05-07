@@ -121,7 +121,7 @@ def practice_stairs():
         direction = numpy.random.choice(('left', 'right'))
         stim = moving_gaussian(speed=_adapter_speed, SNR=trial, direction=direction)
         stairs.present_tone_trial(
-            stimulus=stim, correct_key_idx=1 if direction == 'left' else 2, print_info=True)
+            stimulus=stim, correct_key_idx=0 if direction == 'left' else 1, print_info=True)
         stairs.plot()
     input('Done. Press enter to continue...')
     stairs.close_plot()
@@ -158,7 +158,7 @@ def jnd(speed=None, adapter_list=None):
                 adapters.append(stim)  # add stim to list of adapters
                 stim = slab.Sound.sequence(*adapters)  # concatenate sounds in the list
             stairs.present_tone_trial(
-                stimulus=stim, correct_key_idx=1 if direction == 'left' else 2)
+                stimulus=stim, correct_key_idx=0 if direction == 'left' else 1)
         thresh = stairs.threshold(n=10)
         tag = f"{speed} {'with_adapter' if adapter_list else 'no_adapter'}"
         print(f'jnd for {tag}: {round(thresh, ndigits=1)}')
@@ -186,7 +186,7 @@ def main_experiment(subject=None):
     if not subject:
         subject = input('Enter subject code: ')
     _results_file = slab.ResultsFile(subject=subject)
-    # _ = familiarization() # run the familiarization, the hitrate is saved in the results file
+    _ = familiarization() # run the familiarization, the hitrate is saved in the results file
     practice_stairs()  # run the stairs practice
     print('The main part of the experiment starts now (motion direction thresholds).')
     adapter_list = make_adapters()
