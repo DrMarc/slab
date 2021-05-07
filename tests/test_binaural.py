@@ -96,7 +96,7 @@ def test_interaural_level_spectrum():
         fbank = slab.Filter.cos_filterbank(samplerate=sound.samplerate, pass_bands=True)
         subbands_left = fbank.apply(lateral.left)
         subbands_right = fbank.apply(lateral.right)
-        assert -0.5 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 0.5
+        assert -1.5 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 1.5
 
 def test_overloaded_sound_generators():
     sig = slab.Binaural.pinknoise()
