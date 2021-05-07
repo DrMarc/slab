@@ -223,6 +223,28 @@ class Signal:
             resized.data = numpy.concatenate((self.data, padding))
         return resized
 
+    def trim(self, start=0, stop=None):
+        """ Trim the signal by returning the section between `start` and `stop`.
+        Arguments:
+            start (float | int): start of the section in seconds (given a float) or in samples (given an int).
+            stop (float | int): end of the section in seconds (given a float) or in samples (given an int).
+        Returns:
+            (slab.Signal): a new instance of the same class with the specified duration. """
+        start = Signal.in_samples(start, self.samplerate)
+        if stop is None:
+            stop = self.n_samples - 1
+        else:
+            stop = Signal.in_samples(stop, self.samplerate)
+        if stop >= self.n_samples:
+            stop = self.n_samples - 1
+        if start < 0:
+            start = 0
+        if start >= stop:
+            raise ValueError('Start must precede stop.')
+        trimmed = copy.deepcopy(self)
+        trimmed.data = self.data[start:stop, :]
+        return trimmed
+
     def resample(self, samplerate):
         """
         Resample the sound.

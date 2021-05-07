@@ -1,5 +1,6 @@
 import numpy
 import slab
+import pytest
 
 def test_signal_generation():
     # (numpy.ndarray | object | list)
@@ -57,6 +58,24 @@ def test_resize():
         assert numpy.abs(resized.n_samples - dur_seconds[i]*resized.samplerate) < 1
         resized = sig.resize(dur_samples[i])
         assert resized.n_samples == dur_samples[i]
+
+
+def test_trim():
+    for _ in range(100):
+        n_samples = numpy.random.randint(100, 10000)
+        n_channels = numpy.random.randint(1, 10)
+        samplerate = numpy.random.randint(10, 1000)
+        sig = slab.Signal(numpy.random.randn(n_samples, n_channels), samplerate=samplerate)
+        start, stop = numpy.sort(numpy.random.randint(0, n_samples+1, 2))
+        if start == stop:
+            start -= 1
+        if numpy.random.rand() < 0.5:
+            trimmed = sig.trim(start, stop)
+        else:
+            trimmed = sig.trim(start/samplerate, stop/samplerate)
+        assert numpy.abs(trimmed.n_samples - (stop-start)) < 1
+    with pytest.raises(ValueError):  # testing start not preceding stop case
+        trimmed = sig.trim(stop, start)
 
 
 def test_resample():
