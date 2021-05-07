@@ -28,6 +28,13 @@ def test_arithmetics():
 
 
 def test_samplerate():
+    samples = slab.Signal.in_samples([1.,2], 1000)
+    assert samples[0] == 1000
+    assert samples[1] == 2
+    orig_rate = slab.signal._default_samplerate
+    slab.set_default_samplerate(10000)
+    assert slab.signal._default_samplerate == 10000
+    slab.set_default_samplerate(orig_rate)
     dur_seconds = numpy.abs(numpy.random.randn(100))
     dur_samples = numpy.random.randint(10, 100000, 100)
     for i in range(100):
@@ -90,6 +97,7 @@ def test_envelope():
     sig = slab.Sound.tone()
     _ = sig.envelope(kind="gain")
     _ = sig.envelope(kind="dB")
+    _ = sig.envelope(apply_envelope=[0, 1, 0], times=[0, 0.3, 1])
     for _ in range(100):
         env = numpy.random.uniform(-1, 1, 3)
         sig2 = sig.envelope(apply_envelope=env)
