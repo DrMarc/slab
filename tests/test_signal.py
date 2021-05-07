@@ -80,7 +80,7 @@ def test_trim():
             trimmed = sig.trim(start=start, stop=stop)
         else:
             trimmed = sig.trim(start=start/samplerate, stop=stop/samplerate)
-        assert numpy.abs(trimmed.n_samples - (stop-start)) < 1
+        assert numpy.abs(trimmed.n_samples - (stop-start)) <= 1
     with pytest.raises(ValueError):  # testing start not preceding stop case
         trimmed = sig.trim(start=stop, stop=start)
 
