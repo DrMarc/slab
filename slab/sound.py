@@ -618,7 +618,7 @@ class Sound(Signal):
         Join sounds into a new sound object.
 
         Arguments:
-            \*sounds (slab.Sound): two or more sounds to combine.
+            *sounds (slab.Sound): two or more sounds to combine.
         Returns:
             (slab.Sound): the input sounds combined in a single object.
         """
@@ -694,7 +694,7 @@ class Sound(Signal):
         Crossfade several sounds.
 
         Arguments:
-            \*sounds (instances of slab.Sound): sounds to crossfade
+            *sounds (instances of slab.Sound): sounds to crossfade
             overlap (float | int): duration of the overlap between the cross-faded sounds in seconds (given a float)
                 or in samples (given an int).
         Returns:
