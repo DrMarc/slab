@@ -53,9 +53,6 @@ class Signal:
     def __init__(self, data, samplerate=None):
         if hasattr(data, 'samplerate') and samplerate is not None:
             warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
-        if samplerate is None:
-            samplerate = _default_samplerate
-        self.samplerate = samplerate
         if isinstance(data, numpy.ndarray):
             self.data = numpy.array(data, dtype='float')
         elif isinstance(data, (list, tuple)):
