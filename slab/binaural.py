@@ -345,7 +345,7 @@ class Binaural(Sound):
         sort = numpy.argsort(azi)
         fbank = Filter.cos_filterbank(samplerate=hrtf.samplerate, pass_bands=True)
         freqs = fbank.filter_bank_center_freqs()
-        noise = Sound.pinknoise(samplerate=hrtf.samplerate)
+        noise = Sound.pinknoise(duration=5., samplerate=hrtf.samplerate)
         ils = numpy.zeros((len(freqs) + 1, len(idx) + 1))
         ils[0, 0] = hrtf.samplerate  # save samplerate in ils filter
         ils[1:, 0] = freqs  # first row are the frequencies
