@@ -165,7 +165,6 @@ class LoadSaveMixin:
             file_name (str | pathlib.Path): name of the file to create or append.
                 If None or 'stdout', returns an in-memory JSON object.
         """
-        # self_copy = copy.deepcopy(self) use if reading the json file sometimes fails
         def default(i): return int(i) if isinstance(i, numpy.int64) else i
         if isinstance(file_name, pathlib.PosixPath):
             file_name = str(file_name)
@@ -349,11 +348,10 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         if isinstance(conditions, str):
             if not os.path.isfile(conditions):
                 raise ValueError(f"could not load the file {conditions}")
-            else:
-                try:
-                    self.load_json(conditions)  # import entire object from file
-                except (UnicodeDecodeError, json.JSONDecodeError) as _:
-                    self.load_pickle(conditions)
+            try:
+                self.load_json(conditions)  # import entire object from file
+            except (UnicodeDecodeError, json.JSONDecodeError) as _:
+                self.load_pickle(conditions)
         else:
             if isinstance(conditions, int):
                 self.conditions = list(range(1, conditions+1))
@@ -1175,17 +1173,17 @@ def load_config(filename):
     Reads a text file with variable assignments.
 
     Arguments:
-        filename (str | pathlib.Path): full path to the file to be read.
+        filename (str | pathlib.Path): path to the file to be read.
     Returns:
         (collections.namedtuple): a tuple containing the variables and values defined in the text file.
     Example::
 
-        # assuming there is a file named  with the following content:
+        # assuming there is a file named 'example.txt' with the following content:
         samplerate = 32000
         pause_duration = 30
         speeds = [60,120,180]
         # call load_config to parse the file into a named tuple:
-        conf = load_config('example.txt')  # the file 'example.txt' must be created before
+        conf = load_config('example.txt')
         conf.speeds
         # Out: [60, 120, 180]
     """
