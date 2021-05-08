@@ -44,7 +44,7 @@ def data_path(allow_download=True):
         os.mkdir(path)
     if not os.path.exists(path + 'mit_kemar_normal_pinna.sofa'):
         if allow_download:
-            print("downloading the KEMAR HRTF recodings from GitHub...")
+            print("downloading the KEMAR HRTF recodings from sofacoustics.org...")
             url = "http://sofacoustics.org/data/database/mit/mit_kemar_normal_pinna.sofa"
             urllib.request.urlretrieve(url, path + 'mit_kemar_normal_pinna.sofa')
     return path
