@@ -86,16 +86,16 @@ def test_externalize():
 
 
 def test_interaural_level_spectrum():
-    ils = slab.Binaural._make_level_spectrum_filter()
-    sound = slab.Binaural.whitenoise(samplerate=int(ils[0, 0]))
-    azimuths = ils[0, 1:]
+    ils = slab.Binaural.make_interaural_level_spectrum()
+    sound = slab.Binaural.whitenoise(samplerate=int(ils['samplerate']))
+    azimuths = ils['azimuths']
     for i, azi in enumerate(azimuths):
-        level_differences = ils[1:, i+1]
-        lateral = sound.interaural_level_spectrum(azi)
+        level_differences = ils['level_diffs'][:, i]
+        lateral = sound.interaural_level_spectrum(azi, ils)
         fbank = slab.Filter.cos_filterbank(samplerate=sound.samplerate, pass_bands=True)
         subbands_left = fbank.apply(lateral.left)
         subbands_right = fbank.apply(lateral.right)
-        assert -3 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 3
+        assert -1 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 1
 
 def test_overloaded_sound_generators():
     sig = slab.Binaural.pinknoise()
