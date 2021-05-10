@@ -316,9 +316,9 @@ class Binaural(Sound):
                 use the recordings from the KEMAR mannequin. For the KEMAR, the level spectrum is saved to a file
                 and loaded, the next time this function is executed to save computation time.
         Returns:
-            (dict): A dictionary with keys `samplerate`, `frequencies` (n), `azimuths` (m), and `level_diffs` (n x m),
-                where `frequencies` lists the centres of sub-bands for which the level difference was computed,
-                and `azimuths` lists the sound source azimuth's in the hrft. `level_diffs` is a matrix of the interaural
+            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], and `level_diffs` [n x m],
+                where `frequencies` lists the centres of sub-bands for which the level difference was computed, and
+                `azimuths` lists the sound source azimuth's in the hrft. `level_diffs` is a matrix of the interaural
                 level difference for each sub-band and azimuth.
         Examples::
 
@@ -383,7 +383,7 @@ class Binaural(Sound):
 
         Arguments:
             azimuth (int | float): azimuth for which the interaural level spectrum is calculated.
-            level_spectrum_filter (None | numpy.ndarray): If None, the method make_interaural_level_spectrum is called
+            ils (None | dict): If None, the method make_interaural_level_spectrum is called
                 which returns the interaural level spectrum of the KEMAR mannequin's head related transfer function.
                 Any array given for this argument should be generated with the _make_level_spectrum_filter as well.
         Returns:
