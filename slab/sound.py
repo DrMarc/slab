@@ -892,10 +892,10 @@ class Sound(Signal):
         if _system == 'Windows':
             winsound.PlaySound(filename, winsound.SND_FILENAME)
         elif _system == 'Darwin':  # MacOS
-            subprocess.call(['afplay', filename])
+            subprocess.call(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         else:  # Linux
             try:
-                subprocess.call(['sox', filename, '-d'])
+                subprocess.call(['sox', filename, '-d'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
             except FileNotFoundError:
                 raise NotImplementedError(
                     'Playing from files on Linux without SoundCard module requires SoX. '
