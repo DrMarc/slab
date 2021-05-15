@@ -1280,10 +1280,11 @@ def calibrate(intensity=None, make_permanent=False):
     """
     global _calibration_intensity
     if intensity is None:
+        input('Turn your system volume to maximum. Ready your sound level meter. Press enter...')
         tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
         print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
         tone.play()  # play it
-        intensity = input('Enter measured intensity in dB: ')  # ask for measured intensity
+        intensity = float(input('Enter measured intensity in dB: '))  # ask for measured intensity
         intensity = intensity - tone.level  # subtract measured from rms intensity
     # set and save
     _calibration_intensity = intensity

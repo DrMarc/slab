@@ -56,8 +56,8 @@ level can be set individually by changing its :attr:`level` property. Setting th
 stimulus changes the root-mean-square of the waveform and relative changesare correct (reducing the level attribute by
 10 dB will reduce the sound output by the same amount), but the *absolute* intensity is only correct if you calibrate
 your output. The recommended procedure it to set your system volume to maximum, connect the listening hardware
-(headphone or loudspeaker) and set up a sound level meter. Then call :func:`slab.calibrate`. The :func:`.calibrate`
-method will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The
+(headphone or loudspeaker) and set up a sound level meter. Then call :func:`slab.sound.calibrate`. The :func:`.calibrate`
+function will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The
 difference between the tone's level attribute and the recorded level is saved in the class variable
 :data:`_calibration_intensity`. It is applied to all level calculations so that a sound's level attribute now roughly
 corresponds to the actual output intensity in dB SPL---'roughly' because your output hardware may not have a flat
