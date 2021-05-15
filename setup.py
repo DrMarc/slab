@@ -24,6 +24,6 @@ setup(name='slab',
       install_requires=['numpy', 'scipy', 'SoundFile',
         "matplotlib < 3.4; python_version == '3.6'",
         "matplotlib; python_version >= '3.7'"],
-      extras_require={'testing': ['h5netcdf'],},
+      extras_require={'testing': ['pytest', 'h5netcdf']},
       packages=find_packages(),
       zip_safe=True)
