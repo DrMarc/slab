@@ -2,6 +2,11 @@ import copy
 import warnings
 import numpy
 try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+except ImportError:
+    matplotlib, plt = False, False
+try:
     import scipy.signal
 except ImportError:
     scipy = False
@@ -83,6 +88,28 @@ class Signal:
     def __str__(self):
         return f'{type(self)} duration {self.duration}, samples {self.n_samples}, channels {self.n_channels},' \
                f'samplerate {self.samplerate}'
+
+    def _repr_html_(self):
+        'HTML image representation for Jupyter notebook support'
+        elipses = '\u2026'
+        class_name = str(type(self))[8:-2]
+        html = [f'<h4>{class_name} with samplerate = {self.samplerate}</h4>']
+        html += ['<table><tr><th>#</th>']
+        samps, chans = self.data.shape
+        html += (f'<th>channel {j}</th>' for j in range(chans))
+        if samps > 7:
+            rows = [0, 1, 2, -1, samps-3, samps-2, samps-1]  # -1 will output '...'
+        else:
+            rows = range(samps)
+        for i in rows:
+            html.append(f'<tr><th>{elipses if i == -1 else i}</th>')
+            for j in range(chans):
+                if i == -1:
+                    html.append(f'<td>{elipses}</td>')
+                else:
+                    html.append(f'<td>{self.data[i, j]:.5f}</td>')
+        html.append('</table>')
+        return ''.join(html)
 
     def __getitem__(self, key):
         return self.data.__getitem__(key)
@@ -376,3 +403,26 @@ class Signal:
                     # one sample, which gets written into the sound at the current index
                     new.data[i, channel] = numpy.convolve(sig_portion, tap_weight, mode='valid')
         return new
+
+    def plot_samples(self, show=True, axis=None, **kwargs):
+        """
+        Stem plot of the samples of the signal.
+
+        Arguments:
+            show (bool): whether to show the plot right after drawing.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+            ** kwargs: keyword arguments for the plot, see documentation of matplotlib.pyplot.plot for details.
+        """
+        if matplotlib is False:
+            raise ImportError('Plotting signals requires matplotlib.')
+        if axis is None:
+            _, axis = plt.subplots()
+        if self.n_channels == 1:
+            axis.stem(self.channel(0), **kwargs)
+        else:
+            for i in range(self.n_channels):
+                axis.stem(self.channel(i), label=f'channel {i}', **kwargs)
+            plt.legend()
+        axis.set(title='Samples', xlabel='Number', ylabel='Value')
+        if show:
+            plt.show()
