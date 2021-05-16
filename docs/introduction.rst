@@ -43,7 +43,7 @@ Slab requires additional modules for some functionality. These modules are not i
 
 * **I have set the level of a sound to 70 dB but it is way louder, why?**
 
-This is because soundlab does not know the hardware you are using to play sound. For example, white noise is generated so that the maximum value in the time series is +1 and the minimum minus one ("full scale"). The RMS of this signal, expressed in deciBels happens to be about 82 dB, but you need to calibrate your system (see :ref:`calibration`) so that the calculated intensity is meaningful. Relative intensities are correct without calibration---so decreasing the intensity by 10 dB (`sound.level -= 10`) will work as expected.
+This is because slab does not know the hardware you are using to play sound. For example, white noise is generated so that the maximum value in the time series is +1 and the minimum minus one ("full scale"). The RMS of this signal, expressed in deciBels happens to be about 82 dB, but you need to calibrate your system (see :ref:`calibration`) so that the calculated intensity is meaningful. Relative intensities are correct without calibration---so decreasing the intensity by 10 dB (`sound.level -= 10`) will work as expected.
 
 
 * **What is the difference between white noise and pink noise?**
