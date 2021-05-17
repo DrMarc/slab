@@ -4,6 +4,7 @@ import pathlib
 import tempfile
 import platform
 import subprocess
+import hashlib
 import numpy
 import copy
 
@@ -875,8 +876,11 @@ class Sound(Signal):
         if soundcard is not False:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
-            self.write(_tmpdir / 'tmp.wav', normalise=False)
-            Sound.play_file(_tmpdir / 'tmp.wav')
+            filename = hashlib.sha256(self.data).hexdigest() + '.wav'  # make unique name
+            filename = _tmpdir / filename
+            if not filename.is_file():
+                self.write(filename, normalise=False)
+            Sound.play_file(filename)
 
     @staticmethod
     def play_file(filename):
