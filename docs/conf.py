@@ -20,7 +20,7 @@ with open('../slab/__init__.py') as file:
 
 # -- Project information -----------------------------------------------------
 project = 'slab'
-copyright = '2020, Marc Schoenwiesner, Ole Bialas'
+copyright = '2018-, Marc Schoenwiesner, Ole Bialas'
 author = 'Marc Schoenwiesner, Ole Bialas'
 release = version
 
@@ -31,7 +31,8 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.autodoc',
     'matplotlib.sphinxext.plot_directive',
-    'sphinx.ext.doctest']
+    'sphinx.ext.doctest',
+    'sphinx_rtd_theme']
 
 plot_pre_code = 'import slab'
 master_doc = 'index'
@@ -41,3 +42,6 @@ intersphinx_mapping = {'python': ('https://docs.python.org/', None),
                        'matplotlib': ('http://matplotlib.org/', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy/', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None)}
+
+html_theme = 'sphinx_rtd_theme'
+html_theme_options = {'collapse_navigation': False}
