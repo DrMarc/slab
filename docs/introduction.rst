@@ -13,8 +13,8 @@ generate, manipulate and write/read Sounds in slab. Next, you should see the :re
 section which is about generating trial sequences and running experiments. With these tools you can
 already do plenty of things! For example...
 
-The :ref:`Filter` section contains some more advanced, but powerful, methods for processing
-digital signals. The :ref:`HRTF` section describes the handling of head related transfer functions and
+The :ref:`Filters` section contains some more advanced, but powerful, methods for processing
+digital signals. The :ref:`Hrtfs` section describes the handling of head related transfer functions and
 will only be relevant if you are interested in spatial audio.
 
 

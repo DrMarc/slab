@@ -1,17 +1,15 @@
-.. _HRTF:
-
-.. note:: The class is at the moment geared towards plotting and analysis of HRTF files in the `sofa format <https://www.sofaconventions.org/>`_, because we needed that functionality for grant applications. The functionality will grow as we start to record and manipulate HRTFs more often.
-.. note:: When we started to writing this code, there was no python module for reading and writing sofa files. Now that `pysofaconventions <https://github.com/andresperezlopez/pysofaconventions>`_ is available, we will at some point switch internally to using that module as backend for reading sofa files, instead of our own limited implementation.
+.. _Hrtfs:
 
 HRTFs
 =====
+
 A head-related transfer function (HRTF) describes the impact of the listeners ears, head and torso on incoming sound
 for every position in space. Knowing the listeners HRTF, you can simulate a sound source at any position by filtering
 it with the transfer function corresponding to that position. The :class:`HRTF` class provides methods for
 manipulating, plotting, and applying head-related transfer functions.
 
-Reading sounds
---------------
+Reading HRTF data
+-----------------
 Typically the :class:`HRTF` class is instantiated by loading a file. The canonical format for HRTF-data is called
 sofa (Spatially Oriented Format for Acoustics). To read sofa files, you need to install the h5netcdf module:
 `pip install h5netcdf`. The module includes a set of standard HRTF recordings from the KEMAR (a mannequin for acoustic
@@ -20,12 +18,15 @@ first time you call this function, the recordings will be downloaded from the so
 calling the :class:`HRTF` class with the name of the file as an argument. Print the resulting object to obtain
 information about the structure of the HRTF data ::
 
-    from slab import data_path
-    hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF(data=slab.data_path()+'mit_kemar_normal_pinna.sofa')
     print(hrtf)
-    Out: <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
+    # <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
 
 Libraries of many other recordings can be found on the `website of the sofa file format <https://www.sofaconventions.org/>`_.
+
+.. note:: The class is at the moment geared towards plotting and analysis of HRTF files in the `sofa format <https://www.sofaconventions.org/>`_, because we needed that functionality for grant applications. The functionality will grow as we start to record and manipulate HRTFs more often.
+
+.. note:: When we started to writing this code, there was no python module for reading and writing sofa files. Now that `pysofaconventions <https://github.com/andresperezlopez/pysofaconventions>`_ is available, we will at some point switch internally to using that module as backend for reading sofa files, instead of our own limited implementation.
 
 Plotting sources
 --------------------
@@ -37,12 +38,14 @@ highlighted in red. This can be useful when you are selecting source locations f
 that you chose correctly. In the example below, we select sources using the methods :meth:`.elevation_sources`, which
 selects sources along a horizontal sphere slice at a given elevation and :meth:`.cone_sources`, which selects sources
 along a vertical slice through the source sphere in front of the listener a given angular distance away from the
-midline.
+midline:
 
 .. plot::
     :include-source:
-    :context: close-figs
+    :context:
+
     # cone_sources and elevation_sources return lists of indices which are concatenated by adding:
+    hrtf = slab.HRTF(data=slab.data_path()+'mit_kemar_normal_pinna.sofa')
     sourceidx = hrtf.cone_sources(0) + hrtf.elevation_sources(0)
     hrtf.plot_sources(sourceidx) # plot the sources in 3D, highlighting the selected sources
 
@@ -59,9 +62,9 @@ source, print it's coordinates and plot the corresponding transfer function.
 .. plot::
     :include-source:
     :context: close-figs
-    from slab import data_path
+
     from matplotlib import pyplot as plt
-    hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF(data=slab.data_path()+'mit_kemar_normal_pinna.sofa')
     fig, ax = plt.subplots(1)
     idx = 10
     source = hrtf.sources[idx]  # the source's azimuth, elevation and distance
@@ -81,6 +84,7 @@ components of the HRTF, which makes the features of the HRTF that change with di
 .. plot::
     :include-source:
     :context: close-figs
+
     from slab import data_path
     from matplotlib import pyplot as plt
     hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
@@ -106,7 +110,7 @@ measure to be sensible, and the :meth:`.vsi` method will apply the equalization.
 of about 0.73::
 
     hrtf.vsi()
-    out: .73328
+    # .73328
 
 The :meth:`.vsi` method accepts arbitrary lists of source indices for the dissimilarity computation.
 We can for instance check how the VSI changes when sources further off the midline are used. There are some reports
@@ -118,15 +122,14 @@ to avoid recalculation of the diffuse-field equalization in each iteration)::
         sources = dtf.cone_sources(cone)
         vsi = dtf.vsi(sources=sources, equalize=False)
         print(f'{cone}˚: {vsi:.2f}')
-    out:
-    0˚: 0.82
-    10˚: 0.80
-    20˚: 0.88
-    30˚: 0.89
-    40˚: 0.80
-    50˚: 0.72
+        # 0˚: 0.73
+        # 10˚: 0.63
+        # 20˚: 0.69
+        # 30˚: 0.74
+        # 40˚: 0.76
+        # 50˚: 0.73
 
-KEMAR does indeed have a ~10% higher VSI around 20 to 30˚ off the midline.
+The effect seems to be weak for KEMAR, (VSI falls off for directions slightly off the midline and then increases again at around 30-40˚).
 
 
 Virtually displaying 3D sound
@@ -140,6 +143,7 @@ sources at different elevations along the central cone to generated white noise.
 .. plot::
     :include-source:
     :context: close-figs
+
     from slab import data_path, Sound
     from matplotlib import pyplot as plt
     sound = slab.Sound.whitenoise(samplerate=44100)  # the sound to be displayed
@@ -153,7 +157,7 @@ sources at different elevations along the central cone to generated white noise.
         spatial_sounds[i].spectrum(axis=ax[i], low_cutoff=5000, show=False)
     plt.show()
 
-You can use the :meth:`.play` method of the sounds to listen to them - see if you can identify the virtual sound source
+You can use the :meth:`~Sound.play` method of the sounds to listen to them - see if you can identify the virtual sound source
 position. If you will be able to do so depends on how similar your own HRTF is to that of the KEMAR. Your auditory
 system can get used to new HRTFs, so if you listen to the KEMAR recordings long enough you will eventually be able
 to localize them

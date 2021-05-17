@@ -148,6 +148,7 @@ You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or 
 
 .. plot::
     :include-source:
+
     from matplotlib import pyplot as plt
     a = slab.Sound.vowel(vowel='a')
     e = slab.Sound.vowel(vowel='e')
@@ -166,6 +167,7 @@ values for further analysis if you set the :attr:`show` argument to False. All p
 existing matplotlib.pyplot axis supplied with the :attr:`axis` argument.
 
 .. _spectral_features:
+
 You can also extract common features from sounds, such as the :meth:`.crest_factor` (a measure of how 'peaky'
 the waveform is), or the average :meth:`.onset_slope` (a measure of how fast the on-ramps in the sound are---important
 for sound localization). Features of the spectral content are bundled in the :meth:`.spectral_feature` method.
@@ -308,7 +310,4 @@ the Signal class directly. ::
 
 .. rubric:: Footnotes
 
-.. [#f1] Forward masking occurs when a signal cannot be heard due to a preceding masking sound. Typically, three
-intervals are presented to the listener, two contain only the masker and one contains the masker followed by the
-signal. The listener has to identify the interval with the signal. The level of the masker is fixed and the signal
-level is varied adaptively to obtain the masked threshold.
+.. [#f1] Forward masking occurs when a signal cannot be heard due to a preceding masking sound. Typically, three intervals are presented to the listener, two contain only the masker and one contains the masker followed by the signal. The listener has to identify the interval with the signal. The level of the masker is fixed and the signal level is varied adaptively to obtain the masked threshold.
