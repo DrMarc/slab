@@ -1,4 +1,5 @@
 import numpy
+import pytest
 import slab
 
 def test_signal_generation():
@@ -27,6 +28,13 @@ def test_arithmetics():
 
 
 def test_samplerate():
+    samples = slab.Signal.in_samples([1.,2], 1000)
+    assert samples[0] == 1000
+    assert samples[1] == 2
+    orig_rate = slab.signal._default_samplerate
+    slab.set_default_samplerate(10000)
+    assert slab.signal._default_samplerate == 10000
+    slab.set_default_samplerate(orig_rate)
     dur_seconds = numpy.abs(numpy.random.randn(100))
     dur_samples = numpy.random.randint(10, 100000, 100)
     for i in range(100):
@@ -59,6 +67,24 @@ def test_resize():
         assert resized.n_samples == dur_samples[i]
 
 
+def test_trim():
+    for _ in range(100):
+        n_samples = numpy.random.randint(100, 10000)
+        n_channels = numpy.random.randint(1, 10)
+        samplerate = numpy.random.randint(10, 1000)
+        sig = slab.Signal(numpy.random.randn(n_samples, n_channels), samplerate=samplerate)
+        start, stop = numpy.sort(numpy.random.randint(0, n_samples+1, 2))
+        if start == stop:
+            start -= 1
+        if numpy.random.rand() < 0.5:
+            trimmed = sig.trim(start=start, stop=stop)
+        else:
+            trimmed = sig.trim(start=start/samplerate, stop=stop/samplerate)
+        assert numpy.abs(trimmed.n_samples - (stop-start)) <= 1
+    with pytest.raises(ValueError):  # testing start not preceding stop case
+        trimmed = sig.trim(start=stop, stop=start)
+
+
 def test_resample():
     for _ in range(100):
         sig = slab.Signal(numpy.random.randn(numpy.random.randint(100, 10000)))
@@ -71,6 +97,7 @@ def test_envelope():
     sig = slab.Sound.tone()
     _ = sig.envelope(kind="gain")
     _ = sig.envelope(kind="dB")
+    _ = sig.envelope(apply_envelope=[0, 1, 0], times=[0, 0.3, 1])
     for _ in range(100):
         env = numpy.random.uniform(-1, 1, 3)
         sig2 = sig.envelope(apply_envelope=env)

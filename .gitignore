@@ -13,6 +13,7 @@
 # MacOS Desktop Services Store
 /.DS_Store
 /slab/.DS_Store
+/.github/.DS_Store
 
 # pycharm metadata
 /.idea/
@@ -23,23 +24,30 @@
 /docs/_templates/
 /docs/.DS_Store
 
+# test coverage reports
+/.coverage
+/htmlcov/
+/tests/coverage/
+
 # slab build
 /build/
 /_build/
 /.cache/
 
-
-# extra HRTF databases
+# HRTF databases
+/slab/data/mit_kemar_normal_pinna.sofa
 /slab/data/aachen/
 /slab/data/ari/
 /slab/data/cipic/
 /slab/data/.DS_Store
 
 # interaural level spectrum from KEMAR HRTF
-/slab/data/KEMAR_interaural_level_spectrum.npy
+/slab/data/KEMAR_interaural_level_spectrum.h5
 
 # loudness calibration
 /slab/data/calibration_intensity.npy
 
 # slab experiments
 /slab/experiments/.DS_Store
+/slab/experiments/feedback_correct.wav
+/slab/experiments/feedback_incorrect.wav

@@ -75,7 +75,7 @@ def test_ild_ramp():
 
 
 def test_externalize():
-    for i in range(10):
+    for _ in range(10):
         hrtf = slab.HRTF(slab.data_path()+'mit_kemar_normal_pinna.sofa')
         idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[0][0]
         sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
@@ -86,13 +86,37 @@ def test_externalize():
 
 
 def test_interaural_level_spectrum():
-    ils = slab.Binaural._make_level_spectrum_filter()
-    sound = slab.Binaural.whitenoise(samplerate=int(ils[0, 0]))
-    azimuths = ils[0, 1:]
+    ils = slab.Binaural.make_interaural_level_spectrum()
+    sound = slab.Binaural.whitenoise(samplerate=int(ils['samplerate']))
+    azimuths = ils['azimuths']
     for i, azi in enumerate(azimuths):
-        level_differences = ils[1:, i+1]
-        lateral = sound.interaural_level_spectrum(azi)
+        level_differences = ils['level_diffs'][:, i]
+        lateral = sound.interaural_level_spectrum(azi, ils)
         fbank = slab.Filter.cos_filterbank(samplerate=sound.samplerate, pass_bands=True)
         subbands_left = fbank.apply(lateral.left)
         subbands_right = fbank.apply(lateral.right)
-        assert -0.5 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 0.5
+        assert -1 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 1
+
+def test_overloaded_sound_generators():
+    sig = slab.Binaural.pinknoise()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.irn()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.tone()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.harmoniccomplex()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.click()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.clicktrain()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.chirp()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.silence()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.vowel()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.multitone_masker()
+    assert sig.n_channels == 2
+    sig = slab.Binaural.equally_masking_noise()
+    assert sig.n_channels == 2

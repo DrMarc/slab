@@ -1,5 +1,9 @@
 import copy
 import numpy
+try:
+    import h5py
+except ImportError:
+    h5py = False
 from slab.sound import Sound
 from slab.signal import Signal
 from slab.filter import Filter
@@ -234,28 +238,28 @@ class Binaural(Sound):
         return itd
 
     @staticmethod
-    def azimuth_to_ild(azimuth, frequency=2000, hrtf=None):
+    def azimuth_to_ild(azimuth, frequency=2000, ils=None):
         """
-        Get the interaural level difference corresponding to a sound source at a given azimuth.
+        Get the interaural level difference corresponding to a sound source at a given azimuth and frequency.
 
         Arguments:
             azimuth (int | float): The azimuth angle of the sound source, negative numbers refer to sources to the left.
             frequency (int | float): Frequency in Hz for which the ITD is estimated.
                 Use the default for for sounds with a broadband spectrum.
-            hrtf (None | slab.HRTF): head-related transfer function from which the ILD is taken.
-                If None use the MIT KEMAR mannequin.
+            ils (None | dict): interaural level spectrum from which the ILD is taken.
+                Generate with `_make_level_spectrum_filter()`. If None, uses level spectrum of the MIT KEMAR mannequin.
         Returns:
             (float): The interaural level difference for a sound source at a given azimuth in decibels.
         Examples::
 
             ild = slab.Binaural.azimuth_to_ild(-90) # ILD equivalent to 90 deg leftward source using KEMAR HRTF.
         """
-        ils = Binaural._make_level_spectrum_filter(hrtf=hrtf)
-        freqs = ils[1:, 0]  # get vector of frequencies in ils filter bank
-        azis = ils[0, 1:]  # get vector of azimuths in ils filter bank
-        ils = ils[1:, 1:]  # the rest is the filter
-        levels = [numpy.interp(azimuth, azis, ils[i, :]) for i in range(ils.shape[0])]  # interpolate levels at azimuth
-        return numpy.interp(frequency, freqs, levels)*-1   # interpolate level difference at frequency
+        if ils is None:
+            ils = Binaural.make_interaural_level_spectrum()
+        # interpolate levels at azimuth:
+        level_diffs = ils['level_diffs']
+        levels = [numpy.interp(azimuth, ils['azimuths'], level_diffs[i, :]) for i in range(level_diffs.shape[0])]
+        return numpy.interp(frequency, ils['frequencies'], levels)*-1   # interpolate level difference at frequency
 
     def at_azimuth(self, azimuth=0):
         """
@@ -297,37 +301,43 @@ class Binaural(Sound):
         return filtered_signal
 
     @staticmethod
-    def _make_level_spectrum_filter(hrtf=None):
+    def make_interaural_level_spectrum(hrtf=None):
         """
         Compute the frequency band specific interaural intensity differences for all sound source azimuth's in
         a head-related transfer function. For every azimuth in the hrtf, the respective transfer function is applied
         to a sound. This sound is then divided into frequency sub-bands. The interaural level spectrum is the level
         difference between right and left for each of these sub-bands for each azimuth.
+        Note that the computation may take a few minutes. When individual HRTFs are not avilable, the level spectrum of
+        the KEMAR mannequin can be used and the level spectrum will in this case be cached in slab.datapath() and loaded
+        when the method is called again (requires the h5py module).
 
         Arguments:
             hrtf (None | slab.HRTF): The head-related transfer function used to compute the level spectrum. If None,
                 use the recordings from the KEMAR mannequin. For the KEMAR, the level spectrum is saved to a file
                 and loaded, the next time this function is executed to save computation time.
         Returns:
-            (numpy.ndarray): A two dimensional array where the size of the first dimension is given by the number of
-                sub-bands for which the level difference was computed plus one and the size of the second dimension is
-                given by the number of sound source azimuth's in the hrft plus one. The first element of the first row
-                is the sampling frequency and the other elements of the first row contain the azimuth of the respective
-                column. In the remaining rows, the first element is the frequency of the sub-band and the other elements
-                are the interaural level differences for each azimuth.
+            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], and `level_diffs` [n x m],
+                where `frequencies` lists the centres of sub-bands for which the level difference was computed, and
+                `azimuths` lists the sound source azimuth's in the hrft. `level_diffs` is a matrix of the interaural
+                level difference for each sub-band and azimuth.
         Examples::
 
-            ils = slab.Binaural.make_level_spectrum_filter()  # get the ils from the KEMAR recordings
-            ils[0, 0] # the sampling rate
-            ils[0, 1:] # the sound source azimuth's for which the level difference was calculated
-            ils[1:, 0]  # the sub-band frequencies
-            ils[5, :]  # the level difference for each azimuth in the 5th sub-band
+            ils = slab.Binaural.make_interaural_level_spectrum()  # get the ils from the KEMAR recordings
+            ils['samplerate'] # the sampling rate
+            ils['frequencies'] # the sub-band frequencies
+            ils['azimuths']  # the sound source azimuth's for which the level difference was calculated
+            ils['level_diffs'][5, :]  # the level difference for each azimuth in the 5th sub-band
         """
         if not hrtf:
             try:
-                ils = numpy.load(data_path() + 'KEMAR_interaural_level_spectrum.npy')
+                #ils = numpy.load(data_path() + 'KEMAR_interaural_level_spectrum.npy')
+                ils = dict()
+                with h5py.File(data_path() + 'KEMAR_interaural_level_spectrum.h5', 'r') as f:
+                    for key, item in f.items():
+                        ils[key] = item[()]
                 return ils
-            except FileNotFoundError:
+            #except FileNotFoundError:
+            except OSError:  # h5py raises OSError instead of FileNotFoundError
                 hrtf = HRTF(data_path() +'mit_kemar_normal_pinna.sofa')  # load the hrtf file
                 save_standard = True
         elif isinstance(hrtf, HRTF):
@@ -345,23 +355,26 @@ class Binaural(Sound):
         sort = numpy.argsort(azi)
         fbank = Filter.cos_filterbank(samplerate=hrtf.samplerate, pass_bands=True)
         freqs = fbank.filter_bank_center_freqs()
-        noise = Sound.pinknoise(samplerate=hrtf.samplerate)
-        ils = numpy.zeros((len(freqs) + 1, len(idx) + 1))
-        ils[0, 0] = hrtf.samplerate  # save samplerate in ils filter
-        ils[1:, 0] = freqs  # first row are the frequencies
+        noise = Sound.pinknoise(duration=5., samplerate=hrtf.samplerate)
+        ils = dict()
+        ils['samplerate'] = hrtf.samplerate
+        ils['frequencies'] = freqs
+        ils['azimuths'] = azi[sort]
+        ils['level_diffs'] = numpy.zeros((len(freqs), len(idx)))
         for n, i in enumerate(idx[sort]):  # put the level differences in order of increasing angle
             noise_filt = Binaural(hrtf.data[i].apply(noise))
             noise_bank_left = fbank.apply(noise_filt.left)
             noise_bank_right = fbank.apply(noise_filt.right)
-            ils[1:, n+1] = noise_bank_right.level - noise_bank_left.level
-            ils[0, n+1] = azi[sort[n]]  # first entry is the angle
+            ils['level_diffs'][:, n] = noise_bank_right.level - noise_bank_left.level
         if save_standard is True:
-            numpy.save(data_path() + 'KEMAR_interaural_level_spectrum.npy', ils)
+            with h5py.File(data_path() + 'KEMAR_interaural_level_spectrum.h5', 'w') as f:
+                for key, item in ils.items():
+                    f[key] = item
         return ils
 
-    def interaural_level_spectrum(self, azimuth, level_spectrum_filter=None):
+    def interaural_level_spectrum(self, azimuth, ils=None):
         """
-        Apply a interaural level spectrum, corresponding to a sound sources azimuth, to a
+        Apply an interaural level spectrum, corresponding to a sound sources azimuth, to a
         binaural sound. The interaural level spectrum consists of frequency specific interaural level differences
         which are computed from a head related transfer function (see the _make_level_spectrum_filter method).
         The binaural sound is divided into frequency sub-bands and the levels of each sub-band are set according to
@@ -370,7 +383,7 @@ class Binaural(Sound):
 
         Arguments:
             azimuth (int | float): azimuth for which the interaural level spectrum is calculated.
-            level_spectrum_filter (None | numpy.ndarray): If None, the method _make_level_spectrum_filter is called
+            ils (None | dict): If None, the method make_interaural_level_spectrum is called
                 which returns the interaural level spectrum of the KEMAR mannequin's head related transfer function.
                 Any array given for this argument should be generated with the _make_level_spectrum_filter as well.
         Returns:
@@ -380,19 +393,15 @@ class Binaural(Sound):
             noise = Binaural.pinknoise(kind='diotic')
             noise.interaural_level_spectrum(azimuth=-45).play()
         """
-        if not level_spectrum_filter:
-            ils = Binaural._make_level_spectrum_filter()
-        elif not isinstance(level_spectrum_filter, numpy.ndarray):
-            raise ValueError("level_spectrum_filter must be either None or an array which can be generated using the "
-                             "method make_spectrum_level_filter")
-        else:
-            ils = level_spectrum_filter
-        ils_samplerate = int(ils[0, 0])
+        if ils is None:
+            ils = Binaural.make_interaural_level_spectrum()
+        elif not isinstance(ils, dict):
+            raise ValueError("ils must be either None or a dictionary generated with _make_interaural_level_spectrum.")
+        ils_samplerate = ils['samplerate']
         original_samplerate = self.samplerate
-        azis = ils[0, 1:]  # get vector of azimuths in ils filter bank
-        ils = ils[1:, 1:]  # get the level differences
-        # interpolate levels at azimuth
-        levels = numpy.array([numpy.interp(azimuth, azis, ils[i, :]) for i in range(ils.shape[0])])
+        azis = ils['azimuths']
+        level_diffs = ils['level_diffs']
+        levels = numpy.array([numpy.interp(azimuth, azis, level_diffs[i, :]) for i in range(level_diffs.shape[0])])
         # resample the signal to the rate of the HRTF from which the filter was computed:
         resampled = self.resample(samplerate=ils_samplerate)
         fbank = Filter.cos_filterbank(length=resampled.n_samples, samplerate=ils_samplerate, pass_bands=True)
@@ -507,7 +516,3 @@ class Binaural(Sound):
     def equally_masking_noise(**kwargs):
         """ Identical to slab.Sound.erb_noise, but with two channels. """
         return Binaural(Sound.equally_masking_noise(**kwargs))
-
-    def aweight(self):
-        """ Identical to slab.Sound.aweight, but with two channels. """
-        return Binaural(Sound.aweight(self))

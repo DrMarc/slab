@@ -13,8 +13,8 @@ generate, manipulate and write/read Sounds in slab. Next, you should see the :re
 section which is about generating trial sequences and running experiments. With these tools you can
 already do plenty of things! For example...
 
-The :ref:`Filter` section contains some more advanced, but powerful, methods for processing
-digital signals. The :ref:`HRTF` section describes the handling of head related transfer functions and
+The :ref:`Filters` section contains some more advanced, but powerful, methods for processing
+digital signals. The :ref:`hrtfs` section describes the handling of head related transfer functions and
 will only be relevant if you are interested in spatial audio.
 
 
@@ -43,7 +43,7 @@ Slab requires additional modules for some functionality. These modules are not i
 
 * **I have set the level of a sound to 70 dB but it is way louder, why?**
 
-This is because soundlab does not know the hardware you are using to play sound. For example, white noise is generated so that the maximum value in the time series is +1 and the minimum minus one ("full scale"). The RMS of this signal, expressed in deciBels happens to be about 82 dB, but you need to calibrate your system (see :ref:`calibration`) so that the calculated intensity is meaningful. Relative intensities are correct without calibration---so decreasing the intensity by 10 dB (`sound.level -= 10`) will work as expected.
+This is because slab does not know the hardware you are using to play sound. For example, white noise is generated so that the maximum value in the time series is +1 and the minimum minus one ("full scale"). The RMS of this signal, expressed in deciBels happens to be about 82 dB, but you need to calibrate your system (see :ref:`calibration`) so that the calculated intensity is meaningful. Relative intensities are correct without calibration---so decreasing the intensity by 10 dB (`sound.level -= 10`) will work as expected.
 
 
 * **What is the difference between white noise and pink noise?**

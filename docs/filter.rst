@@ -1,6 +1,6 @@
 .. currentmodule:: slab
 
-.. _filters:
+.. _Filters:
 
 Filters
 =======

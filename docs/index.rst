@@ -16,16 +16,26 @@ The package aims to lower the entrance barrier for working with sounds in Python
 Installation
 ------------
 
-Install the current stable release from the python package index with pip:
-``pip install slab``
+Install the current stable release from the python package index with pip::
 
-or get the latest development version directly from GitHub (if you have `git <https://git-scm.com>`_) by running:
-``pip git+https://github.com/DrMarc/slab.git``
+    pip install slab
 
-**The current version is** |version|.
+or get the latest development version directly from GitHub (if you have `git <https://git-scm.com>`_) by running::
+
+    pip git+https://github.com/DrMarc/slab.git
+
+**The current version of slab is** |version|.
 
 The releases use `semantic versioning <https://semver.org>`_: ``major.minor.patch``, where ``major`` increments for changes that break backwards compatibility, ``minor`` increments of added functionality, and ``patch`` increases for internal bug fixes.
 ```slab.__version__``` prints the installed version.
+
+To run the tests::
+
+    pip install slab[testing]
+
+Then go to the installation directory and run::
+
+    pytest
 
 On Linux, you may need to install libsndfile (required by SoundFile) using your distribution's package manager, for instance::
 
@@ -39,7 +49,7 @@ Working with head related transfer functions requires the h5netcdf module (tryin
 
     pip install h5netcdf
 
-All other dependencies should have been automatically installed , and you should see meaningful errors if that did not happen for some reason. The dependencies are: numpy, scipy.signal (for filtering and several other DSP functions), matplotlib (for all plotting), SoundFile (for reading and writing wav files), curses or windows-curses (for getting key presses), and SoundCard (for playing and recording sounds). We have seen a hard-to-replicate problem on some Macs with the SoundCard module: a pause of several seconds after a sound is played. If you experience this issue, just uninstall SoundCard::
+All other dependencies should have been automatically installed, and you should see meaningful errors if that did not happen for some reason. The dependencies are: numpy, scipy.signal (for filtering and several other DSP functions), matplotlib (for all plotting), SoundFile (for reading and writing wav files), curses or windows-curses (for getting key presses), and SoundCard (for playing and recording sounds). We have seen a hard-to-replicate problem on some Macs with the SoundCard module: a pause of several seconds after a sound is played. If you experience this issue, just uninstall SoundCard::
 
     pip uninstall SoundCard
 

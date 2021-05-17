@@ -618,7 +618,7 @@ class Sound(Signal):
         Join sounds into a new sound object.
 
         Arguments:
-            \*sounds (slab.Sound): two or more sounds to combine.
+            *sounds (slab.Sound): two or more sounds to combine.
         Returns:
             (slab.Sound): the input sounds combined in a single object.
         """
@@ -694,7 +694,7 @@ class Sound(Signal):
         Crossfade several sounds.
 
         Arguments:
-            \*sounds (instances of slab.Sound): sounds to crossfade
+            *sounds (instances of slab.Sound): sounds to crossfade
             overlap (float | int): duration of the overlap between the cross-faded sounds in seconds (given a float)
                 or in samples (given an int).
         Returns:
@@ -742,29 +742,28 @@ class Sound(Signal):
         sound = sum(sounds)
         return sound
 
-    def pulse(self, pulse_frequency=4, duty=0.75, rf_time=0.05):
+    def pulse(self, frequency=4, duty=0.75, gate_time=0.005):
         """
-        Apply a pulse envelope to the sound.
-        with a `pulse_frequency` and `duty` cycle (in place).
+        Apply a pulsed envelope to the sound.
 
         Arguments:
-            pulse_frequency (int): the frequency of pulses in the modified sound in Hz.
-            duty (float): ratio between the pulse duration and period, values must be between 1 (always high) and
-                0 (always low). When using values close to 0, the `rf_time` has to be low as well, otherwise the
-                ramps would be longer than the sound.
-            rf_time (float): rise/fall time of the pulse in milliseconds
+            frequency (float): the frequency of pulses in Hz.
+            duty (float): duty cycle, i.e. ratio between the pulse duration and pulse period,
+                values must be between 1 (always high) and 0 (always low). When using values close to 0, `gate_time`
+                may need to be decreased to avoid on and off ramps being longer than the pulse.
+            gate_time (float): rise/fall time of each pulse in seconds
         Returns:
             slab.Sound: pulsed copy of the instance.
         """
         sound = copy.deepcopy(self)
-        pulse_period = 1 / pulse_frequency
+        pulse_period = 1 / frequency
         n_pulses = round(sound.duration / pulse_period)  # number of pulses in the stimulus
         pulse_period = sound.duration / n_pulses  # period in s, fits into stimulus duration
         pulse_samples = Sound.in_samples(pulse_period * duty, sound.samplerate)
-        fall_samples = Sound.in_samples(rf_time, sound.samplerate)  # 5ms rise/fall time
-        if pulse_samples - 2 * fall_samples:
-            raise ValueError(f"The pulse duration {pulse_samples} is shorter than the combined ramps, each with"
-                             f"duration {fall_samples}. Reduce ´pulse_frequency´ or `rf_time`!")
+        fall_samples = Sound.in_samples(gate_time, sound.samplerate)  # 5ms rise/fall time
+        if (pulse_samples - 2 * fall_samples) < 0:
+            raise ValueError(f'The pulse duration {pulse_samples} is shorter than the combined ramps'
+                             f'({fall_samples} each). Reduce ´pulse_frequency´ or `gate_time`!')
         fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * fall_samples)) ** 2
         pulse = numpy.concatenate((1 - fall, numpy.ones(pulse_samples - 2 * fall_samples), fall))
         pulse = numpy.concatenate(
@@ -813,7 +812,7 @@ class Sound(Signal):
 
     def aweight(self):
         """
-        Returns A-weighted sound. A-weighting is applied to instrument-recorded sounds
+        Returns A-weighted version of the sound. A-weighting is applied to instrument-recorded sounds
         to account for the relative loudness of different frequencies perceived by the
         human ear. See: https://en.wikipedia.org/wiki/A-weighting.
         """
@@ -830,11 +829,9 @@ class Sound(Signal):
         denominators = numpy.convolve(numpy.convolve(
             denominators, [1, 2 * numpy.pi * f3]), [1, 2 * numpy.pi * f2])
         b, a = scipy.signal.filter_design.bilinear(numerators, denominators, self.samplerate)
-        data_chans = []
-        for chan in self.channels():
-            data = scipy.signal.lfilter(b, a, chan.data.flatten())
-            data_chans.append(data)  # concatenate channel data
-        return Sound(data_chans, self.samplerate)
+        out = copy.deepcopy(self)
+        out.data = scipy.signal.lfilter(b, a, self.data, axis=0)
+        return out
 
     @staticmethod
     def record(duration=1.0, samplerate=None):
@@ -894,10 +891,10 @@ class Sound(Signal):
         if _system == 'Windows':
             winsound.PlaySound(filename, winsound.SND_FILENAME)
         elif _system == 'Darwin':  # MacOS
-            subprocess.call(['afplay', filename])
+            subprocess.call(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         else:  # Linux
             try:
-                subprocess.call(['sox', filename, '-d'])
+                subprocess.call(['sox', filename, '-d'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
             except FileNotFoundError:
                 raise NotImplementedError(
                     'Playing from files on Linux without SoundCard module requires SoX. '
@@ -1168,7 +1165,7 @@ class Sound(Signal):
         fbank = Filter.cos_filterbank(length=self.n_samples, bandwidth=bandwidth,
                                       low_cutoff=30, pass_bands=True, samplerate=self.samplerate)
         subbands = fbank.apply(self.channel(0))
-        envs = subbands.get_envelope()
+        envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         noise = Sound.whitenoise(duration=self.n_samples,
                                  samplerate=self.samplerate)  # make white noise
@@ -1282,10 +1279,11 @@ def calibrate(intensity=None, make_permanent=False):
     """
     global _calibration_intensity
     if intensity is None:
+        input('Turn your system volume to maximum. Ready your sound level meter. Press enter...')
         tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
         print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
         tone.play()  # play it
-        intensity = input('Enter measured intensity in dB: ')  # ask for measured intensity
+        intensity = float(input('Enter measured intensity in dB: '))  # ask for measured intensity
         intensity = intensity - tone.level  # subtract measured from rms intensity
     # set and save
     _calibration_intensity = intensity
