@@ -14,7 +14,7 @@ section which is about generating trial sequences and running experiments. With 
 already do plenty of things! For example...
 
 The :ref:`Filters` section contains some more advanced, but powerful, methods for processing
-digital signals. The :ref:`Hrtfs` section describes the handling of head related transfer functions and
+digital signals. The :ref:`hrtfs` section describes the handling of head related transfer functions and
 will only be relevant if you are interested in spatial audio.
 
 
