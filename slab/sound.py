@@ -1101,17 +1101,16 @@ class Sound(Signal):
             feature (str): the kind of feature to compute, options are:
                 "centroid", the center of mass of the short-term spectrum,
                 "fwhm", the width of a Gaussian of the same variance as the spectrum around the centroid,
-                "flux", a measure of how quickly the power spectrum of a sound is changing.
-                "flatness", measures how tone-like a sound is, as opposed to being noise-like.
+                "flux", a measure of how quickly the power spectrum of a sound is changing,
+                "flatness", measures how tone-like a sound is, as opposed to being noise-like,
                 "rolloff", the frequency at which the spectrum rolls off.
-            mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms"
-                (root means square), "average" or None. If None, a new sound with the feature value at each sample
-                is generated.
-            frame_duration (0.05 s): duration of frames in samples (int) or seconds (float) in which to compute features
+            mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms",
+                "average" or None. If None, a new sound with the feature value at each sample is generated.
+            frame_duration (float): duration of frames in samples (int) or seconds (float) in which to compute features,
+                defaults to 0.05 s
             rolloff (float): only used if `feature` is "rolloff", fraction of spectral power below the rolloff frequency
         Returns:
-            (list | slab.Signal): The mean feature for each channel in a list or a new sound with the feature value
-                at each sample.
+            (list | slab.Signal): Mean feature for each channel in a list or a new Signal of feature values.
         """
         if not frame_duration:
             if mean is not None:
