@@ -150,8 +150,7 @@ On Windows, you may need to install windows-curses (required for getting button 
 
 ```pip install windows-curses```
 
-Detailed installation instructions can be found [here]
-(https://slab.readthedocs.io/en/latest/index.html#installation).
+Detailed installation instructions can be found [here](https://slab.readthedocs.io/en/latest/index.html#installation).
 
 You can also get the latest development version directly from GitHub (if you have [git](https://git-scm.com)) by running:
 ```pip install git+https://github.com/DrMarc/slab.git```
