@@ -142,9 +142,9 @@ Installation
 Install the current stable release from the python package index with pip:
 ```pip install slab```
 
-Other requirements
-^^^^^^^^^^^^^^^^^^
-On *Linux*, there is only one requirement outside of Python: you may need to install libsndfile using your distribution’s package manager, for instance:
+### Other requirements ###
+
+On *Linux*, there is only one requirement outside of Python: you may need to install *libsndfile* using your distribution’s package manager, for instance:
 
 ```sudo apt-get install libsndfile1```
 
@@ -171,7 +171,7 @@ The releases use [semantic versioning](https://semver.org): major.minor.patch, w
 Documentation
 -------------
 
-[ReadTheDocs](https://slab.readthedocs.io/)
+Read the tutorial-style documentation on [ReadTheDocs](https://slab.readthedocs.io/).
 
 Contributing to this project
 ----------------------------
