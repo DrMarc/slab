@@ -21,7 +21,7 @@ setup(name='slab',
       author_email='marc.schoenwiesner@gmail.com',
       license='MIT',
       python_requires='>=3.6',
-      install_requires=['numpy', 'scipy', 'SoundFile', 'SoundCard'
+      install_requires=['numpy', 'scipy', 'SoundFile', 'SoundCard',
         "matplotlib < 3.4; python_version == '3.6'",
         "matplotlib; python_version >= '3.7'"],
       extras_require={'testing': ['pytest', 'h5netcdf'],
