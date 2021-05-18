@@ -210,14 +210,14 @@ by computing the crest factor in each frame: ::
     plt.plot(times, crest) # peaks in the crest factor mark intensity ramps
 
 Binaural sounds
-^^^^^^^^^^^^^^^
+---------------
 For experiments in spatial hearing, or any other situation that requires differential manipulation of the left and
 right channel of a sound, you can use the :class:`Binaural` class. It inherits all methods from :class:`Sound` and
 provides additional methods for generating and manipulating binaural sounds, including advanced interaural time
 and intensity manipulation.
 
 Generating binaural sounds
---------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 Binaural sounds support all sound generating functions with a :attr:`nchannels` attribute of the :class:`Sound` class,
 but automatically set :attr:`nchannels` to 2. Noises support an additional :attr:`kind` argument,
 which can be set to 'diotic' (identical noise in both channels) or 'dichotic' (uncorrelated noise). Other methods just
@@ -237,7 +237,7 @@ Loading a wav file with ``slab.Binaural('file.wav')`` returns a Binaural sound o
 wav file contains only one channel).
 
 Manipulating ITD and ILD
-------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^
 The easiest manipulation of a binaural parameter may be to change the interaural level difference (ILD).
 This can be achieved by setting the :attr:`level` attributes of both channels: ::
 
@@ -252,7 +252,7 @@ The :meth:`.ild` makes this easier and keeps the overall level constant: ``noise
 The pink noise in the example is a broadband signal, and the ILD is frequency dependent and should not be the same for
 all frequencies. A frequency-dependent level difference can be computed and applied with
 :meth:`.interaural_level_spectrum`. The level spectrum is computed from a head-related transfer function (HRTF) and
-can be customised for individual listeners. See :ref:`HRTF` for how to handle these functions.
+can be customised for individual listeners. See :ref:`hrtfs` for how to handle these functions.
 The default level spectrum is computed form the HRTF of the KEMAR binaural recording mannequin
 (as measured by `Gardener and Martin (1994) <https://sound.media.mit.edu/resources/KEMAR.html>`_ at the MIT Media Lab).
 
