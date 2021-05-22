@@ -53,25 +53,32 @@ Calibrating the output
 ----------------------
 Analogous to setting the default level at which sounds are generated with ``slab.set_default_level()``. Each sound's
 level can be set individually by changing its :attr:`level` property. Setting the :attr:`level` property of a
-stimulus changes the root-mean-square of the waveform and relative changesare correct (reducing the level attribute by
+stimulus changes the root-mean-square of the waveform and relative changes are correct (reducing the level attribute by
 10 dB will reduce the sound output by the same amount), but the *absolute* intensity is only correct if you calibrate
 your output. The recommended procedure it to set your system volume to maximum, connect the listening hardware
-(headphone or loudspeaker) and set up a sound level meter. Then call :func:`slab.sound.calibrate`. The :func:`.calibrate`
+(headphone or loudspeaker) and set up a sound level meter. Then call :func:`slab.calibrate`. The :func:`.calibrate`
 function will play a 1 kHz tone for 5 seconds. Note the recorded intensity on the meter and enter it when requested. The
-difference between the tone's level attribute and the recorded level is saved in the class variable
-:data:`_calibration_intensity`. It is applied to all level calculations so that a sound's level attribute now roughly
-corresponds to the actual output intensity in dB SPL---'roughly' because your output hardware may not have a flat
-frequency transfer function (some frequencies play louder than others). See :ref:`Filters` for methods to equalize
-transfer functions. Experiments sometimes require you to play different stimuli at comparable loudness. Loudness is the
-perception of sound intensity and it is difficult to calculate. You can use the :meth:`Sound.aweight` method of a sound
-to filter it so that frequencies are weighted according to the typical human hearing thresholds. This will increase the
-correspondence between the rms intensity measure returned by the :attr:`level` attribute and the perceived loudness.
-However, in most cases, controlling relative intensities is sufficient.
-If you do not have a sound level meter, then you can present in dB HL (hearing level).
-For that, measure the hearing threshold of the listener at the frequency or frequencies that are presented in your
-experiment and play you stimuli at a set level above that threshold. You can measure the hearing threshold at one
-frequency (or for any broadband sound, in fact) with the few lines of code shown at the start
-of the :ref:`introduction<audiogram>`.
+function returns a calibration intensity, i.e. difference between the tone's level attribute and the recorded level.
+Pass this value to :func:`slab.set_calibration_intensity` to to correct the intensities returned by the :attr:`level`
+property all sounds. The calibration intensity is saved in the class variable :data:`_calibration_intensity`.
+It is applied to all level calculations so that a sound's level attribute now roughly corresponds to the actual output
+intensity in dB SPL---'roughly' because your output hardware may not have a flat frequency transfer function
+(some frequencies play louder than others). See :ref:`Filters` for methods to equalize transfer functions.
+
+Experiments sometimes require you to play different stimuli at comparable loudness. Loudness is the perception of sound
+intensity and it is difficult to calculate. You can use the :meth:`Sound.aweight` method of a sound to filter it so that
+frequencies are weighted according to the typical human hearing thresholds. This will increase the correspondence
+between the rms intensity measure returned by the :attr:`level` attribute and the perceived loudness. However, in most
+cases, controlling relative intensities is sufficient.
+
+To increase the accuracy of the calibration for your experimental stimuli, pass a sound with a similar spectrum to
+:func:`slab.calibrate`. For instance, if your stimuli are wide band pink noises, then you may want to use a pink noise
+for calibration. The `level` of the noise should be high, but not cause clipping.
+
+If you do not have a sound level meter, then you can present sounds in dB HL (hearing level). For that, measure the
+hearing threshold of the listener at the frequency or frequencies that are presented in your experiment and play your
+stimuli at a set level above that threshold. You can measure the hearing threshold at one frequency (or for any
+broadband sound) with the few lines of code (see :ref:`audiogram`).
 
 Saving and loading sounds
 -------------------------
