@@ -8,7 +8,11 @@ Generating sounds
 The :class:`Sound` class provides methods for generating, manipulating, displaying, and analysing sound stimuli.
 You can generate typical experimental stimuli with this class, including tones, noises, and click trains, and also
 more specialized stimuli, like equally-masking noises, Schroeder-phase harmonics, iterated ripple noise and synthetic
-vowels. For instance, let's make a 500 ms long 500 Hz pure tone signal with a band-limited (one octave below and above
+vowels.
+Slab methods assume sensible defaults where possible. You can call most methods without arguments to get an impression
+of what they do (f.i. :meth:`slab.Sound.tone()` returns a 1s-long 1kHz tone at 70 dB sampled at 8 kHz) and then
+customise from there.
+For instance, let's make a 500 ms long 500 Hz pure tone signal with a band-limited (one octave below and above
 the tone) pink noise background with a 10 dB signal-to-noise ratio: ::
 
   tone = slab.Sound.tone(frequency=500, duration=0.5)
@@ -17,7 +21,7 @@ the tone) pink noise background with a 10 dB signal-to-noise ratio: ::
   noise.filter(frequency=(250, 1000), kind='bp') # bandpass .25 to 1 kHz
   noise.level = 70 # 10 dB lower than the tone
   stimulus = tone + noise # combine the two signals
-  stimulus.ramp() # apply on- and offset ramps to avoid clicks
+  stimulus = stimulus.ramp() # apply on- and offset ramps to avoid clicks
   stimulus.play()
 
 :class:`Sound` objects have many useful methods for manipulating (like :meth:`.ramp`, :meth:`.filter`,
@@ -35,19 +39,38 @@ you won't be able to record sounds.
 
 Specifying durations
 --------------------
-Sometimes it is useful to specify the duration of a stimulus in samples rather than seconds. All functions to generate
-sounds have a duration argument that accepts floating point numbers or integers. Floating point numbers are
+Sometimes it is useful to specify the duration of a stimulus in samples rather than seconds. All methods that generate
+sounds have a :attr:`duration` argument that accepts floating point numbers or integers. Floating point numbers are
 interpreted as durations in seconds (``slab.Sound.tone(duration=1.0)`` results in a 1 second tone). Integers are
 interpreted as number of samples (``slab.Sound.tone(duration=1000)`` gives you 1000 samples of a tone).
 
 Setting the sample rate
 -----------------------
-We did not specify a sample rate for any of the stimuli in the examples above. The default sample rate is 8000 Hz
-(for no particular reason other than that this is MATLAB's default), which is ok for stimuli well below 4 kHz. Instead
-of giving a sample rate separately for each Sound object (which is possible, most methods have a :attr:`samplerate`
-argument), you can also change the default at the start of your script or Python session. The default rate is saved in
-the variable :data:`_default_samplerate` and can be set, for instance to the standard CD rate, with
-``slab.set_default_samplerate(44100)``.
+We did not specify a sample rate for any of the stimuli in the examples above. When the :attr:`samplerate` argument of
+a sound-generating method is not specified, the default sample rate (8 kHz if not set otherwise) is used. It is possible
+to set a sample rate separately for each Sound object, but it is usually better to set a suitable default sample rate
+at the start of your script or Python session using :func:`slab.set_default_samplerate`. This rate is kept in the class
+variable :data:`_default_samplerate` and is used whenever you call a sound generating method without specifying a rate.
+This rate depends on the frequency content of your stimuli and should be at least double the highest frequency of
+interest. For some speech sounds or narrow bad noises you might get away with 8 kHz; for spatial sounds you may need 48
+kHz or more.
+
+Specifying levels
+--------------------------
+Same as for the sample rate, sounds are generated at a default level (70 dB if not set otherwise). The default is kept
+in the class variable :data:`_default_level` and you can set set it to a different value using
+:func:`slab.set_default_level`. Level are not specified directly when generating sounds, but rather afterwards by
+setting the :attr:`level` property::
+
+    sig = slab.Sound.pinknoise()
+    sig.level # return the current level
+    sig.level = 85 # set a new level
+
+Note that the returned level will *not* be the actual physical playback level, because that depends on the playback
+hardware (soundcard, amplifiers, headphones, speakers). Calibrate your system if you need to play stimuli at a known
+level (see :ref:`calibration`).
+
+.. _calibration:
 
 Calibrating the output
 ----------------------
@@ -146,9 +169,6 @@ seconds, with 5 ms crossfade overlap, then filtered between 0.8 and 3.2 kHz: ::
     stimulus.spectrogram() # note that there is no change at the transition
     stimulus.play() # but you can hear the onset of the regularity (pitch)
 
-.. _calibration:
-
-
 Plotting and analysis
 ---------------------
 You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or :meth:`.spectrogram`:
@@ -178,7 +198,7 @@ existing matplotlib.pyplot axis supplied with the :attr:`axis` argument.
 You can also extract common features from sounds, such as the :meth:`.crest_factor` (a measure of how 'peaky'
 the waveform is), or the average :meth:`.onset_slope` (a measure of how fast the on-ramps in the sound are---important
 for sound localization). Features of the spectral content are bundled in the :meth:`.spectral_feature` method.
-It can compute spectral centroid, flux, flattness, and roll-off, either for an entire sound (suitable for stationary
+It can compute spectral centroid, flux, flatness, and rolloff, either for an entire sound (suitable for stationary
 sounds), or for successive time windows (frames, suitable for time-varying sounds).
 * The centroid is a measure of the center of mass of a spectrum (i.e. the 'center' frequency).
 * The flux measures how quickly the power spectrum is changing by comparing the power spectrum for one frame against the
@@ -197,7 +217,7 @@ methods::
 
 When working with environmental sounds or other recorded stimuli, one often needs to compute relevant features for
 collections of recordings in different experimental conditions. The slab module contains a function
-:func:`slab.apply_to_path`, which applies a function to all wav files in a given folder and returns a dictionary of file
+:func:`slab.apply_to_path`, which applies a function to all sound files in a given folder and returns a dictionary of file
 names and computed features. In fact, you can also use that function to modify (for instance ramp and filter) all files
 in a folder.
 
@@ -225,11 +245,11 @@ and intensity manipulation.
 
 Generating binaural sounds
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-Binaural sounds support all sound generating functions with a :attr:`nchannels` attribute of the :class:`Sound` class,
-but automatically set :attr:`nchannels` to 2. Noises support an additional :attr:`kind` argument,
+Binaural sounds support all sound generating functions with a :attr:`n_hannels` attribute of the :class:`Sound` class,
+but automatically set :attr:`n_channels` to 2. Noises support an additional :attr:`kind` argument,
 which can be set to 'diotic' (identical noise in both channels) or 'dichotic' (uncorrelated noise). Other methods just
 return 2-channel versions of the stimuli. You can recast any Sound object as Binaural sound, which duplicates the first
-channel if :attr:`nchannels` is 1 or greater than 2: ::
+channel if :attr:`n_channels` is 1 or greater than 2: ::
 
     monaural = slab.Sound.tone()
     monaural.n_channels
