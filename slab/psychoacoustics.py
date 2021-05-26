@@ -9,7 +9,7 @@ import pickle
 import zipfile
 import collections
 from contextlib import contextmanager
-from collections.abc import abstractmethod
+from abc import abstractmethod
 import warnings
 import matplotlib.cbook # necessary for matplotlib versions <3.5 to suppress a MatplotlibDeprecationWarning
 try:
