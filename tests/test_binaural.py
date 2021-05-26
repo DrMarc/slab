@@ -2,6 +2,8 @@ import slab
 import numpy
 from copy import deepcopy
 
+ils = slab.Binaural.make_interaural_level_spectrum()
+hrtf = slab.HRTF.kemar()
 
 def test_itd():
     for _ in range(100):
@@ -28,12 +30,12 @@ def test_azimuth_to_itd_ild():
         ilds = []
         for azimuth in numpy.linspace(-90, 0, 20):
             itds.append(slab.Binaural.azimuth_to_itd(azimuth, frequency, headsize))
-            ilds.append(slab.Binaural.azimuth_to_ild(azimuth, frequency))
+            ilds.append(slab.Binaural.azimuth_to_ild(azimuth, frequency, ils))
         assert all([itds[i] < itds[i+1] for i in range(len(itds)-1)])
         itds = []
         for azimuth in numpy.linspace(90, 0, 20):
             itds.append(slab.Binaural.azimuth_to_itd(azimuth, frequency, headsize))
-            ilds.append(slab.Binaural.azimuth_to_ild(azimuth, frequency))
+            ilds.append(slab.Binaural.azimuth_to_ild(azimuth, frequency, ils))
             assert all([itds[i] > itds[i + 1] for i in range(len(itds) - 1)])
 
 
@@ -41,10 +43,10 @@ def test_at_azimuth():
     for _ in range(10):
         sound = slab.Binaural.whitenoise()
         for azimuth in numpy.linspace(-90, 90, 40):
-            lateral = sound.at_azimuth(azimuth)
+            lateral = sound.at_azimuth(azimuth, ils=ils)
             itd = slab.Sound.in_samples(slab.Binaural.azimuth_to_itd(azimuth), 8000)
             assert numpy.abs(itd - lateral.itd()) <= 1
-            ild = slab.Binaural.azimuth_to_ild(azimuth)
+            ild = slab.Binaural.azimuth_to_ild(azimuth, ils=ils)
             assert numpy.abs(ild - lateral.ild()) <= 3
 
 
@@ -76,7 +78,6 @@ def test_ild_ramp():
 
 def test_externalize():
     for _ in range(10):
-        hrtf = slab.HRTF(slab.data_path()+'mit_kemar_normal_pinna.sofa')
         idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[0][0]
         sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
         filtered = hrtf.data[idx_frontal].apply(sound)
@@ -86,7 +87,6 @@ def test_externalize():
 
 
 def test_interaural_level_spectrum():
-    ils = slab.Binaural.make_interaural_level_spectrum()
     sound = slab.Binaural.whitenoise(samplerate=int(ils['samplerate']))
     azimuths = ils['azimuths']
     for i, azi in enumerate(azimuths):

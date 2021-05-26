@@ -1,7 +1,6 @@
 """ psychoacoustics exports classes for handling psychophysical procedures and
 measures, like trial sequences and staircases."""
 
-import os
 import io
 import pathlib
 import datetime
@@ -9,11 +8,10 @@ import json
 import pickle
 import zipfile
 import collections
-import urllib.request
-from sys import platform
 from contextlib import contextmanager
-from collections import Counter, abc
-from abc import abstractmethod
+from collections.abc import abstractmethod
+import warnings
+import matplotlib.cbook # necessary for matplotlib versions <3.5 to suppress a MatplotlibDeprecationWarning
 try:
     import curses
 except ImportError:
@@ -27,27 +25,6 @@ import slab
 
 results_folder = 'Results'
 input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard 'or 'buttonbox'
-
-
-def data_path(allow_download=True):
-    """
-    Get the path where auxiliary data (like HRTF recordings, calibrations) are stored.
-
-    Arguments:
-        allow_download (bool): If true, check if the data folder contains the KEMAR HRTF-recordings and if not,
-            download them from the GitHub repository.
-    Returns:
-        (str): the path to the data folder.
-    """
-    path = str(pathlib.Path(__file__).parent.resolve() / pathlib.Path('data')) + os.sep
-    if not os.path.exists(path):
-        os.mkdir(path)
-    if not os.path.exists(path + 'mit_kemar_normal_pinna.sofa'):
-        if allow_download:
-            print("downloading the KEMAR HRTF recodings from sofacoustics.org...")
-            url = "http://sofacoustics.org/data/database/mit/mit_kemar_normal_pinna.sofa"
-            urllib.request.urlretrieve(url, path + 'mit_kemar_normal_pinna.sofa')
-    return path
 
 
 class _Buttonbox:
@@ -70,8 +47,6 @@ class _FigChar:
     already present. If used together with the plot method of the Staircase class, input is acquired through the stairs
     plot. Depending on the operating system, you may have to click once into the figure to give it focus.
     """
-    import warnings # necessary for matplotlib versions <3.5 to suppress a MatplotlibDeprecationWarning
-    import matplotlib.cbook
     warnings.filterwarnings("ignore", category=matplotlib.cbook.MatplotlibDeprecationWarning)
 
     @staticmethod
@@ -123,22 +98,20 @@ def key():
 class LoadSaveMixin:
     """ Mixin to provide loading and saving functions. Supports JSON the pickle format """
 
-    def save_pickle(self, file_name, overwrite=False):
+    def save_pickle(self, file_name, clobber=False):
         """
         Save the object as pickle file.
 
         Arguments:
             file_name (str | pathlib.Path): name of the file to create.
-            overwrite (bool): overwrite existing file with the same name, defaults to False.
+            clobber (bool): overwrite existing file with the same name, defaults to False.
         Returns:
-            (bool): True if writing was successful, False if not
+            (bool): True if writing was successful.
         """
-        if isinstance(file_name, pathlib.PosixPath):
+        if isinstance(file_name, pathlib.Path):
             file_name = str(file_name)
-        if os.path.isfile(file_name):
-            if not overwrite:
-                print("File already exists! Select overwrite=True to save your file regardless")
-                return False
+        if pathlib.Path(file_name).exists() and not clobber:
+            raise FileExistsError("Select clobber=True to overwrite.")
         with open(file_name, 'wb') as fp:
             pickle.dump(self.__dict__, fp, protocol=pickle.HIGHEST_PROTOCOL)
             return True
@@ -150,34 +123,34 @@ class LoadSaveMixin:
         Attributes:
             file_name (str | pathlib.Path): name of the file to read.
         """
-        if isinstance(file_name, pathlib.PosixPath):
+        if isinstance(file_name, pathlib.Path):
             file_name = str(file_name)
-        if not os.path.isfile(file_name):
-            raise ValueError(f"the file {file_name} does not exist")
         with open(file_name, 'rb') as fp:
             self.__dict__ = pickle.load(fp)
 
-    def save_json(self, file_name=None):
+    def save_json(self, file_name=None, clobber=False):
         """
         Save the object as JSON file. If the file exists, it is overwritten.
 
         Arguments:
-            file_name (str | pathlib.Path): name of the file to create or append.
-                If None or 'stdout', returns an in-memory JSON object.
+            file_name (str | pathlib.Path): name of the file to create. If None or 'stdout', return a JSON object.
+            clobber (bool): overwrite existing file with the same name, defaults to False.
+        Returns:
+            (bool): True if writing was successful.
         """
-        def default(i): return int(i) if isinstance(i, numpy.int64) else i
-        if isinstance(file_name, pathlib.PosixPath):
+        def default(i): return int(i) if isinstance(i, numpy.int64) else i  # helper for converting numpy arrays
+        if isinstance(file_name, pathlib.Path):
             file_name = str(file_name)
         if (file_name is None) or (file_name == 'stdout'):
             return json.dumps(self.__dict__, indent=2, default=default)
+        if pathlib.Path(file_name).exists() and not clobber:
+            raise FileExistsError("Select clobber=True to overwrite.")
         try:
             with open(file_name, 'w') as f:
                 json.dump(self.__dict__, f, indent=2, default=default)
                 return True
-        except (TypeError, ValueError) as _:  # type error caused by json dump, value error by default function
-            print("Your sequence contains data which is not JSON serializable, use the save_pickle method instead")
-        except OSError:
-            return False
+        except (TypeError, ValueError):  # type error caused by json dump, value error by default function
+            print("Your sequence contains data which is not JSON serializable, use the save_pickle method instead.")
 
     def load_json(self, file_name):
         """
@@ -186,10 +159,8 @@ class LoadSaveMixin:
         Attributes:
             file_name (str | pathlib.Path): name of the file to read.
         """
-        if isinstance(file_name, pathlib.PosixPath):
+        if isinstance(file_name, pathlib.Path):
             file_name = str(file_name)
-        if not os.path.isfile(file_name):
-            raise ValueError(f"the file {file_name} does not exist")
         with open(file_name, 'r') as f:
             self.__dict__ = json.load(f)
 
@@ -346,7 +317,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         if isinstance(conditions, pathlib.Path):
             conditions = str(conditions)
         if isinstance(conditions, str):
-            if not os.path.isfile(conditions):
+            if not pathlib.Path(conditions).exists():
                 raise ValueError(f"could not load the file {conditions}")
             try:
                 self.load_json(conditions)  # import entire object from file
@@ -615,7 +586,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                 idx = [i for i, cond in enumerate(self.trials) if cond == condition]  # indices of condition in sequence
                 # count how often each type of key was given to this condition:
                 condition_data = [self.data[i] for i in idx]
-                count = Counter([item for sublist in condition_data for item in sublist])
+                count = collections.Counter([item for sublist in condition_data for item in sublist])
                 resp_1cond = []
                 for r in response_keys:
                     resp_1cond.append(count[r])
