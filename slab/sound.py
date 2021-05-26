@@ -159,7 +159,7 @@ class Sound(Signal):
         return Sound(data, samplerate=samplerate)
 
     @staticmethod
-    def tone(frequency=500, duration=1., phase=0, samplerate=None, n_channels=1):
+    def tone(frequency=500, duration=1., phase=0, samplerate=None, level=None, n_channels=1):
         """
         Generate a pure tone.
 
@@ -170,6 +170,8 @@ class Sound(Signal):
             phase (int | float | list): phase of the sinusoid, defaults to 0. Given a list of length `n_channels`, one
                 element of the list is used as phase for each channel.
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): the tone generated from the parameters.
@@ -191,11 +193,11 @@ class Sound(Signal):
         t.shape = (t.size, 1)  # ensures C-order
         x = numpy.sin(phase + 2 * numpy.pi * frequency * numpy.tile(t, (1, n_channels)))
         out = Sound(x, samplerate)
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
-    def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, n_channels=1):
+    def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, level=None, n_channels=1):
         """
         Generate a harmonic complex tone composed of pure tones at integer multiples of the fundamental frequency.
 
@@ -212,6 +214,8 @@ class Sound(Signal):
                 harmonic. Given a string, its value must be schroeder', in which case the harmonics are in
                 Schroeder phase, producing a complex tone with minimal peak-to-peak amplitudes (Schroeder 1970).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): the harmonic complex generated from the parameters.
@@ -246,17 +250,19 @@ class Sound(Signal):
                              phase=phases[i], samplerate=samplerate, n_channels=n_channels)
             tmp.level = lvl + amplitudes[i]
             out += tmp
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
-    def whitenoise(duration=1.0, samplerate=None, n_channels=1):
+    def whitenoise(duration=1.0, samplerate=None, level=None, n_channels=1):
         """
         Generate white noise.
 
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually.
             n_channels (int): number of channels, defaults to one. If channels > 1, several channels of uncorrelated
                 noise are generated.
         Returns:
@@ -270,11 +276,11 @@ class Sound(Signal):
         duration = Sound.in_samples(duration, samplerate)
         x = numpy.random.randn(duration, n_channels)
         out = Sound(x, samplerate)
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
-    def powerlawnoise(duration=1.0, alpha=1, samplerate=None, n_channels=1):
+    def powerlawnoise(duration=1.0, alpha=1, samplerate=None, level=None, n_channels=1):
         """
         Generate a power-law noise with a spectral density per unit of bandwidth scales as 1/(f**alpha).
 
@@ -283,6 +289,8 @@ class Sound(Signal):
             alpha (int) : power law exponent.
             samplerate: output samplerate
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
             n_channels (int): number of channels, defaults to one. If channels > 1, several channels of uncorrelated
                 noise are generated.
         Returns:
@@ -323,11 +331,11 @@ class Sound(Signal):
         x = numpy.real(numpy.fft.ifft(d.flatten()))
         x.shape = (n, n_channels)
         out = Sound(x, samplerate)
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
-    def pinknoise(duration=1.0, samplerate=None, n_channels=1):
+    def pinknoise(duration=1.0, samplerate=None, level=None, n_channels=1):
         """
         Generate pink noise (power law noise with exponent alpha==1. This is simply a wrapper for calling
         the `powerlawnoise` method.
@@ -340,7 +348,7 @@ class Sound(Signal):
         return Sound.powerlawnoise(duration, 1, samplerate=samplerate, n_channels=n_channels)
 
     @staticmethod
-    def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None, n_channels=1):
+    def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None, level=None, n_channels=1):
         """
         Generate iterated ripple noise (IRN). IRN is a broadband noise with temporal regularities,
         which can give rise to a perceptible pitch. Since the perceptual pitch to noise
@@ -355,6 +363,8 @@ class Sound(Signal):
             n_iter (int): number of iterations of additions. Higher values increase pitch saliency.
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
             n_channels (int): number of channels, defaults to one. If channels > 1, several channels with copies of
                 the noise are generated.
         Returns:
@@ -377,17 +387,19 @@ class Sound(Signal):
             x = numpy.real(irn_add)
             out.append(x)
         out = Sound(out, samplerate)
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
-    def click(duration=0.0001, samplerate=None, n_channels=1):
+    def click(duration=0.0001, samplerate=None, level=None, n_channels=1):
         """
         Generate a click (a sequence of ones).
 
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): click generated from the given parameters.
@@ -396,11 +408,11 @@ class Sound(Signal):
             samplerate = slab.signal._default_samplerate
         duration = Sound.in_samples(duration, samplerate)
         out = Sound(numpy.ones((duration, n_channels)), samplerate)
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
-    def clicktrain(duration=1.0, frequency=500, clickduration=0.0001, samplerate=None):
+    def clicktrain(duration=1.0, frequency=500, clickduration=0.0001, level=None, samplerate=None):
         """
         Generate a series of n clicks (by calling the `click` method) with a perceived pitch at the given frequency.
 
@@ -410,6 +422,8 @@ class Sound(Signal):
             clickduration: (float | int): duration of a single click in seconds (given a float) or in
                 samples (given an int). The number of clicks in the train is given by `duration` / `clickduration`.
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
         Returns:
             (slab.Sound): click train generated from the given parameters.
         """
@@ -420,13 +434,13 @@ class Sound(Signal):
         interval = int(numpy.rint(1 / frequency * samplerate))
         n = numpy.rint(duration / interval)
         oneclick = Sound.click(clickduration, samplerate=samplerate)
-        oneclick.level = _default_level
+        oneclick.level = level
         oneclick.resize(interval)
         oneclick.repeat(n)
         return oneclick
 
     @staticmethod
-    def chirp(duration=1.0, from_frequency=100, to_frequency=None, samplerate=None, kind='quadratic'):
+    def chirp(duration=1.0, from_frequency=100, to_frequency=None, samplerate=None, level=None, kind='quadratic'):
         """
         Returns a pure tone with in- or decreasing frequency using the function `scipy.sound.chirp`.
 
@@ -436,6 +450,8 @@ class Sound(Signal):
             to_frequency (float | int | None): the frequency of tone in Hz at the end of the sound. If None, the
                 nyquist frequency (`samplerate` / 2) will be used.
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
             kind (str): determines the type of ramp (see :func:`scipy.sound.chirp` for options).
         Returns:
             (slab.Sound): chirp generated from the given parameters.
@@ -452,7 +468,7 @@ class Sound(Signal):
         chirp = scipy.signal.chirp(
             t, from_frequency, t[-1], to_frequency, method=kind, vertex_zero=True)
         out = Sound(chirp, samplerate=samplerate)
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
@@ -475,7 +491,7 @@ class Sound(Signal):
 
     @staticmethod
     def vowel(vowel='a', gender=None, glottal_pulse_time=12, formant_multiplier=1,
-              duration=1., samplerate=None, n_channels=1):
+              duration=1., samplerate=None, level=None, n_channels=1):
         """
         Generate a sound resembling the human vocalization of a vowel.
 
@@ -490,6 +506,8 @@ class Sound(Signal):
             formant_multiplier (int | float): multiplier for the pre-set formant frequencies (scales the voice pitch).
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
             n_channels (int): number of channels, defaults to one.
         Returns:
             (slab.Sound): vowel generated from the given parameters.
@@ -531,11 +549,11 @@ class Sound(Signal):
             out = numpy.tile(out, (n_channels, 1))
         vowel = Sound(data=out, samplerate=samplerate)
         vowel.filter(frequency=0.75 * samplerate / 2, kind='lp')
-        vowel.level = _default_level
+        vowel.level = level
         return vowel
 
     @staticmethod
-    def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1 / 3, samplerate=None):
+    def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1 / 3, samplerate=None, level=None):
         """
         Generate noise made of ERB-spaced random-phase pure tones. This noise does not have random amplitude
         variations and is useful for testing CI patients [Oxenham 2014, Trends Hear].
@@ -546,6 +564,8 @@ class Sound(Signal):
             high_cutoff (int | float): the upper frequency limit of the noise in Hz
             bandwidth (float):  the signals bandwidth in octaves.
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
         Returns:
             (slab.Sound): multi tone masker noise, generated from the given parameters.
         Examples::
@@ -565,11 +585,11 @@ class Sound(Signal):
                          phase=rand_phases, samplerate=samplerate)
         data = numpy.sum(sig.data, axis=1) / len(freqs)  # collapse across channels
         out = Sound(data, samplerate=samplerate)
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
-    def equally_masking_noise(duration=1.0, low_cutoff=125, high_cutoff=4000, samplerate=None):
+    def equally_masking_noise(duration=1.0, low_cutoff=125, high_cutoff=4000, samplerate=None, level=None):
         """
         Generate an equally-masking noise (ERB noise) within a given frequency band.
 
@@ -578,6 +598,8 @@ class Sound(Signal):
             low_cutoff (int | float): the lower frequency limit of the noise in Hz
             high_cutoff (int | float): the upper frequency limit of the noise in Hz
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
+                can be provided to set the level of each channel individually. If None, the level is set to the default
         Returns:
             (slab.Sound): equally masking noise noise, generated from the given parameters.
         Examples::
@@ -605,7 +627,7 @@ class Sound(Signal):
             (band, band[::-1])) * numpy.fft.fft(noise)))
         fnoise = fnoise[:duration]
         out = Sound(data=fnoise, samplerate=samplerate)
-        out.level = _default_level
+        out.level = level
         return out
 
     @staticmethod
