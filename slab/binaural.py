@@ -99,8 +99,7 @@ class Binaural(Sound):
         """
         if duration is None:
             return self._get_itd(max_lag)
-        else:
-            return self._apply_itd(duration)
+        return self._apply_itd(duration)
 
     def _get_itd(self, max_lag):
         max_lag = Sound.in_samples(max_lag, self.samplerate)
@@ -123,25 +122,22 @@ class Binaural(Sound):
         """
         Either estimate the interaural level difference of the sound or generate a new sound with the specified
         interaural level difference. Negative ILD value means that the left channel is louder than the right
-        channel, meaning that the sound source is to the left.
+        channel, meaning that the sound source is to the left. The level difference is achieved by adding half the ILD
+        to one channel and subtracting half from the other channel, so that the mean intensity remains constant.
 
         Arguments:
             dB (None | int | float): If None, estimate the sound's ITD. Given a value, a new sound is generated with
                 the desired interaural level difference in decibels.
         Returns:
-            (float | slab.Binaural): The sound's aural level difference or a new instance with the specified ILD.
+            (float | slab.Binaural): The sound's interaural level difference, or a new sound with the specified ILD.
         Examples::
 
             sig = Binaural.whitenoise()
-            lateral_right = sig.ild(3) # attenuate left channel by 3 dB
-            lateral_left = sig.ild(-3) # attenuate right channel by 3 dB
+            lateral_right = sig.ild(3) # attenuate left channel by 1.5 dB and amplify right channel by the same amount
+            lateral_left = sig.ild(-3) # vice-versa
         """
         if dB is None:
             return self.right.level - self.left.level
-        else:
-            return self._apply_ild(dB)
-
-    def _apply_ild(self, dB):
         new = copy.deepcopy(self)  # so that we can return a new sound
         level = numpy.mean(self.level)
         new_levels = (level - dB/2, level + dB/2)

@@ -142,16 +142,25 @@ Installation
 Install the current stable release from the python package index with pip:
 ```pip install slab```
 
-On Linux, you may need to install libsndfile (required by SoundFile) using your distribution’s package manager, for instance:
+### Other requirements ###
+
+On *Linux*, there is only one requirement outside of Python: you may need to install *libsndfile* using your distribution’s package manager, for instance:
 
 ```sudo apt-get install libsndfile1```
 
-On Windows, you may need to install windows-curses (required for getting button presses in the psychoacoustics classes):
+Other optional requirements can be installed by telling pip which extras you want:
 
-```pip install windows-curses```
+```pip install slab[name_of_extra]```
 
-Detailed installation instructions can be found [here]
-(https://slab.readthedocs.io/en/latest/index.html#installation).
+The options for `name_of_extra` are:
+- `windows`: if you are running Windows - this will install windows-curses for you, which is required for getting button presses in the psychoacoustics classes,
+- `hrtf`: if you want to use spatial stimuli with the `Binaural` and `HRTF` classes,
+- `testing`: (for developers) if you want to run the unit tests for slab, and
+- `docs`: (for developers) if you want to build the documentation locally.
+
+You can combine these options: `pip install slab[windows, hrtf]` if you are on Windows and use spatial sounds.
+
+Detailed installation instructions can be found [here](https://slab.readthedocs.io/en/latest/index.html#installation).
 
 You can also get the latest development version directly from GitHub (if you have [git](https://git-scm.com)) by running:
 ```pip install git+https://github.com/DrMarc/slab.git```
@@ -162,7 +171,7 @@ The releases use [semantic versioning](https://semver.org): major.minor.patch, w
 Documentation
 -------------
 
-[ReadTheDocs](https://slab.readthedocs.io/)
+Read the tutorial-style documentation on [ReadTheDocs](https://slab.readthedocs.io/).
 
 Contributing to this project
 ----------------------------

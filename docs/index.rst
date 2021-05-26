@@ -58,7 +58,6 @@ Slab will then use another method to play sounds (winsound on Windows, afplay on
 .. toctree::
   :caption: Contents
   :maxdepth: 2
-  :titlesonly:
 
   introduction
   sounds

@@ -4,6 +4,7 @@ import pathlib
 import tempfile
 import platform
 import subprocess
+import hashlib
 import numpy
 import copy
 
@@ -36,22 +37,18 @@ if _system == 'Windows':
 import slab.signal
 from slab.signal import Signal
 from slab.filter import Filter
-from slab import data_path
 
-# get a temporary directory for writing intermediate files
-_tmpdir = pathlib.Path(tempfile.gettempdir())
-
-try:  # try getting a previously set calibration intensity from file
-    _calibration_intensity = numpy.load(data_path(allow_download=False) + 'calibration_intensity.npy')
-except FileNotFoundError:
-    _calibration_intensity = 0  #: Difference between rms intensity and measured output intensity in dB
-
+_tmpdir = pathlib.Path(tempfile.gettempdir())  # get a temporary directory for writing intermediate files
+_calibration_intensity = 0  # difference between rms intensity and measured output intensity in dB
 _default_level = 70  # the default level for generated Sounds in dB
-
 
 def set_default_level(level):
     global _default_level
     _default_level = level
+
+def set_calibration_intensity(intensity):
+    global _calibration_intensity
+    _calibration_intensity = intensity
 
 
 class Sound(Signal):
@@ -199,7 +196,6 @@ class Sound(Signal):
 
     @staticmethod
     def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, n_channels=1):
-        # TODO: in tone() the phase argument refers to the channels, here it refers to the harmonics --> rename?
         """
         Generate a harmonic complex tone composed of pure tones at integer multiples of the fundamental frequency.
 
@@ -626,6 +622,10 @@ class Sound(Signal):
         for sound in sounds:
             if sound.samplerate != samplerate:
                 raise ValueError('All sounds must have the same sample rate.')
+        samplerate = sounds[0].samplerate
+        for sound in sounds:
+            if sound.samplerate != samplerate:
+                raise ValueError('All sounds must have the same sample rate.')
         sounds = tuple(s.data for s in sounds)
         x = numpy.vstack(sounds)
         return Sound(x, samplerate)
@@ -875,8 +875,11 @@ class Sound(Signal):
         if soundcard is not False:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
-            self.write(_tmpdir / 'tmp.wav', normalise=False)
-            Sound.play_file(_tmpdir / 'tmp.wav')
+            filename = hashlib.sha256(self.data).hexdigest() + '.wav'  # make unique name
+            filename = _tmpdir / filename
+            if not filename.is_file():
+                self.write(filename, normalise=False)
+            Sound.play_file(filename)
 
     @staticmethod
     def play_file(filename):
@@ -1097,17 +1100,16 @@ class Sound(Signal):
             feature (str): the kind of feature to compute, options are:
                 "centroid", the center of mass of the short-term spectrum,
                 "fwhm", the width of a Gaussian of the same variance as the spectrum around the centroid,
-                "flux", a measure of how quickly the power spectrum of a sound is changing.
-                "flatness", measures how tone-like a sound is, as opposed to being noise-like.
+                "flux", a measure of how quickly the power spectrum of a sound is changing,
+                "flatness", measures how tone-like a sound is, as opposed to being noise-like,
                 "rolloff", the frequency at which the spectrum rolls off.
-            mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms"
-                (root means square), "average" or None. If None, a new sound with the feature value at each sample
-                is generated.
-            frame_duration (0.05 s): duration of frames in samples (int) or seconds (float) in which to compute features
+            mean (str | None): method of computing the mean of the feature value over all samples. Can be "rms",
+                "average" or None. If None, a new sound with the feature value at each sample is generated.
+            frame_duration (float): duration of frames in samples (int) or seconds (float) in which to compute features,
+                defaults to 0.05 s
             rolloff (float): only used if `feature` is "rolloff", fraction of spectral power below the rolloff frequency
         Returns:
-            (list | slab.Signal): The mean feature for each channel in a list or a new sound with the feature value
-                at each sample.
+            (list | slab.Signal): Mean feature for each channel in a list or a new Signal of feature values.
         """
         if not frame_duration:
             if mean is not None:
@@ -1264,32 +1266,35 @@ class Sound(Signal):
         return numpy.array(samplepoints) / self.samplerate  # convert to array of time points
 
 
-def calibrate(intensity=None, make_permanent=False):
+def calibrate(sound=None):
     """
-    Calibrate the presentation intensity of a setup. The calibration intensity determines the relationship
-    between the amplitude of a sound and it's level.
+    Calibrate the presentation intensity of a setup by playing a sound of known intensity (default is a 1 kHz pure tone
+    at 70 dB, played for 5 s). Measure the playback intensity of this sound and enter it when requested. For easy and
+    accurate measurement, the sound should be several seconds long. Use an appropriate acoustic coupler (artificial ear)
+    when calibrating headphones.
+    The return value is the difference between the measured playback intensity and the sound's RMS level (as calculated
+    by the `level` attibute). For example, if the `level` of the sound is 70 dB and you record 60 dB, the returned value
+    will be -10. If you pass this value to `slab.set_calibration_intensity`, then the `level` attribute of all sounds
+    will approximate their playback intensity (if using the same headphones or loudspeakers used in the calibration).
+
+    To increase the accuracy of the calibration for your experimental stimuli, pass a sound with a similar spectrum.
+    For instance, if your stimuli are wide band pink noises, then you may want to use a pink noise for calibration.
+    The `level` of the noise should be high, but not cause clipping.
 
     Arguments:
-        intensity (int | float | None): the difference between the actual intensity of the output and the intensity
-            indicated by the sound's `level` attribute (For example: If `level` is 80 dB and you record 60 dB, the
-            value of `intensity` should be -20). If None, a 1 kHz tone is played for five seconds after which you will
-             be prompted to input the measured intensity.
-        make_permanent (bool): If True, save a calibration file in the data folder (from the slab.data_path method)
-            that is loaded on import.
+        sound (slab.Sound): the sound to be played during calibration
+    Returns:
+        (float): calibration intensity (difference between the actual intensity of the output and the intensity
+            indicated by the sound's `level` attribute)
     """
-    global _calibration_intensity
-    if intensity is None:
-        input('Turn your system volume to maximum. Ready your sound level meter. Press enter...')
-        tone = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
-        print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
-        tone.play()  # play it
-        intensity = float(input('Enter measured intensity in dB: '))  # ask for measured intensity
-        intensity = intensity - tone.level  # subtract measured from rms intensity
-    # set and save
-    _calibration_intensity = intensity
-    if make_permanent:
-        numpy.save(data_path(allow_download=False) + 'calibration_intensity.npy', _calibration_intensity)
-
+    if sound is None:
+        sound = Sound.tone(duration=5.0, frequency=1000)  # make 1kHz tone
+        sound.level = 70
+    input('Turn your system volume to maximum. Ready your sound level meter. Press enter...')
+    print('Playing 1kHz test tone for 5 seconds. Please measure intensity.')
+    sound.play()  # play it
+    intensity = float(input('Enter measured intensity in dB: '))  # ask for measured intensity
+    return intensity - sound.level  # subtract measured from rms intensity
 
 def apply_to_path(path='.', method=None, kwargs=None, out_path=None):
     """
