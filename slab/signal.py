@@ -13,7 +13,6 @@ except ImportError:
 
 _default_samplerate = 8000  # default samplerate in Hz; used by all methods if on samplerate argument is provided.
 
-
 def set_default_samplerate(samplerate):
     global _default_samplerate
     _default_samplerate = samplerate
