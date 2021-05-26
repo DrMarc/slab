@@ -274,21 +274,37 @@ This can be achieved by setting the :attr:`level` attributes of both channels: :
     noise.level
     out: array([75., 85.])
 
-The :meth:`.ild` makes this easier and keeps the overall level constant: ``noise.ild(10)`` adds a 10dB level difference
-(positive dB values attenuate the left channel (virtual sound source moves to the right).
-The pink noise in the example is a broadband signal, and the ILD is frequency dependent and should not be the same for
-all frequencies. A frequency-dependent level difference can be computed and applied with
-:meth:`.interaural_level_spectrum`. The level spectrum is computed from a head-related transfer function (HRTF) and
-can be customised for individual listeners. See :ref:`hrtfs` for how to handle these functions.
-The default level spectrum is computed form the HRTF of the KEMAR binaural recording mannequin
-(as measured by `Gardener and Martin (1994) <https://sound.media.mit.edu/resources/KEMAR.html>`_ at the MIT Media Lab).
+The :meth:`.ild` makes this easier and keeps the overall level constant: ``noise.ild(10)`` amplifies the right channel
+by 5 dB and attenuates the left channel by the same amount to achieve a 10dB level difference. Positive dB values
+move the virtual sound source to the right and negative values move the source to the left. The pink noise in the
+example is a broadband signal, and the ILD is frequency dependent and should not be the same for all frequencies. A
+frequency-dependent level difference can be computed and applied with :meth:`.interaural_level_spectrum`. The level
+spectrum is computed from a head-related transfer function (HRTF) and can be customised for individual listeners.
+See :ref:`hrtfs` for how to handle these functions. The default level spectrum is computed form the HRTF of the KEMAR
+binaural recording mannequin (as measured by
+`Gardener and Martin (1994) <https://sound.media.mit.edu/resources/KEMAR.html>`_ at the MIT Media Lab).
+The level spectrum takes a while to compute and it may be useful to save it. It is a Python dict containing the level
+differences in a numpy array along with a frequency vector, an azimuth vector, and the sample rate. You can save it for
+instance with pickle: ::
+
+    import pickle
+    ils = slab.Binaural.make_interaural_level_spectrum()
+    pickle.dump(ils, open('ils.pickle', 'wb')) # save using pickle
+    ils = pickle.load(open('ils.pickle', 'rb')) # load pickle
+
+If the limitations of pickle worry you, you can use numpy.save with a small caveat when loading: numpy.save wraps the
+dict in an object and we need to remove that after loading with the somewhat strange index `[()]`: ::
+
+    import numpy
+    numpy.save('ils.npy', ils) # save using numpy
+    ils = numpy.load('ils.npy, allow_pickle=True)[()] # load and get the original dict from the wrapping object
 
 If you are unsure which ILD value is appropriate, :meth:`.azimuth_to_ild` can compute ILDs corresponding to an azimuth
 angle, for instance 45 degrees, and a frequency: ::
 
     slab.Binaural.azimuth_to_ild(45)
-    out: -9.12 # correct ILD in dB
-    noise.ild(-9.12) # apply the ILD
+    # -9.12  # correct ILD in dB
+    noise.ild(-9.12)  # apply the ILD
 
 A dynamic ILD, which evokes the perception of a moving sound source, can be applied with
 :meth:`.ild_ramp`. The ramp is linear from and to a given ILD.
