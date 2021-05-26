@@ -65,8 +65,9 @@ right_lateralized = sig.itd(duration=600e-6) # add an interaural time difference
 # apply a linearly increasing or decreasing interaural time difference.
 # This is achieved by sinc interpolation of one channel with a dynamic delay:
 moving = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
-lateralized = sig.at_azimuth(azimuth=-45) # add frequency-dependent ITD and ILD corresponding to a sound at 45 deg
-external = lateralized.externalize() # add au undersampled HRTF filter that results in the percept of an external source
+level_spectrum = slab.Binaural.make_interaural_level_spectrum(hrtf) # compute frequency-band-specific ILDs from KEMAR
+lateralized = sig.at_azimuth(azimuth=-45, ils=level_spectrum) # add frequency-dependent ITD and ILD corresponding to a sound at 45 deg
+external = lateralized.externalize() # add an under-sampled HRTF filter that results in the percept of an external source
 # (i.e. outside of the head), defaults to the KEMAR HRTF recordings, but any HRTF can be supplied
 ```
 
@@ -91,8 +92,7 @@ fbank.save('equalizing_filters.npy') # saves the filter bank as .npy file.
 
 **HRTF**: Inherits from Filter, reads .sofa format HRTFs and provides methods for manipulating, plotting, and applying head-related transfer functions.
 ```python
-hrtf_file_path = slab.data_path() + 'mit_kemar_normal_pinna.sofa' # will download the KEMAR data from the web!
-hrtf = slab.HRTF(data=hrtf_file_path) # load HRTF from a sofa file
+hrtf = slab.HRTF.kemar() # load in-built KEMAR HRTF
 print(hrtf) # print information
 # <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
 sourceidx = hrtf.cone_sources(20) # select sources on a cone of confusion at 20 deg from midline

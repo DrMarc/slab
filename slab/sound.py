@@ -15,7 +15,7 @@ except ImportError:
 except OSError as e:
     soundfile = False
     print(e)
-    print("If you use linux, libsndfile needs to be installed manually:"
+    print("If you use Linux, libsndfile needs to be installed manually:"
           "sudo apt-get install libsndfile1")
 try:
     import soundcard
@@ -104,9 +104,9 @@ class Sound(Signal):
         Sets level in dB SPL (RMS) assuming array is in Pascals.
 
         Arguments:
-            level (float | int | numpy.ndarray | None): the level in dB. Given a single float or int, all channels will
-                be set to this level. should be a value in dB, or an array of levels, one for each channel.
-                If None, use the value from _default_level.
+            level (float | numpy.ndarray | None): the level in dB. Given a single float or int, all channels will be set
+                to this level. should be a value in dB, or an array of levels, one for each channel. If None, use the
+                _default_level.
         """
         if level is None:
             level = _default_level
@@ -125,7 +125,7 @@ class Sound(Signal):
     For single channel sounds a value in dB is used, for multiple channel
     sounds a value in dB can be used for setting the level (all channels
     will be set to the same level), or a list/tuple/array of levels. Use
-    :meth:`slab.Sound.calibrate` to make the computed level reflect output intensity.
+    :meth:`slab.calibrate` to make the computed level reflect output intensity.
     """)
 
     def __init__(self, data, samplerate=None):

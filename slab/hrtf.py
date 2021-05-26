@@ -6,6 +6,8 @@ python implementations of the sofa conventions were available -> will be migrate
 import copy
 import warnings
 import pathlib
+import pickle
+import bz2
 import numpy
 try:
     import matplotlib
@@ -29,6 +31,7 @@ except ImportError:
 from slab.signal import Signal
 from slab.filter import Filter
 
+_kemar = None
 
 class HRTF:
     """
@@ -56,8 +59,8 @@ class HRTF:
         .samplerate (float): sampling rate at which the HRTF data was acquired.
     Example::
 
-        from slab import data_path, HRTF
-        hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
+        import slab
+        hrtf = slab.HRTF.kemar() # use inbuilt KEMAR data
         sourceidx = hrtf.cone_sources(20)
         hrtf.plot_sources(sourceidx)
         hrtf.plot_tf(sourceidx, ear='left')
@@ -398,8 +401,8 @@ class HRTF:
             (list): elements of the list are the indices of sound sources on the frontal half of the cone.
         Examples::
 
-            from slab import data_path, HRTF
-            hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')  # initialize from sofa file
+            import HRTF
+            hrtf = slab.HRTF.kemar()
             sourceidx = hrtf.cone_sources(20)  # get the source indices
             print(hrtf.sources[sourceidx])  # print the coordinates of the source indices
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot
@@ -454,6 +457,23 @@ class HRTF:
             _, jwd = self.data[source].tf(channels=0, n_bins=n_bins, show=False)
             tfs[:, idx] = jwd.flatten()
         return tfs
+
+    def interpolate(self, azimuth=0, elevation=0, n_closest=3):
+        """
+        Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
+        n closest HRTFs in the set is computed, after removing group-delay differences between filters. The interaural
+        time difference at the requested directio is interpolated separately and added to the interpolated filter.
+        The resulting filter values vary smoothly with changes in azimuth and elevation.
+        The fidelity of the interpolated filter decreases with increasing distance of the closest sources and should
+        only be regarded as appropriate approximation when the contributing filters are less than 20˚ away.
+
+        Arguments:
+            azimuth (float): the azimuth component of the direction of the interpolated filter
+            elevation (float): the elevation component of the direction of the interpolated filter
+        Returns:
+            (slab.Filter): a 2-channel Filter, interpolated from the neighboring filters in the set
+        """
+        pass
 
     def vsi(self, sources=None, equalize=True):
         """
@@ -522,3 +542,21 @@ class HRTF:
         ax.set_zlabel('Z [m]')
         if show:
             plt.show()
+
+    @staticmethod
+    def kemar():
+        '''
+        Provides HRTF data from the KEMAR recording (normal pinna) conducted by Gardner and Martin at MIT in 1994
+        (MIT Media Lab Perceptual Computing - Technical Report #280) and converted to the SOFA Format. Slab includes a
+        compressed copy of the data. This function reads it and returns the corresponding HRTF object. The objects is
+        cached in the class variable `_kemar` and repeated calls return the cached object instead of reading the file
+        from disk again.
+
+        Returns:
+            (slab.HRTF): the KEMAR HRTF data.
+        '''
+        global _kemar
+        if _kemar is None:
+            kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
+            _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
+        return _kemar

@@ -35,7 +35,7 @@
 /.cache/
 
 # HRTF databases
-/slab/data/mit_kemar_normal_pinna.sofa
+# /slab/data/mit_kemar_normal_pinna.sofa
 /slab/data/aachen/
 /slab/data/ari/
 /slab/data/cipic/
