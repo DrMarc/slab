@@ -397,52 +397,47 @@ class Binaural(Sound):
         return out.resample(samplerate=original_samplerate)
 
     @staticmethod
-    def whitenoise(duration=1.0, kind='diotic', samplerate=None):
+    def whitenoise(kind='diotic', **kwargs):
         """
         Generate binaural white noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.whitenoise`.
         """
-        out = Binaural(Sound.whitenoise(duration=duration, n_channels=2, samplerate=samplerate))
+        out = Binaural(Sound.whitenoise(**kwargs))
         if kind == 'diotic':
             out.left = out.right
         return out
 
     @staticmethod
-    def pinknoise(duration=1.0, kind='diotic', samplerate=None):
+    def pinknoise(kind='diotic', **kwargs):
         """
         Generate binaural pink noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.pinknoise`.
         """
-        return Binaural.powerlawnoise(
-                duration=duration, alpha=1, samplerate=samplerate)
+        return Binaural.powerlawnoise(alpha=1, **kwargs)
 
     @staticmethod
-    def powerlawnoise(duration=1.0, alpha=1, kind='diotic', samplerate=None):
+    def powerlawnoise(kind='diotic', **kwargs):
         """
         Generate binaural power law noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.powerlawnoise`.
         """
         if kind == 'dichotic':
-            out = Binaural(Sound.powerlawnoise(
-                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=2))
-            out.left = Sound.powerlawnoise(
-                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=1)
+            out = Binaural(Sound.powerlawnoise(n_channels=2, **kwargs))
+            out.left = Sound.powerlawnoise(n_channels=1, **kwargs)
         elif kind == 'diotic':
-            out = Binaural(Sound.powerlawnoise(
-                duration=duration, alpha=alpha, samplerate=samplerate, n_channels=2))
+            out = Binaural(Sound.powerlawnoise(n_channels=2, **kwargs))
             out.left = out.right
         else:
             raise ValueError("kind must be 'dichotic' or 'diotic'.")
         return out
 
     @staticmethod
-    def irn(frequency=100, gain=1, n_iter=4, duration=1.0, kind='diotic', samplerate=None):
+    def irn(kind='diotic', **kwargs):
         """
         Generate iterated ripple noise (IRN). `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.irn`.
         """
-        out = Binaural(Sound.irn(frequency=frequency, gain=gain, n_iter=n_iter, duration=duration,
-            samplerate=samplerate, n_channels=2))
+        out = Binaural(Sound.irn(n_channels=2, **kwargs))
         if kind == 'diotic':
             out.left = out.right
         else:
@@ -450,21 +445,19 @@ class Binaural(Sound):
         return out
 
     @staticmethod
-    def tone(frequency=500, duration=1., phase=0, samplerate=None):
+    def tone(**kwargs):
         """ Identical to slab.Sound.tone, but with two channels. """
-        return Binaural(Sound.tone(frequency=frequency, duration=duration, phase=phase, samplerate=samplerate,
-                                   n_channels=2))
+        return Binaural(Sound.tone(n_channels=2, **kwargs))
 
     @staticmethod
-    def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None):
+    def harmoniccomplex(**kwargs):
         """ Identical to slab.Sound.harmoniccomplex, but with two channels. """
-        return Binaural(Sound.harmoniccomplex(f0=f0, duration=duration, amplitude=amplitude, phase=phase,
-                                              samplerate=samplerate, n_channels=2))
+        return Binaural(Sound.harmoniccomplex(n_channels=2, **kwargs))
 
     @staticmethod
-    def click(duration=0.0001, samplerate=None):
+    def click(**kwargs):
         """ Identical to slab.Sound.click, but with two channels. """
-        return Binaural(Sound.click(duration=duration, samplerate=samplerate, n_channels=2))
+        return Binaural(Sound.click(n_channels=2, **kwargs))
 
     @staticmethod
     def clicktrain(**kwargs):
@@ -477,16 +470,14 @@ class Binaural(Sound):
         return Binaural(Sound.chirp(**kwargs))
 
     @staticmethod
-    def silence(duration=1.0, samplerate=None):
+    def silence(**kwargs):
         """ Identical to slab.Sound.silence, but with two channels. """
-        return Binaural(Sound.silence(duration=duration, samplerate=samplerate, n_channels=2))
+        return Binaural(Sound.silence(**kwargs))
 
     @staticmethod
-    def vowel(vowel='a', gender=None, glottal_pulse_time=12, formant_multiplier=1, duration=1., samplerate=None):
+    def vowel(**kwargs):
         """ Identical to slab.Sound.vowel, but with two channels. """
-        return Binaural(Sound.vowel(vowel=vowel, gender=gender, glottal_pulse_time=glottal_pulse_time,
-                                    formant_multiplier=formant_multiplier, duration=duration, samplerate=samplerate,
-                                    n_channels=2))
+        return Binaural(Sound.vowel(**kwargs))
 
     @staticmethod
     def multitone_masker(**kwargs):
