@@ -458,7 +458,7 @@ class HRTF:
             tfs[:, idx] = jwd.flatten()
         return tfs
 
-    def interpolate(self, azimuth=0, elevation=0, n_closest=3):
+    def interpolate(self, azimuth=0, elevation=0, method='nearest'):
         """
         Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
         n closest HRTFs in the set is computed, after removing group-delay differences between filters. The interaural
@@ -470,10 +470,49 @@ class HRTF:
         Arguments:
             azimuth (float): the azimuth component of the direction of the interpolated filter
             elevation (float): the elevation component of the direction of the interpolated filter
+            method (str): interpolation method, 'nearest' returns the filter of the nearest direction.
         Returns:
             (slab.Filter): a 2-channel Filter, interpolated from the neighboring filters in the set
         """
-        pass
+        if method != 'nearest':
+            raise NotImplementedError('Only nearest-neightbour interpolation is currently supported.')
+        # spherical to cartesian
+        coords = self.cartesian_source_locations()
+        r = self.sources[:, 2].mean()
+        target = self.cartesian_source_locations((azimuth, elevation, r))
+        # compute distances from target direction
+        distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
+        idx_nearest = numpy.argmin(distances)
+        # numpy.argsort(distances)[:3]
+        # hrtf.plot_sources(numpy.argsort(distances)[:3])
+        # distances[idxs]
+        return idx_nearest, self.data[idx_nearest]
+
+    def cartesian_source_locations(self, coordinates=None):
+        """
+        Convert spherical coordinates of source locations in an HRTF object into cartesian coordinates useful for
+        plotting and distance calculations. If you supply a list or array of coordinates, then those are converted.
+
+        Arguments:
+            coodrdinates (None | numpy.ndarray): source locations in spherical coordinates. If None use the object's
+                coordinate array (self.sources).
+        Returns:
+            (numpy.ndarray): the source locations in cartesian coordinates as (n x 3) array
+        """
+        if coordinates is None:
+            coordinates = self.sources
+        elif isinstance(coordinates, (list, tuple)):
+            coordinates = numpy.array(coordinates)
+        if len(coordinates.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+            coordinates = coordinates[numpy.newaxis, ...]
+        azimuths = numpy.deg2rad(coordinates[:, 0])
+        elevations = numpy.deg2rad(90 - coordinates[:, 1])
+        r = coordinates[:, 2]
+        out = numpy.empty(coordinates.shape)
+        out[:, 0] = r * numpy.sin(elevations) * numpy.cos(azimuths)
+        out[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
+        out[:, 2] = r * numpy.cos(elevations)
+        return out
 
     def vsi(self, sources=None, equalize=True):
         """
@@ -520,23 +559,18 @@ class HRTF:
         if axis is None:
             ax = plt.subplot(projection='3d')
         else:
-            if not (isinstance(axis, Axes3D)):
+            if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
             else:
                 ax = axis
-        azimuth = numpy.deg2rad(self.sources[:, 0])
-        elevation = numpy.deg2rad(90 - self.sources[:, 1])
-        r = self.sources[:, 2]
-        x = r * numpy.sin(elevation) * numpy.cos(azimuth)
-        y = r * numpy.sin(elevation) * numpy.sin(azimuth)
-        z = r * numpy.cos(elevation)
-        ax.scatter(x, y, z, c='b', marker='.')
+        coords = self.cartesian_source_locations()
+        ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='b', marker='.')
         ax.scatter(0, 0, 0, c='r', marker='o')
         if self.listener:
             x_, y_, z_, u, v, w = zip(*[self.listener['viewvec'], self.listener['upvec']])
             ax.quiver(x_, y_, z_, u, v, w, length=0.5, colors=['r', 'b', 'r', 'r', 'b', 'b'])
         if idx is not None:
-            ax.scatter(x[idx], y[idx], z[idx], c='r', marker='o')
+            ax.scatter(coords[idx, 0], coords[idx, 1], coords[idx, 2], c='r', marker='o')
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
