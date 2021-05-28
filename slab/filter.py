@@ -189,7 +189,7 @@ class Filter(Signal):
                     'Number of filters must equal number of sound channels, or either one of them must be equal to 1.')
         return out
 
-    def tf(self, channels='all', n_bins=None, show=True, axis=None, **kwargs):
+    def tf(self, channels='all', n_bins=None, show=True, axis=None):
         """
         Compute a filter's transfer function (magnitude over frequency) and optionally plot it.
 
@@ -201,7 +201,6 @@ class Filter(Signal):
                 If None, use the maximum number of bins.
             show (bool): whether to show the plot right after drawing.
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
-            ** kwargs: keyword arguments for the plot, see documentation of matplotlib.pyplot.plot for details.
         Returns:
             (numpy.ndarray): the frequency bins in the range from 0 Hz to the Nyquist frequency.
             (numpy.ndarray: the magnitude of each frequency in `w`.
@@ -253,7 +252,7 @@ class Filter(Signal):
                 raise ImportError('Plotting transfer functions requires matplotlib.')
             if axis is None:
                 _, axis = plt.subplots()
-            axis.plot(w, h, **kwargs)
+            axis.plot(w, h)
             axis.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
             axis.grid(True)
             if show:

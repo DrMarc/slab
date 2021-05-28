@@ -403,24 +403,23 @@ class Signal:
                     new.data[i, channel] = numpy.convolve(sig_portion, tap_weight, mode='valid')
         return new
 
-    def plot_samples(self, show=True, axis=None, **kwargs):
+    def plot_samples(self, show=True, axis=None):
         """
         Stem plot of the samples of the signal.
 
         Arguments:
             show (bool): whether to show the plot right after drawing.
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
-            ** kwargs: keyword arguments for the plot, see documentation of matplotlib.pyplot.plot for details.
         """
         if matplotlib is False:
             raise ImportError('Plotting signals requires matplotlib.')
         if axis is None:
             _, axis = plt.subplots()
         if self.n_channels == 1:
-            axis.stem(self.channel(0), **kwargs)
+            axis.stem(self.channel(0))
         else:
             for i in range(self.n_channels):
-                axis.stem(self.channel(i), label=f'channel {i}', **kwargs)
+                axis.stem(self.channel(i), label=f'channel {i}')
             plt.legend()
         axis.set(title='Samples', xlabel='Number', ylabel='Value')
         if show:
