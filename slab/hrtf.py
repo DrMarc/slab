@@ -482,11 +482,9 @@ class HRTF:
         target = self.cartesian_source_locations((azimuth, elevation, r))
         # compute distances from target direction
         distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
-        idx_nearest = numpy.argmin(distances)
-        # numpy.argsort(distances)[:3]
-        # hrtf.plot_sources(numpy.argsort(distances)[:3])
-        # distances[idxs]
-        return idx_nearest, self.data[idx_nearest]
+        if method == 'nearest':
+            idx_nearest = numpy.argmin(distances)
+            return self.data[idx_nearest]
 
     def cartesian_source_locations(self, coordinates=None):
         """
@@ -561,8 +559,7 @@ class HRTF:
         else:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
-            else:
-                ax = axis
+            ax = axis
         coords = self.cartesian_source_locations()
         ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='b', marker='.')
         ax.scatter(0, 0, 0, c='r', marker='o')
