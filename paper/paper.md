@@ -7,14 +7,14 @@ tags:
   - signal processing
   - teaching
 authors:
-  - name: Marc Schönwiesner
+  - name: Marc Schönwiesner^[co-first author]^[corresponding author]
     orcid: 0000-0002-2023-1207
     affiliation: "1, 2"
-  - name: Ole Bialas
+  - name: Ole Bialas^[co-first author]
     affiliation: 1
 affiliations:
 - index: 1
-  name: Institute of Biology, Department of Life sciences, Leipzig University, Germany
+  name: Institute of Biology, Faculty of Life sciences, Leipzig University, Germany
 - index: 2
   name: Institute of Psychology, Faculty of Arts and Sciences, University of Montreal, Canada
 

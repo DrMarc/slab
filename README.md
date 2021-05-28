@@ -43,8 +43,8 @@ sig.delay(duration=0.0006, channel=0) # delay the first channel by 0.6 ms
 ```python
 vowel = slab.Sound.vowel(vowel='a', duration=.5) # make a 0.5-second synthetic vowel sound
 vowel.play() # play the sound
-vowel.ramp() # apply default raised-cosine onset and offset ramps
-vowel.filter(kind='bp', frequency=[50, 3000]) # apply bandpass filter between 50 and 3000 Hz
+vowel = vowel.ramp() # apply default raised-cosine onset and offset ramps
+vowel = vowel.filter(kind='bp', frequency=[50, 3000]) # apply bandpass filter between 50 and 3000 Hz
 vowel.spectrogram() # plot the spectrogram
 vowel.spectrum(low_cutoff=100, high_cutoff=4000, log_power=True) # plot a band-limited spectrum
 vowel.waveform(start=0, end=.1) # plot the waveform
