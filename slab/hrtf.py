@@ -308,7 +308,7 @@ class HRTF:
             vlines = numpy.arange(0, len(sourceidx)) * linesep
             for idx, s in enumerate(sourceidx):
                 filt = self.data[s]
-                freqs, h = filt.tf(channels=chan, nbins=n_bins, show=False)
+                freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 axis.plot(freqs, h + vlines[idx],
                           linewidth=0.75, color='0.0', alpha=0.7)
             ticks = vlines[::3]  # plot every third elevation
@@ -329,7 +329,7 @@ class HRTF:
             elevations = self.sources[sourceidx, 1]
             for idx, source in enumerate(sourceidx):
                 filt = self.data[source]
-                freqs, h = filt.tf(channels=chan, nbins=n_bins, show=False)
+                freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
             contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
