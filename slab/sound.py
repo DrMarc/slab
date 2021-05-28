@@ -925,7 +925,7 @@ class Sound(Signal):
                     'Playing from files on Linux without SoundCard module requires SoX. '
                     'Install: sudo apt-get install sox libsox-fmt-all or pip install SoundCard')
 
-    def waveform(self, start=0, end=None, show=True, axis=None, **kwargs):
+    def waveform(self, start=0, end=None, show=True, axis=None):
         """
         Plot the waveform of the sound.
 
@@ -934,7 +934,6 @@ class Sound(Signal):
             end (int | float | None): the end of the plot in seconds (float) or samples (int), defaults to None.
             show (bool): whether to show the plot right after drawing.
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
-            ** kwargs: keyword arguments for the plot, see documentation of matplotlib.pyplot.plot for details.
         """
         if matplotlib is False:
             raise ImportError('Plotting waveforms requires matplotlib.')
@@ -945,14 +944,14 @@ class Sound(Signal):
         if axis is None:
             _, axis = plt.subplots()
         if self.n_channels == 1:
-            axis.plot(self.times[start:end], self.channel(0)[start:end], **kwargs)
+            axis.plot(self.times[start:end], self.channel(0)[start:end])
         elif self.n_channels == 2:
-            axis.plot(self.times[start:end], self.channel(0)[start:end], label='left', **kwargs)
-            axis.plot(self.times[start:end], self.channel(1)[start:end], label='right', **kwargs)
+            axis.plot(self.times[start:end], self.channel(0)[start:end], label='left')
+            axis.plot(self.times[start:end], self.channel(1)[start:end], label='right')
             axis.legend()
         else:
             for i in range(self.n_channels):
-                axis.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}', **kwargs)
+                axis.plot(self.times[start:end], self.channel(i)[start:end], label=f'channel {i}')
             plt.legend()
         axis.set(title='Waveform', xlabel='Time [sec]', ylabel='Amplitude')
         if show:
@@ -971,7 +970,7 @@ class Sound(Signal):
             show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
                 passed, no plot will be created.
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
-            **kwargs: keyword arguments for the plot. See documentation for matplotlib.pyplot.imshow.
+            **kwargs: keyword arguments for computing the spectrogram. See documentation for scipy.signal.spectrogram.
         Returns:
             (None | tuple): If `show == True` or an axis was passed, a plot is drawn and nothing is returned. Else,
                 a tuple is returned which contains frequencies, time bins and a 2D array of powers.
@@ -993,10 +992,13 @@ class Sound(Signal):
         window = scipy.signal.windows.gaussian(window_n_samples, window_sigma)
         # convert step size into number of overlapping samples in adjacent analysis frames
         n_overlap = window_n_samples - step_n_samples
-        # compute the power spectral density
-        freqs, times, power = scipy.signal.spectrogram(
-            x, mode='psd', fs=self.samplerate, scaling='density', noverlap=n_overlap, window=window,
-            nperseg=window_n_samples)
+        # compute the power spectral density, use default configuration if no values were specified
+        kwargs.setdefault("mode", "psd")
+        kwargs.setdefault("scaling", "density")
+        kwargs.setdefault("noverlap", n_overlap)
+        kwargs.setdefault("window", window)
+        kwargs.setdefault("nperseg", window_n_samples)
+        freqs, times, power = scipy.signal.spectrogram(x, fs=self.samplerate, **kwargs)
         if show or (axis is not None):
             if matplotlib is False:
                 raise ImportError('Ploting spectrograms requires matplotlib.')
@@ -1011,14 +1013,14 @@ class Sound(Signal):
             if axis is None:
                 _, axis = plt.subplots()
             axis.imshow(power, origin='lower', aspect='auto',
-                        cmap=cmap, extent=extent, vmin=vmin, vmax=None, **kwargs)
+                        cmap=cmap, extent=extent, vmin=vmin, vmax=None)
             axis.set(title='Spectrogram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
             if show:
                 plt.show()
         else:
             return freqs, times, power
 
-    def cochleagram(self, bandwidth=1 / 5, show=True, axis=None, **kwargs):
+    def cochleagram(self, bandwidth=1 / 5, show=True, axis=None):
         """
         Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
         and applying a cube-root compression to the resulting envelopes.
@@ -1028,7 +1030,6 @@ class Sound(Signal):
             show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
                 passed, no plot will be created
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
-            **kwargs: keyword arguments for the plot. See documentation for matplotlib.pyplot.imshow.
         Returns:
             (None | numpy.ndarray): If `show == True` or an axis was passed, a plot is drawn and nothing is returned.
                 Else, an array with the envelope is returned.
@@ -1057,7 +1058,7 @@ class Sound(Signal):
         else:
             return envs
 
-    def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, axis=None, show=True, **kwargs):
+    def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, axis=None, show=True):
         """
         Compute the spectrum of the sound.
 
@@ -1069,7 +1070,6 @@ class Sound(Signal):
             show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
                 passed, no plot will be created.
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
-            **kwargs: keyword arguments for the plot. see documentation for matplotlib.pyplot.semilogx.
         Returns:
             If show=False, returns `Z, freqs`, where `Z` is a 1D array of powers
                 and `freqs` are the corresponding frequencies.n
@@ -1100,7 +1100,7 @@ class Sound(Signal):
                 raise ImportError('Plotting spectra requires matplotlib.')
             if axis is None:
                 _, axis = plt.subplots()
-            axis.semilogx(freqs, Z, **kwargs)
+            axis.semilogx(freqs, Z)
             ticks_freqs = numpy.round(32000 * 2 **
                                       (numpy.arange(12, dtype=float) * -1))
             axis.set_xticks(ticks_freqs)
