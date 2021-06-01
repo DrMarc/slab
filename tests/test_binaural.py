@@ -83,7 +83,7 @@ def test_externalize():
         filtered = hrtf.data[idx_frontal].apply(sound)
         external = sound.externalize()
         assert numpy.abs(filtered.data-external.data).sum() < numpy.abs(filtered.data-sound.data).sum()
-        assert numpy.abs(sound.level - external.level).max() < 0.25
+        assert numpy.abs(sound.level - external.level).max() < 0.6
 
 
 def test_interaural_level_spectrum():

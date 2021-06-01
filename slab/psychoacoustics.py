@@ -595,20 +595,19 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         else:
             return None
 
-    def plot(self, axis=None, show=True, **kwargs):
+    def plot(self, axis=None, show=True):
         """
         Plot the trial sequence as scatter plot.
 
         Arguments:
             axis (matplotlib.pyplot.Axes): plot axis to draw on, if none a new plot is generated
             show (bool): show the plot immediately, defaults to True
-            **kwargs: pyplot.plot keyword arguments, see matplotlib documentation
         """
         if plt is None:
             raise ImportError('Plotting requires matplotlib!')
         if axis is None:
             axis = plt.subplot()
-        axis.scatter(range(self.n_trials), self.trials, **kwargs)
+        axis.scatter(range(self.n_trials), self.trials)
         axis.set(title='Trial sequence', xlabel='Trials', ylabel='Condition index')
         if show:
             plt.show()
@@ -864,14 +863,13 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             f.write(responses)
         return True
 
-    def plot(self, axis=None, show=True, **kwargs):
+    def plot(self, axis=None, show=True):
         """
         Plot the staircase. If called after each trial, one plot is created and updated.
 
         Arguments:
             axis (matplotlib.pyplot.Axes): plot axis to draw on, if none a new plot is generated
             show (bool): whether to show the plot right after drawing.
-            **kwargs: pyplot.plot keyword arguments, see matplotlib documentation.
         """
         if plt is None:
             raise ImportError('Plotting requires matplotlib!')
@@ -883,7 +881,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
                 fig = plt.figure('stairs')  # figure 'stairs' is created or made current
                 axis = fig.gca()
             axis.clear()
-            axis.plot(x, y, **kwargs)
+            axis.plot(x, y)
             axis.set_xlim(-self.n_pretrials, max(20, (self.this_trial_n + 15)//10*10))
             axis.set_ylim(min(0, min(y)) if self.min_val == -numpy.Inf else self.min_val,
                           max(y) if self.max_val == numpy.Inf else self.max_val)
