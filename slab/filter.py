@@ -34,7 +34,7 @@ class Filter(Signal):
     """
     # instance properties
     n_filters = property(fget=lambda self: self.n_channels, doc='The number of filters in the bank.')
-    n_taps = property(fget=lambda self: self.n_samples , doc='The number of filter taps.')
+    n_taps = property(fget=lambda self: self.n_samples, doc='The number of filter taps.')
     n_frequencies = property(fget=lambda self: self.n_samples, doc='The number of frequency bins.')
     frequencies = property(fget=lambda self: numpy.fft.rfftfreq(self.n_frequencies * 2 - 1, d=1 / self.samplerate)
                            if not self.fir else None, doc='The frequency axis of the filter.')
