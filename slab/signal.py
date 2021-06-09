@@ -419,7 +419,7 @@ class Signal:
             axis.stem(self.channel(0))
         else:
             for i in range(self.n_channels):
-                axis.stem(self.channel(i), label=f'channel {i}')
+                axis.stem(self.channel(i), label=f'channel {i}', color=f'C{i}')
             plt.legend()
         axis.set(title='Samples', xlabel='Number', ylabel='Value')
         if show:
