@@ -60,10 +60,17 @@ class Signal:
         if isinstance(data, numpy.ndarray):
             self.data = numpy.array(data, dtype='float')
         elif isinstance(data, (list, tuple)):
-            channels = tuple(Signal(c, samplerate=samplerate) for c in data)
-            self.data = numpy.hstack(channels)
-            if hasattr(data[0], 'samplerate'):
+            if all([hasattr(c, 'data') and hasattr(c, 'samplerate') for c in data]):  # all slab objects
+                if not all(c.samplerate == data[0].samplerate for c in data):
+                    raise ValueError('All elements of list must have the same samplerate!')
+                if not all(c.n_samples == data[0].n_samples for c in data):
+                    raise ValueError('All elements of list must have the same number of samples!')
+                channel_data = [c.data for c in data]  # all clear, now get channel arrays
+                self.data = numpy.hstack(channel_data)
                 self.samplerate = data[0].samplerate
+            elif all([isinstance(c, numpy.ndarray) for c in data]):
+                channel_data = tuple(Signal(c, samplerate=samplerate) for c in data)
+                self.data = numpy.hstack(channel_data)
         # any object with data and samplerate attributes can be recast as Signal
         elif hasattr(data, 'data') and hasattr(data, 'samplerate'):
             self.data = data.data
