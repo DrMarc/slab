@@ -37,9 +37,9 @@ class Binaural(Sound):
         else:
             self.data[:, 1] = numpy.array(other)
 
-    left = property(fget=lambda self: self.channel(0), fset=_set_left,
+    left = property(fget=lambda self: Sound(self.channel(0)), fset=_set_left,
                     doc='The left channel for a stereo sound.')
-    right = property(fget=lambda self: self.channel(1), fset=_set_right,
+    right = property(fget=lambda self: Sound(self.channel(1)), fset=_set_right,
                      doc='The right channel for a stereo sound.')
 
     def __init__(self, data, samplerate=None):
