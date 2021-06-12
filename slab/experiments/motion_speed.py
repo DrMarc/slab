@@ -54,9 +54,13 @@ def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
     minimum = speaker_amps.min()
     speaker_amps = numpy.interp(speaker_amps, [minimum, maximum], [-SNR, 0])
     speaker_signals = []
+    hrtf = slab.HRTF.kemar()
     for i, speaker_position in enumerate(_speaker_positions):
         sig = slab.Binaural.pinknoise(duration=end_time)
-        sig = sig.at_azimuth(azimuth=speaker_position)
+        spectral_shape = hrtf.interpolate(azimuth=speaker_position, elevation=0)
+        sig = spectral_shape.apply(sig)  # apply HRTF filter from correct direction (ITD still missing)
+        itd = sig.azimuth_to_itd(azimuth=speaker_position)
+        sig = sig.itd(itd)  # add the necessary ITD
         sig = sig.envelope(apply_envelope=speaker_amps[i, :], times=times, kind='dB')
         speaker_signals.append(sig)
     sig = speaker_signals[0]
@@ -64,8 +68,7 @@ def moving_gaussian(speed=100, width=7.5, SNR=10, direction='left'):
         sig += speaker_signal
     sig /= len(_speaker_positions)
     sig.ramp(duration=end_time/3)  # ramp the sum
-    sig.filter(frequency=[500,14000], kind='bp')
-    sig = sig.externalize() # apply smooth KEMAR HRTF to move perceived source outside of the head
+    sig.filter(frequency=[500, 14000], kind='bp')
     sig.level = 75
     return sig
 
