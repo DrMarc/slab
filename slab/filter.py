@@ -113,13 +113,15 @@ class Filter(Signal):
                 filt = numpy.zeros(length)
                 if kind == 'lp':
                     filt[:round(frequency/df)] = 1
-                if kind == 'hp':
+                elif kind == 'hp':
                     filt[round(frequency/df):] = 1
-                if kind == 'bp':
+                elif kind == 'bp':
                     filt[round(frequency[0]/df):round(frequency[1]/df)] = 1
-                if kind == 'notch':
+                elif kind == 'bs':
                     filt[:round(frequency[0]/df)] = 1
                     filt[round(frequency[1]/df):] = 1
+                else:
+                    raise ValueError('Unknown filter kind. Use lp, hp, bp, or bs.')
             else:
                 freqs = numpy.arange(0, (samplerate/2)+df, df)  # frequency bins
                 filt = numpy.interp(freqs, numpy.array([0] + frequency + [samplerate/2]), numpy.array([0] + gain + [0]))
