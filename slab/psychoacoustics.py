@@ -822,7 +822,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         Returns the average of the last n reversals.
 
         Arguments:
-            n (int): number of reversals to average over, if 0 use all reversals `n_reversals` - 1.
+            n (int): number of reversals to average over, if 0 use `n_reversals` - 1.
         Returns:
             the arithmetic (if `step_type`==='lin') or geometric mean of the `reversal_intensities`.
         """

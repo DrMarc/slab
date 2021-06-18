@@ -96,16 +96,18 @@ If this multi-channel filter is applied to a one-channel signal, each filter cha
     fbank = slab.Filter.cos_filterbank()
     fbank.tf()
 
-A speech signal is filtered with this bank, and the envelopes of the subbands are computed using the :meth:`envelope` method of the :class:`Signal` class. The envelopes are filled with noise, and the subbands are collapsed back into one sound. This removes most spectral information but retains temporal information in a speech signal and sound a bit like whispered speech. Here is the code of the :meth:`~slab.Sound.vocode` method. Some arguments that make sure that all lengths and sample rates fit have been redacted for clarity::
+A speech signal is filtered with this bank, and the envelopes of the subbands are computed using the :meth:`envelope` method of the :class:`Signal` class. The envelopes are filled with noise, and the subbands are collapsed back into one sound. This removes most spectral information but retains temporal information in a speech signal and sound a bit like whispered speech. Here are the essential bits of code from the :meth:`~slab.Sound.vocode` method to illustrate the use of a filter bank. The first line records a speech sample from the microphone (say something!)::
 
-    fbank = slab.Filter.cos_filterbank()
-    subbands = fbank.apply(signal)
-    envs = subbands.envelope()
+    signal = slab.Sound.record() # record a 1 s speech sample from the microphone
+    fbank = slab.Filter.cos_filterbank(length=signal.n_samples) # make the filter bank
+    subbands = fbank.apply(signal) # get a sound channel for each filter channel
+    envs = subbands.envelope() # now get the envelope of each frequency band...
     noise = slab.Sound.whitenoise()
     subbands_noise = fbank.apply(noise)
-    subbands_noise *= envs  # fill envelopes with noise
+    subbands_noise *= envs  # ... and fill them with noise
     subbands_noise.level = subbands.level # keep subband level of original
-    return Sound(slab Filter.collapse_subbands(subbands_noise, filter_bank=fbank))
+    vocoded = slab.Filter.collapse_subbands(subbands_noise, filter_bank=fbank)
+    vocoded.play()
 
 
 Equalization

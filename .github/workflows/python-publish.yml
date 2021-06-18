@@ -3,6 +3,7 @@ name: PyPi
 on:
   release:
     branches: [ master ]
+    types: [released]
 
 jobs:
   deploy:

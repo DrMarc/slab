@@ -34,7 +34,7 @@ class Filter(Signal):
     """
     # instance properties
     n_filters = property(fget=lambda self: self.n_channels, doc='The number of filters in the bank.')
-    n_taps = property(fget=lambda self: self.n_samples , doc='The number of filter taps.')
+    n_taps = property(fget=lambda self: self.n_samples, doc='The number of filter taps.')
     n_frequencies = property(fget=lambda self: self.n_samples, doc='The number of frequency bins.')
     frequencies = property(fget=lambda self: numpy.fft.rfftfreq(self.n_frequencies * 2 - 1, d=1 / self.samplerate)
                            if not self.fir else None, doc='The frequency axis of the filter.')
@@ -113,13 +113,15 @@ class Filter(Signal):
                 filt = numpy.zeros(length)
                 if kind == 'lp':
                     filt[:round(frequency/df)] = 1
-                if kind == 'hp':
+                elif kind == 'hp':
                     filt[round(frequency/df):] = 1
-                if kind == 'bp':
+                elif kind == 'bp':
                     filt[round(frequency[0]/df):round(frequency[1]/df)] = 1
-                if kind == 'notch':
+                elif kind == 'bs':
                     filt[:round(frequency[0]/df)] = 1
                     filt[round(frequency[1]/df):] = 1
+                else:
+                    raise ValueError('Unknown filter kind. Use lp, hp, bp, or bs.')
             else:
                 freqs = numpy.arange(0, (samplerate/2)+df, df)  # frequency bins
                 filt = numpy.interp(freqs, numpy.array([0] + frequency + [samplerate/2]), numpy.array([0] + gain + [0]))

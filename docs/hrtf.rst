@@ -18,7 +18,7 @@ first time you call this function, the recordings will be downloaded from the so
 calling the :class:`HRTF` class with the name of the file as an argument. Print the resulting object to obtain
 information about the structure of the HRTF data ::
 
-    hrtf = slab.HRTF(data=slab.data_path()+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF.kemar()
     print(hrtf)
     # <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
 
@@ -45,7 +45,7 @@ midline:
     :context:
 
     # cone_sources and elevation_sources return lists of indices which are concatenated by adding:
-    hrtf = slab.HRTF(data=slab.data_path()+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF.kemar()
     sourceidx = hrtf.cone_sources(0) + hrtf.elevation_sources(0)
     hrtf.plot_sources(sourceidx) # plot the sources in 3D, highlighting the selected sources
 
@@ -64,14 +64,14 @@ source, print it's coordinates and plot the corresponding transfer function.
     :context: close-figs
 
     from matplotlib import pyplot as plt
-    hrtf = slab.HRTF(data=slab.data_path()+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF.kemar()
     fig, ax = plt.subplots(1)
     idx = 10
     source = hrtf.sources[idx]  # the source's azimuth, elevation and distance
     filt = hrtf.data[idx] # the corresponding filter
     fig.suptitle(f"source at azimuth {source[0].round(2)} and elevation {source[1]}")
-    filt.channel(0).tf(axis=ax, show=False, label="left ear")
-    filt.channel(1).tf(axis=ax, show=False, label="right ear")
+    filt.channel(0).tf(axis=ax, show=False)
+    filt.channel(1).tf(axis=ax, show=Fals)
     plt.legend()
     plt.show()
 
@@ -87,7 +87,7 @@ components of the HRTF, which makes the features of the HRTF that change with di
 
     from slab import data_path
     from matplotlib import pyplot as plt
-    hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF.kemar()
     fig, ax = plt.subplots(2)
     dtf = hrtf.diffuse_field_equalization()
     sourceidx = hrtf.cone_sources(0)
@@ -148,7 +148,7 @@ sources at different elevations along the central cone to generated white noise.
     from matplotlib import pyplot as plt
     sound = slab.Sound.whitenoise(samplerate=44100)  # the sound to be displayed
     fig, ax = plt.subplots(3)
-    hrtf = slab.HRTF(data=data_path()+'mit_kemar_normal_pinna.sofa')
+    hrtf = slab.HRTF.kemar()
     sourceidx = [0, 260, 536]  # sources at elevations -40, 0 and 40
     spatial_sounds = []
     for i, index in enumerate(sourceidx):

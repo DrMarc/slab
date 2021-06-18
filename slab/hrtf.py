@@ -16,6 +16,7 @@ except ImportError:
     matplotlib, plt = False, False
 try:
     from mpl_toolkits.mplot3d import Axes3D
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 except ImportError:
     Axes3D = False
@@ -26,9 +27,11 @@ except ImportError:
     h5netcdf = False
 try:
     import scipy.signal
+    import scipy.spatial
 except ImportError:
     scipy = False
 from slab.signal import Signal
+from slab.sound import Sound
 from slab.filter import Filter
 
 _kemar = None
@@ -458,35 +461,103 @@ class HRTF:
             tfs[:, idx] = jwd.flatten()
         return tfs
 
-    def interpolate(self, azimuth=0, elevation=0, method='nearest'):
+    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
         """
         Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
-        n closest HRTFs in the set is computed, after removing group-delay differences between filters. The interaural
-        time difference at the requested directio is interpolated separately and added to the interpolated filter.
-        The resulting filter values vary smoothly with changes in azimuth and elevation.
-        The fidelity of the interpolated filter decreases with increasing distance of the closest sources and should
-        only be regarded as appropriate approximation when the contributing filters are less than 20˚ away.
+        3 closest HRTFs in the set is computed in the spectral domain with barycentric weights. The resulting filter
+        values vary smoothly with changes in azimuth and elevation. The fidelity of the interpolated filter decreases
+        with increasing distance of the closest sources and should only be regarded as appropriate approximation when
+        the contributing filters are less than 20˚ away.
 
         Arguments:
             azimuth (float): the azimuth component of the direction of the interpolated filter
             elevation (float): the elevation component of the direction of the interpolated filter
-            method (str): interpolation method, 'nearest' returns the filter of the nearest direction.
+            method (str): interpolation method, 'nearest' returns the filter of the nearest direction. Any other string
+                returns a barycentric interpolation.
+            plot_tri (bool): plot the triangulation of source positions used of interpolation. Useful for checking
+                for areas where the interpolation may not be accurate (look for irregular or elongated triangles).
         Returns:
             (slab.Filter): a 2-channel Filter, interpolated from the neighboring filters in the set
         """
-        if method != 'nearest':
-            raise NotImplementedError('Only nearest-neightbour interpolation is currently supported.')
         # spherical to cartesian
         coords = self.cartesian_source_locations()
         r = self.sources[:, 2].mean()
         target = self.cartesian_source_locations((azimuth, elevation, r))
         # compute distances from target direction
         distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
-        idx_nearest = numpy.argmin(distances)
-        # numpy.argsort(distances)[:3]
-        # hrtf.plot_sources(numpy.argsort(distances)[:3])
-        # distances[idxs]
-        return idx_nearest, self.data[idx_nearest]
+        if method == 'nearest':
+            idx_nearest = numpy.argmin(distances)
+            return self.data[idx_nearest]
+        # triangulate source positions into triangles
+        if not scipy:
+            raise ImportError('Need scipy.spatial for barycentric interpolation.')
+        tri = scipy.spatial.ConvexHull(coords)
+        if plot_tri:
+            ax = plt.subplot(projection='3d')
+            for simplex in tri.points[tri.simplices]:
+                polygon = Poly3DCollection([simplex])
+                polygon.set_color(numpy.random.rand(3))
+                ax.add_collection3d(polygon)
+                mins = coords.min(axis=0)
+                maxs = coords.max(axis=0)
+                xlim, ylim, zlim = list(zip(mins, maxs))
+                ax.set_xlim(xlim)
+                ax.set_ylim(ylim)
+                ax.set_zlim(zlim)
+                ax.set_xlabel('X [m]')
+                ax.set_ylabel('Y [m]')
+                ax.set_zlabel('Z [m]')
+                plt.show()
+        # for each simplex, find the coords, test if target in triangle (by finding minimal d)
+        d_min = numpy.inf
+        for i, vertex_list in enumerate(tri.simplices):
+            simplex = tri.points[vertex_list]
+            d, a = HRTF._barycentric_weights(simplex, target)
+            if d < d_min:
+                d_min, idx, weights = d, i, a
+        vertex_list = tri.simplices[idx]
+        # we now have the indices of the filters and the corresponding weights
+        amplitudes = list()
+        for idx in vertex_list:
+            freqs, amps = self.data[idx].tf(show=False)  # get their transfer functions
+            amplitudes.append(amps)  # we could interpolate here if frequencies differ between filters
+        avg_amps = amplitudes[0] * weights[0] + amplitudes[1] * weights[1] + amplitudes[2] * weights[2]  # average
+        gains = avg_amps - avg_amps.max()  # shift so that maximum is zero, because we can only attenuate
+        gains[gains < -60] = -60  # limit dynamic range to 60 dB
+        gains_lin = 10**(gains/20)  # transform attenuations in dB to factors
+        filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), fir=True,
+                                    samplerate=self.data[vertex_list[0]].samplerate)
+        filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), fir=True,
+                                    samplerate=self.data[vertex_list[0]].samplerate)
+        filt = Filter(data=[filt_l, filt_r])
+        return filt
+
+    @staticmethod
+    def _barycentric_weights(triangle, point):
+        '''
+        Returns:
+            (None | numpy.array): barycentric weights for a given triangle (array of coordinates of points) and target
+            point IF the point is inside the triangle; None if the point is outside the triangle.
+        '''
+        # compute barycentric weights via the area of the 3 triangles formed between target and 3 nearest sources:
+        dist = lambda p1, p2: numpy.sqrt(((p1 - p2)**2).sum())
+        d1 = dist(point, triangle[0, :])  # distances from target to each source
+        d2 = dist(point, triangle[1, :])
+        d3 = dist(point, triangle[2, :])
+        d12 = dist(triangle[0, :], triangle[1, :])  # distance between sources 1 and 2
+        d13 = dist(triangle[0, :], triangle[2, :])
+        d23 = dist(triangle[1, :], triangle[2, :])
+        # compute triangle areas from length of sides (distances) with Heron's Formula
+        a = numpy.array([0., 0., 0.])
+        p = (d2 + d3 + d23) / 2
+        a[0] = numpy.sqrt(p * (p-d2) * (p-d3) * (p-d23))
+        p = (d1 + d3 + d13) / 2
+        a[1] = numpy.sqrt(p * (p-d1) * (p-d3) * (p-d13))
+        p = (d1 + d2 + d12) / 2
+        a[2] = numpy.sqrt(p * (p-d1) * (p-d2) * (p-d12))
+        p = (d12 + d13 + d23) / 2
+        tot = numpy.sqrt(p * (p-d12) * (p-d13) * (p-d23))
+        return a.sum() - tot, a / a.sum()  # normalize by total area = barycentric weights of sources in idx_triangle
 
     def cartesian_source_locations(self, coordinates=None):
         """
@@ -561,8 +632,7 @@ class HRTF:
         else:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
-            else:
-                ax = axis
+            ax = axis
         coords = self.cartesian_source_locations()
         ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='b', marker='.')
         ax.scatter(0, 0, 0, c='r', marker='o')
