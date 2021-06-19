@@ -255,7 +255,7 @@ class Filter(Signal):
             if axis is None:
                 _, axis = plt.subplots()
             axis.plot(w, h)
-            axis.set(title='Frequency [Hz]', xlabel='Amplitude [dB]', ylabel='Frequency Response')
+            axis.set(title='Frequency [Hz]', ylabel='Amplitude [dB]', xlabel='Frequency Response')
             axis.grid(True)
             if show:
                 plt.show()
