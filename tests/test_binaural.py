@@ -1,3 +1,4 @@
+import inspect
 import slab
 import numpy
 from copy import deepcopy
@@ -98,25 +99,9 @@ def test_interaural_level_spectrum():
         assert -1 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 1
 
 def test_overloaded_sound_generators():
-    sig = slab.Binaural.pinknoise()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.irn()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.tone()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.harmoniccomplex()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.click()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.clicktrain()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.chirp()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.silence()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.vowel()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.multitone_masker()
-    assert sig.n_channels == 2
-    sig = slab.Binaural.equally_masking_noise()
-    assert sig.n_channels == 2
+    methods = [attribute for attribute in dir(slab.Sound) if callable(getattr(slab.Sound, attribute)) and attribute.startswith('__') is False]
+    for method in methods:
+        func = getattr(slab.Sound, method)
+        args, _, _ = inspect.getargs(func.__code__)
+        if 'n_channels' in args:
+            assert getattr(slab.Binaural, method)().n_channels == 2
