@@ -104,9 +104,13 @@ This is one of the very few cases where it makes sense to get the next trial by 
 because this is not the main trial sequence. The main trial sequence (the one determining the values of your main
 experimental parameter) should normally be used in a `for` loop as in the previous example.
 
-Controlling the sequence
+Controlling transitions
 ^^^^^^^^^^^^^^^^^^^^^^^^
-Sometimes it is necessary to control the transition probabilities between conditions more tightly. For instance, you may want to ensure nearly equal transitions, or avoid certain combinations of subsequent conditions entirely. A brute force algorithm is easily implemented using the :meth:`.transitions` method, which returns an array of transitions. For instance::
+While randomized sequences do the job most of the time, in some cases it is necessary to control the transitions
+between the individual conditions more tightly. For instance, you may want to ensure nearly equal transitions,
+or avoid certain combinations of subsequent conditions entirely. The :meth:`.transitions` method counts, for each
+condition, how often every other condition follows this one. You can divide the count by the number of repetitions in
+the sequence to get the transitional probabilities::
 
     trials = slab.Trialsequence(conditions=4, n_reps=10)
     trials.transitions()
@@ -115,8 +119,17 @@ Sometimes it is necessary to control the transition probabilities between condit
            [3., 0., 0., 7.],
            [2., 6., 0., 1.],
            [4., 2., 4., 0.]])
+    trials.transitions() / 10  # divide by n_reps to get the probability
+    out:
+    array([[0. , 0.2, 0.6, 0.2],
+           [0.3, 0. , 0. , 0.7],
+           [0.2, 0.6, 0. , 0.1],
+           [0.4, 0.2, 0.4, 0. ]])
 
-The diagonal of this array contains only zeroes, because a condition cannot follow itself in the default ``non_repeating`` trial sequence. The other entries are uneven; for instance, condition 1 is followed by condition 3 seven times, but never by condition 2. If you want near-equal transitions, then you could generate sequences in a loop until a set condition is fulfilled, for instance, no transition > 4::
+The diagonal of this array contains only zeroes, because a condition cannot follow itself in the default
+``non_repeating`` trial sequence. The other entries are uneven; for instance, condition 1 is followed by condition
+3 seven times, but never by condition 2. If you want near-equal transitions, then you could generate sequences in a
+loop until a set condition is fulfilled, for instance, no transition > 4::
 
     import numpy
     trans = 5
@@ -130,7 +143,9 @@ The diagonal of this array contains only zeroes, because a condition cannot foll
            [3., 4., 0., 3.],
            [3., 3., 4., 0.]])
 
-If your condition is more complicated, you can perform several tests in the loop body and set a flag that determines when all have been satisfied and the loop should be end. Setting these constraints too tightly may result in an infinite loop.
+If your condition is more complicated, you can perform several tests in the loop body and set a flag that determines
+when all have been satisfied and the loop should be end.
+But be careful, setting these constraints too tightly may result in an infinite loop.
 
 Alternative Choices
 ^^^^^^^^^^^^^^^^^^^
