@@ -230,15 +230,16 @@ class TrialPresentationOptionsMixin:
 
         Arguments:
             stimulus (slab.Sound): sound played in the trial.
-            correct_key_idx (int): index of the key in `key_codes` that represents a correct response.
-                Response is correct if `response == key_codes[correct_key_idx]`.
+            correct_key_idx (int | list of int): index of the key in `key_codes` that represents a correct response.
+                Response is correct if `response == key_codes[correct_key_idx]`. Can be a list of ints if several keys
+                are counted as correct response.
             key_codes (list of int): ascii codes for the response keys (get code for button '1': ord('1') --> 49).
             print_info (bool): If true, call the `print_trial_info` method afterwards.
         """
         stimulus.play()
         with slab.key() as k:
             response = k.getch()
-        response = response == key_codes[correct_key_idx]
+        response = response in [key_codes[i] for i in correct_key_idx]
         self.add_response(response)
         if print_info:
             self.print_trial_info()
