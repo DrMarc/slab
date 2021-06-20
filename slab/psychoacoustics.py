@@ -51,27 +51,29 @@ class _FigChar:
 
     @staticmethod
     def getch():
-        global key
+        global fig_key
         def _on_key(event):
-            global key
-            key = event.key
+            global fig_key
+            fig_key = event.key
         fig = plt.figure('stairs')
-        cid = fig.canvas.mpl_connect('key_press_event', _on_key)
-        key = None # reset
-        while not key:
+        _ = fig.canvas.mpl_connect('key_press_event', _on_key)
+        fig_key = None # reset
+        while not fig_key:
             plt.pause(0.01) # wait for 10ms, but keep figure event loop running
-        return ord(key)
+        return ord(fig_key)
 
 
 @contextmanager
-def key():
+def key(mesg=None):
     """
-    Wrapper for curses module to simplify getting a single keypress from the terminal (default) or a buttonbox.
-    Set slab.psychoacoustics.input_method = 'buttonbox' to use a custom USB buttonbox.
+    Wrapper for curses module to simplify getting a single keypress from the terminal (default), a buttonbox, or a
+    figure. Set slab.psychoacoustics.input_method = 'buttonbox' to use a custom USB buttonbox or to 'figure' to open
+    a figure called 'stairs' (if not already opened by the `slab.Staricase.plot` method). Optianally takes a string
+    argument which is printed in the terminal for conveying instructions to the participant.
 
     Example::
 
-        with slab.Key() as key:
+        with slab.key('Waiting for buttons 1 (yes) or 2 (no).') as key:
         response = key.getch()
     """
 
@@ -83,13 +85,21 @@ def key():
         stdscr = curses.initscr()
         curses.noecho()
         curses.cbreak()
+        stdscr.clear()
+        stdscr.refresh()
+        if mesg is not None:
+            stdscr.addstr(str(mesg))
         yield stdscr
         curses.nocbreak()
         curses.echo()
         curses.endwin()
     elif input_method == 'buttonbox':
+        if mesg is not None:
+            print(mesg)
         yield _Buttonbox
     elif input_method == 'figure':
+        if mesg is not None:
+            print(mesg)
         yield _FigChar
     else:
         raise ValueError('Unknown input method!')
