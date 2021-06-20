@@ -207,7 +207,6 @@ staircase for each one. Afterwards we can print out the result using the :meth:`
         for level in stairs:
             stimulus.level = level
             stairs.present_tone_trial(stimulus)
-            stairs.print_trial_info()
         threshs.append(stairs.threshold())
         print(f'Threshold at {frequency} Hz: {stairs.threshold()} dB')
     plt.plot(freqs, threshs) # would plot the audiogram
@@ -297,25 +296,39 @@ psychometric function into a hitrate of about 0.83.
 
 .. _responses:
 
-Recording responses
--------------------
+Acquiring key presses
+---------------------
 When you use a staircase in a listening experiment, you need to record responses from the participant, usually in the
 form of button presses. The :meth:`~slab.psychoacoustics.key` context manager can record single button presses
-from the computer keyboard (or an attached USB number pad), via the key press event handler of a matplotlib figure, or
-from a custom USB buttonbox. The input is selected by setting :data:`slab.psychoacoustics.input_method` to 'keyboard',
+from the computer keyboard (or an attached USB number pad), or via the key press event handler of a matplotlib figure,
+or from a custom USB buttonbox. The input is selected by setting :data:`slab.psychoacoustics.input_method` to 'keyboard',
 'buttonbox', or 'figure'. This allow you to test your code on your laptop and switch to button box input at the lab
 computer by changing a single line of code. Getting a button press from the keyboard will clear your terminal while
 waiting for the response, and restore it afterwards. The the lab, you may not want to use a keyboard, which can be
 distracting. A simple response box with the required number of buttons can be constructed easily with an
 Arduino-compatible micro-controller that can send key codes to the computer via USB. Check for a press of a button
-attached to a digital input and send a string corresponding to the keycode of the desired key followed by the Enter key.
+attached to a digital input and send a string corresponding to the key code of the desired key followed by the Enter key.
 If you use the :meth:`~Staicase.plot` method of the :class:`Staircase` class to show the progress of the test, you can
 set the :data:`~slab.psychoacoustics.input_method` to 'figure' to get a keypress via the figure's key press event
 handler.
 
-Here is an example of how to use the :class:`Key` class in a staircase that finds the detection threshold for a 500 Hz
-tone, after every trial you have to indicate whether you could or could not hear the sound by pressing "y" for yes or
-any other button for no:
+The :meth:`~slab.psychoacoustics.key` method uses the key code of a button, rather than the string character it produces
+when pressed. You can find the code of a key by calling Python's :func:`ord` function. For instance, `ord('y')` returns
+121, the code of the 'y' key.
+
+The :class:`Trialsequence` and :class:`Staircase` classes have two convenience methods to present tones and acquire a
+response from the listener in one step: :meth:`present_tone_trial` and :meth:`present_afc_trial`. Both take a list of
+key codes that are considered valid responses (:param:`key_codes`). The list defaults to the number keys from 1 to 9.
+If you use any of these keys in :meth:`present_tone_trial`, then you just need to specify which of them is counted as a
+correct response by setting the argument `correct_key_idx` to the list index that contains the correct key (instead of a
+single index you can specify a list of indices if you want to count several keys as correct). In
+:meth:`present_afc_trial`, the order of the keys in :param:`key_codes` should correspond to the keys that should be
+pressed to indicate interval 1, 2, etc. In this case, the correct key is different in each trial, depending on the
+interval that contains the target stimulus.
+
+Here is an example of how to use the :meth:`~slab.psychoacoustics.key` in a staircase that finds the detection threshold
+for a 500 Hz tone, after every trial you have to indicate whether you could or could not hear the sound by pressing "y"
+for yes or any other button for no:
 
 .. _detection_example:
 
@@ -326,7 +339,7 @@ any other button for no:
     for level in stairs:
         stimulus.level = level
         stimulus.play()
-        with slab.key() as key:
+        with slab.key('Press y for yes or n for no.') as key:
             response = key.getch()
         if response == 121:  # 121 is the unicode for the "y" key
             stairs.add_response(True) # initiates calculation of next stimulus value
