@@ -140,7 +140,12 @@ class LoadSaveMixin:
 
     def save_json(self, file_name=None, clobber=False):
         """
-        Save the object as JSON file. If the file exists, it is overwritten.
+        Save the object as JSON file. The object's __dict__ is serialized and saved in standard JSON format, so that it
+        can be easily reconstituted (see load_json method). Raises FileExistsError if the file exists, unless `clobber`
+        is True. When `file_name` in None (default), the method returns the JSON string, in case you want to inspect it.
+        Note that Numpy arrays are not serializable and are converted to Python int. This works because the
+        Trialsequence and Staircase classes use arrays of indices. If your instances of these classes contain arrays of
+        float, use `save_pickle` instead.
 
         Arguments:
             file_name (str | pathlib.Path): name of the file to create. If None or 'stdout', return a JSON object.
