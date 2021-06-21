@@ -382,9 +382,11 @@ the file in single lines of JSON (a `JSON Lines <http://jsonlines.org>`_ file).
 Set the folder that will hold results files from all participants for the experiment somewhere at the top of your script
 with the :data:`.results_folder`. Then you can create a file by initializing a class instance with a subject name::
 
+    subject_ID = 'MS01'
     slab.ResultsFile.results_folder = 'MyResults'
     file = slab.ResultsFile(subject='MS')
     print(file.name)
+    file.write(subject_ID)
 
 You can now use the :meth:`~ResultsFile.write` method to write any information to the file, to be precise, you can write
 any object that can be converted to JSON, like strings, lists, or dictionaries. Numpy data types need to be converted to
