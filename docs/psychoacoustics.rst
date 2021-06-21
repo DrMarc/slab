@@ -405,6 +405,7 @@ the JSON representation of an item is by calling::
 :class:`Trialsequence` and :class:`Staircase` objects can pass their entire current state to the write method, which
 makes it easy to save all settings and responses from these objects::
 
+    trials = slab.Trialsequence(conditions=4, n_reps=10)
     file.write(trials, tag='trials')
 
 The :meth:`~ResultsFile.write` method writes a dictionary with a single key-value pair, where the key is supplied as
