@@ -9,14 +9,13 @@ easy data management.
 
 Trial sequences
 ---------------
-In many cases, experiments are operated by a sequence of trials. This sequence is generated before the experiment
-according to a certain set of rules. In the most basic case, experimental conditions are repeated a number of times with
-every condition appearing equally as often. Then, in every trial, an element is drawn from the list, determining
-the condition of that trial. These experiments can be handled by the :class:`Trialsequence` class. To generate an
-instance of :class:`Trialsequence` you have to define a list of ``conditions`` and and how often each of them is
+Experiments are often defined by a sequence of trials of different conditions. This sequence is generated before the
+experiment according to certain rules. In the most basic case, a set of experimental conditions are repeated a number of
+times pseudorandom order. Such experiments can be handled by the :class:`Trialsequence` class. To generate an
+instance of :class:`Trialsequence` you define a list of ``conditions`` and specify how often each of them is
 repeated (``n_reps``). You can also specify the ``kind`` of list you want to generate: "non_repeating" means that
-the same condition will not appear twice in a row, "random-permutation" means that the order is completely randomised.
-For an example, lets generate pure tones with different frequencies and play them in non repeating, randomised order.::
+the same condition will not appear twice in a row, "random_permutation" means that the order is completely randomised.
+For example, generate pure tones with different frequencies and play them in non-repeating, randomised order.::
 
   freqs = [495, 498, 501, 504]  # frequencies of the tones
   seq = slab.Trialsequence(conditions=freqs, n_reps=10)  # 10 repetitions per condition
@@ -26,7 +25,7 @@ For an example, lets generate pure tones with different frequencies and play the
     stimulus.play()
 
 Usually, we do not only want to play sounds to the participants in our experiment. Instead, we want them to perform some
-kind of task and give a response. In the example above we could for instance ask after every tone if that tone was
+kind of task and give a response. In the example above we could, for instance, ask after every tone if that tone was
 higher or lower in frequency than the previous one. The response is captured with the :meth:`~slab.psychoacoustics.key`
 context manager which can record single button presses (using either the :mod:`curses` module or the :meth:`key_press_event`
 of the `stairs` plot, see :ref:`_responses`). In our example, we instruct the subject to press "y" (yes) if the played
@@ -92,7 +91,7 @@ tabulates responses by condition index in a nested list.
 The infinite kind of :class:`Trialsequence` is perhaps less suitable for controlling the stimulus parameter of interest,
 but it is very useful for varying other stimulus attributes in a controlled fashion from trial to trial (think of
 'roving' paradigms). Unlike when selecting a random value in each trial, the infinite :class:`Trialsequence` guarantees
-locally equal value frequencies, avoid direct repetition, and keeps a record in case you want to include the sequence as
+locally equal value frequencies, avoids direct repetition, and keeps a record in case you want to include the sequence as
 nuisance covariate in the analysis later on. Here is a real-world example from an experiment with pseudo-words, in which
 several words without direct repetition were needed in each trial. word_list contained the words as strings, later used
 to load the correct stimulus file::
