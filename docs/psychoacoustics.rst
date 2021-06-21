@@ -415,7 +415,10 @@ in a list.
 
 Configuration files
 -------------------
-Another recurring issue when implementing experiments is loading configuration settings from a text file. The function :func:`~slab.psychoacoustics.load_config` is a simple helper to read a text file with python variable assignments and
+Another recurring issue when implementing experiments is loading configuration settings from a text file. Experiments
+sometimes use configuration files when experimenters (who might not by Python programmers) need to set parameters
+without changing the code. The format is a plain text file with a variable assignment on each line, because it is meant
+to be written and changed by humans. The function :func:`~slab.psychoacoustics.load_config` reads the text file and
 return a :func:`~collections.namedtuple` with the variable names and values. If you have a text file with the following
 content::
 
@@ -423,7 +426,7 @@ content::
     pause_duration = 30
     speeds = [60,120,180]
 
-You can make all variables available to your script as attributes of the named tuple object::
+you can make all variables available to your script as attributes of the named tuple object::
 
     conf = slab.load_config('example.txt')
     conf.speeds
