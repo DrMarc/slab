@@ -1155,7 +1155,11 @@ class Precomputed(list):
 
 def load_config(filename):
     """
-    Reads a text file with variable assignments.
+    Reads a text file with variable assignments. This is a simple convenience method that allows easy writing and
+    loading of configuration text files. Experiments sometimes use configuration files when experimenters (who might
+    not by Python programmers) need to set parameters without changing the code. The format is a plain text file with a
+    variable assignment on each line, because it is meant to be written and changed by humans. These variables and their
+    values are then accessible as a namedtuple.
 
     Arguments:
         filename (str | pathlib.Path): path to the file to be read.
