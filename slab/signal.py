@@ -181,10 +181,10 @@ class Signal:
         seconds (floating point numbers) in the class.
 
         Arguments:
-            ctime (int | float | numpy | ndarray): the time(s) to convert to samples.
+            ctime (int | float | list | numpy.ndarray): the time(s) to convert to samples.
             samplerate (int): the samplerate of the sound.
         Returns:
-             (int | numpy.ndarray): the time(s) in samples.
+             (int | list | numpy.ndarray): the time(s) in samples.
         """
         out = None
         if isinstance(ctime, (int, numpy.int64)):  # single int is treated as samples
