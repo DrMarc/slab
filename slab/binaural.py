@@ -450,6 +450,11 @@ class Binaural(Sound):
         return Binaural(Sound.tone(n_channels=2, **kwargs))
 
     @staticmethod
+    def dynamic_tone(**kwargs):
+        """ Identical to slab.Sound.dynamic_tone, but with two channels. """
+        return Binaural(Sound.dynamic_tone(n_channels=2, **kwargs))
+
+    @staticmethod
     def harmoniccomplex(**kwargs):
         """ Identical to slab.Sound.harmoniccomplex, but with two channels. """
         return Binaural(Sound.harmoniccomplex(n_channels=2, **kwargs))
