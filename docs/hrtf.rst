@@ -134,11 +134,11 @@ The effect seems to be weak for KEMAR, (VSI falls off for directions slightly of
 
 Virtually displaying 3D sound
 -----------------------------
-The HRTF describes the impact of the listeners ears, head and torso on incoming sound with respect to direction. Since
-this is the basis for localizing sounds in three dimensions, we can apply the HRTF to a generated sound to display it
-at a certain positions. The apply function returns an instance of the :class:`slab.Binaural`, because the transfer
-functions are ear-specific. In the example below we will apply the transfer function corresponding to three sound
-sources at different elevations along the central cone to generated white noise.
+The HRTF describes the directional filtering of incoming sounds by the listeners ears, head and torso. Since this is the
+basis for localizing sounds in three dimensions, we can apply the HRTF to a sound to evoke the impression of it coming
+from a certain direction in space when played through headphones. The :func:`HRTF.apply` function returns an instance of
+the :class:`slab.Binaural`, because the transfer functions are ear-specific. In the example below we will apply the
+transfer functions corresponding to three sound sources at different elevations along the vertical midline to white noise.
 
 .. plot::
     :include-source:
@@ -157,7 +157,17 @@ sources at different elevations along the central cone to generated white noise.
         spatial_sounds[i].spectrum(axis=ax[i], low_cutoff=5000, show=False)
     plt.show()
 
-You can use the :meth:`~Sound.play` method of the sounds to listen to them - see if you can identify the virtual sound source
-position. If you will be able to do so depends on how similar your own HRTF is to that of the KEMAR. Your auditory
-system can get used to new HRTFs, so if you listen to the KEMAR recordings long enough you will eventually be able
-to localize them
+You can use the :meth:`~Sound.play` method of the sounds to listen to them - see if you can identify the virtual sound
+source position. Your ability to do so depends on how similar your own HRTF is to that of the the KEMAR artificial head.
+Your auditory system can get used to new HRTFs, so if you listen to the KEMAR recordings long enough they will eventually
+produce virtual sound sources at the correct locations.
+
+Binaural filters from the KEMAR HRTF will impose the correct spectral profile, but no ITD. After applying an HRTF filter
+corresponding to an off-center direction, you should also apply an ITD corresponding to the direction using the
+:meth:`Binaural.azimuth_to_itd` and :meth:`Binaural.itd` methods.
+
+Finally, the HRTF filters are recorded only at certain locations (720, in case of KEMAR - plot the source locations to
+inspect them). You can interpolate a filter for any location covered by these sources with the :meth:`HRTF.interpolate`
+method. It triangulates the source locations and finds three sources that form a triangle around the requested location
+and interpolate a filter with a (barycentric) weighted average in the spectral domain. The resulting filter may not have
+the same overall gain, so remember to set the level of your stimulus after having applied the interpolated HRTF.
