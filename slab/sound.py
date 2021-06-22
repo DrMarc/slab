@@ -197,6 +197,47 @@ class Sound(Signal):
         return out
 
     @staticmethod
+    def dynamic_tone(frequencies=None, times=None, phase=0, samplerate=None, level=None, n_channels=1):
+        """
+        Generate a sinusoid with time-varying frequency from a list of frequencies and times. If times is None, a sound
+        with len(frequencies) samples is generated. Be careful when giving a list of times: integers are treated as
+        samples and floats as seconds for each list element independently. So times=[0, 0.5, 1] is probably a mistake,
+        because the last entry is treated a sample number 1, instead of the intended 1 second time point. This will
+        raise and error because the time values are not monotonically ascending. Correct would be [0., .5, 1.] or
+        [0, 4000, 8000] for the default samplerate.
+
+        Arguments:
+            frequencies (list | numpy.ndarray): frequencies of the tone. Intermediate values are linearely interpolated.
+            times (list | numpy.ndarray | None): list of time points corresponding to the given frequencies. Must have same
+                length as `frequencies` if given. If None, frequencies are assumed to correspond to consecutive samples.
+                Integer values specify times in samples, and floats specify times in seconds.
+            phase (int | float): initial phase of the sinusoid, defaults to 0
+            samplerate (None | int): the samplerate of the sound. If None, use the default samplerate.
+            level (None | int | float): the sounds level in decibel. If None, use the default samplerate.
+            n_channels (int): number of channels, defaults to one.
+        Returns:
+            (slab.Sound): the tone generated from the parameters.
+        """
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
+        if frequencies is None:
+            # make a sinusoidal frequency modulation as default example
+            sig = slab.Sound.tone(frequency=10)
+            sig /= sig.data.max()
+            sig = sig * 100 + 500
+            frequencies = sig.data.flatten()
+        if times is not None:
+            if len(times) != len(frequencies):
+                raise ValueError('Frequencies and times must have the same number of elements.')
+            times = Sound.in_samples(times, samplerate)
+            t = numpy.arange(0, times[-1])
+            frequencies = numpy.interp(t, times, frequencies)
+        x = numpy.sin(phase + 2 * numpy.pi * numpy.cumsum(frequencies) / samplerate)
+        out = Sound(x, samplerate)
+        out.level = level
+        return out
+
+    @staticmethod
     def harmoniccomplex(f0=500, duration=1., amplitude=0, phase=0, samplerate=None, level=None, n_channels=1):
         """
         Generate a harmonic complex tone composed of pure tones at integer multiples of the fundamental frequency.
