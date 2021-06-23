@@ -44,10 +44,10 @@ class HRTF:
         data (str | Filter | numpy.ndarray): Typically, this is the path to a file in the .sofa format.
             The file is then loaded and the data of each source for which the transfer function was recorded is stored
             as a Filter object in the `data` attribute. Instead of a file name, the data can be passed directly as
-            Filter or numpy array (not recommended). Given a `Filter`, every filter channel in the instance is taken as
-            a sound source. Given an 3-dimensional array, the first dimension represents the sources, the second the
-            number of taps per filter and the last the number of filter channels per filter (should be always 2 for
-            left and right ear).
+            Filter or numpy array. Given a `Filter`, every filter channel in the instance is taken as a source (this
+            does not result in a typical HRTF object and is only intended for equalization filter banks). Given an 3D
+            array, the first dimension represents the sources, the second the number of taps per filter and the last the
+            number of filter channels per filter (should be always 2, for left and right ear).
         samplerate (None | float): rate at which the data was acquired, only relevant when not loading from .sofa file
         sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
         listener (None | list | dict): position of the listener, only relevant when not loading from .sofa file
@@ -105,24 +105,33 @@ class HRTF:
                 self.listener = [0, 0, 0]
             else:
                 self.listener = listener
-        else:
+        elif isinstance(data, numpy.ndarray):  # should have shape (ind x taps x ear), 2 x n_taps filter (left right)
+            if samplerate is None:
+                raise ValueError('Must specify samplerate when initialising HRTF from an array.')
             self.samplerate = samplerate
             self.data = []
             for idx in range(data.shape[0]):
-                # (ind x taps x ear), 2 x n_taps filter (left right)
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             self.sources = sources
             if listener is None:
                 self.listener = [0, 0, 0]
             else:
                 self.listener = listener
+        else:
+            raise ValueError(f'Unsupported data type: {type(data)}')
 
     def __repr__(self):
         return f'{type(self)} (\n{repr(self.data)} \n{repr(self.samplerate)})'
 
     def __str__(self):
         return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations},' \
-               f'samples {self.data[0].n_samples}, samplerate {self.samplerate}'
+               f'samples {self[0].n_samples}, samplerate {self.samplerate}'
+
+    def __getitem__(self, key):
+        return self.data.__getitem__(key)
+
+    def __setitem__(self, key, value):
+        return self.data.__setitem__(key, value)
 
     # Static methods (used in __init__)
     @staticmethod
@@ -236,19 +245,20 @@ class HRTF:
         Returns:
             (slab.Binaural): a spatialized copy of `sound`.
         """
+        from slab.binaural import Binaural  # inporting here to avoid circular import at top of class
         if (sound.samplerate != self.samplerate) and (not allow_resampling):
             raise ValueError('Filter and sound must have same sampling rates.')
         original_rate = sound.samplerate
         sound = sound.resample(self.samplerate) # does nothing if samplerates are the same
-        left = scipy.signal.fftconvolve(sound[:, 0], self.data[source][:, 0])
+        left = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 0])
         if sound.n_channels == 1:
-            right = scipy.signal.fftconvolve(sound[:, 0], self.data[source][:, 1])
+            right = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 1])
         else:
-            right = scipy.signal.fftconvolve(sound[:, 1], self.data[source][:, 1])
+            right = scipy.signal.fftconvolve(sound[:, 1], self[source][:, 1])
         convolved_sig = Signal([left, right], samplerate=self.samplerate)
         out = copy.deepcopy(sound)
         out.data = convolved_sig.data
-        return out.resample(original_rate)
+        return Binaural(out.resample(original_rate))
 
     def elevations(self):
         """
@@ -310,7 +320,7 @@ class HRTF:
         if kind == 'waterfall':
             vlines = numpy.arange(0, len(sourceidx)) * linesep
             for idx, s in enumerate(sourceidx):
-                filt = self.data[s]
+                filt = self[s]
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 axis.plot(freqs, h + vlines[idx],
                           linewidth=0.75, color='0.0', alpha=0.7)
@@ -326,12 +336,12 @@ class HRTF:
                       s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
         elif kind == 'image':
             if not n_bins:
-                img = numpy.zeros((self.data[sourceidx[0]].n_taps, len(sourceidx)))
+                img = numpy.zeros((self[sourceidx[0]].n_taps, len(sourceidx)))
             else:
                 img = numpy.zeros((n_bins, len(sourceidx)))
             elevations = self.sources[sourceidx, 1]
             for idx, source in enumerate(sourceidx):
-                filt = self.data[source]
+                filt = self[source]
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
@@ -361,7 +371,7 @@ class HRTF:
         """
         dfa = []
         for source in range(self.n_sources):
-            filt = self.data[source]
+            filt = self[source]
             for chan in range(filt.n_channels):
                 _, h = filt.tf(channels=chan, show=False)
                 dfa.append(h)
@@ -457,7 +467,7 @@ class HRTF:
         n_sources = len(sources)
         tfs = numpy.zeros((n_bins, n_sources))
         for idx, source in enumerate(sources):
-            _, jwd = self.data[source].tf(channels=0, n_bins=n_bins, show=False)
+            _, jwd = self[source].tf(channels=0, n_bins=n_bins, show=False)
             tfs[:, idx] = jwd.flatten()
         return tfs
 
@@ -477,8 +487,9 @@ class HRTF:
             plot_tri (bool): plot the triangulation of source positions used of interpolation. Useful for checking
                 for areas where the interpolation may not be accurate (look for irregular or elongated triangles).
         Returns:
-            (slab.Filter): a 2-channel Filter, interpolated from the neighboring filters in the set
+            (slab.HRTF): an HRTF object with a single source
         """
+        from slab.binaural import Binaural  # inporting here to avoid circular import at top of class
         # spherical to cartesian
         coords = self.cartesian_source_locations()
         r = self.sources[:, 2].mean()
@@ -487,7 +498,7 @@ class HRTF:
         distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
         if method == 'nearest':
             idx_nearest = numpy.argmin(distances)
-            return self.data[idx_nearest]
+            return self[idx_nearest]
         # triangulate source positions into triangles
         if not scipy:
             raise ImportError('Need scipy.spatial for barycentric interpolation.')
@@ -519,18 +530,27 @@ class HRTF:
         # we now have the indices of the filters and the corresponding weights
         amplitudes = list()
         for idx in vertex_list:
-            freqs, amps = self.data[idx].tf(show=False)  # get their transfer functions
+            freqs, amps = self[idx].tf(show=False)  # get their transfer functions
             amplitudes.append(amps)  # we could interpolate here if frequencies differ between filters
         avg_amps = amplitudes[0] * weights[0] + amplitudes[1] * weights[1] + amplitudes[2] * weights[2]  # average
         gains = avg_amps - avg_amps.max()  # shift so that maximum is zero, because we can only attenuate
         gains[gains < -60] = -60  # limit dynamic range to 60 dB
         gains_lin = 10**(gains/20)  # transform attenuations in dB to factors
         filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), fir=True,
-                                    samplerate=self.data[vertex_list[0]].samplerate)
+                                    samplerate=self[vertex_list[0]].samplerate)
         filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), fir=True,
-                                    samplerate=self.data[vertex_list[0]].samplerate)
+                                    samplerate=self[vertex_list[0]].samplerate)
         filt = Filter(data=[filt_l, filt_r])
-        return filt
+        itds = list()
+        for idx in vertex_list:
+            taps = Binaural(self[idx]) # recast filter taps as Binaural sound
+            itds.append(taps.itd())  # use Binaural.itd to compute correlation lag between channels
+        avg_itd = itds[0] * weights[0] + itds[1] * weights[1] + itds[2] * weights[2]  # average ITD
+        filt = filt.delay(avg_itd / self.samplerate)
+        filt.data = filt.data[numpy.newaxis, ...]  # get into correct shape (idx, taps, ear)
+        source_loc = numpy.array([[azimuth, elevation, r]])
+        out = HRTF(filt.data, sources=source_loc, listener=self.listener, samplerate=self.samplerate)
+        return out
 
     @staticmethod
     def _barycentric_weights(triangle, point):
