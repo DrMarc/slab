@@ -136,9 +136,14 @@ Virtually displaying 3D sound
 -----------------------------
 The HRTF describes the directional filtering of incoming sounds by the listeners ears, head and torso. Since this is the
 basis for localizing sounds in three dimensions, we can apply the HRTF to a sound to evoke the impression of it coming
-from a certain direction in space when played through headphones. The :func:`HRTF.apply` function returns an instance of
-the :class:`slab.Binaural`, because the transfer functions are ear-specific. In the example below we will apply the
-transfer functions corresponding to three sound sources at different elevations along the vertical midline to white noise.
+from a certain direction in space when played through headphones. The :meth:`HRTF.apply` method returns an instance of
+the :class:`slab.Binaural`. It is important to use the :meth:`~HRTF.apply` method of the :class:`HRTF` class instead of
+the :meth:`~Filter.apply` method of the individual :class:`Filter` class objects in the HRTF, because only the
+meth:`HRTF.apply` method conserves ITDs. The :meth:`Filter.apply` method does not do that, because when applying a
+generic filter, you normally do not want to introduce delays.
+
+In the example below we apply the transfer functions corresponding to three sound sources at
+different elevations along the vertical midline to white noise.
 
 .. plot::
     :include-source:
@@ -146,9 +151,9 @@ transfer functions corresponding to three sound sources at different elevations 
 
     from slab import data_path, Sound
     from matplotlib import pyplot as plt
-    sound = slab.Sound.whitenoise(samplerate=44100)  # the sound to be displayed
-    fig, ax = plt.subplots(3)
     hrtf = slab.HRTF.kemar()
+    sound = slab.Sound.pinknoise(samplerate=hrtf.samplerate)  # the sound to be spatialized
+    fig, ax = plt.subplots(3)
     sourceidx = [0, 260, 536]  # sources at elevations -40, 0 and 40
     spatial_sounds = []
     for i, index in enumerate(sourceidx):
@@ -166,7 +171,7 @@ Binaural filters from the KEMAR HRTF will impose the correct spectral profile, b
 corresponding to an off-center direction, you should also apply an ITD corresponding to the direction using the
 :meth:`Binaural.azimuth_to_itd` and :meth:`Binaural.itd` methods.
 
-Finally, the HRTF filters are recorded only at certain locations (720, in case of KEMAR - plot the source locations to
+Finally, the HRTF filters are recorded only at certain locations (710, in case of KEMAR - plot the source locations to
 inspect them). You can interpolate a filter for any location covered by these sources with the :meth:`HRTF.interpolate`
 method. It triangulates the source locations and finds three sources that form a triangle around the requested location
 and interpolate a filter with a (barycentric) weighted average in the spectral domain. The resulting filter may not have
