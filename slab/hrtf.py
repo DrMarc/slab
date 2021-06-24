@@ -498,58 +498,59 @@ class HRTF:
         distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
         if method == 'nearest':
             idx_nearest = numpy.argmin(distances)
-            return self[idx_nearest]
-        # triangulate source positions into triangles
-        if not scipy:
-            raise ImportError('Need scipy.spatial for barycentric interpolation.')
-        tri = scipy.spatial.ConvexHull(coords)
-        if plot_tri:
-            ax = plt.subplot(projection='3d')
-            for simplex in tri.points[tri.simplices]:
-                polygon = Poly3DCollection([simplex])
-                polygon.set_color(numpy.random.rand(3))
-                ax.add_collection3d(polygon)
-                mins = coords.min(axis=0)
-                maxs = coords.max(axis=0)
-                xlim, ylim, zlim = list(zip(mins, maxs))
-                ax.set_xlim(xlim)
-                ax.set_ylim(ylim)
-                ax.set_zlim(zlim)
-                ax.set_xlabel('X [m]')
-                ax.set_ylabel('Y [m]')
-                ax.set_zlabel('Z [m]')
-                plt.show()
-        # for each simplex, find the coords, test if target in triangle (by finding minimal d)
-        d_min = numpy.inf
-        for i, vertex_list in enumerate(tri.simplices):
-            simplex = tri.points[vertex_list]
-            d, a = HRTF._barycentric_weights(simplex, target)
-            if d < d_min:
-                d_min, idx, weights = d, i, a
-        vertex_list = tri.simplices[idx]
-        # we now have the indices of the filters and the corresponding weights
-        amplitudes = list()
-        for idx in vertex_list:
-            freqs, amps = self[idx].tf(show=False)  # get their transfer functions
-            amplitudes.append(amps)  # we could interpolate here if frequencies differ between filters
-        avg_amps = amplitudes[0] * weights[0] + amplitudes[1] * weights[1] + amplitudes[2] * weights[2]  # average
-        gains = avg_amps - avg_amps.max()  # shift so that maximum is zero, because we can only attenuate
-        gains[gains < -60] = -60  # limit dynamic range to 60 dB
-        gains_lin = 10**(gains/20)  # transform attenuations in dB to factors
-        filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), fir=True,
-                                    samplerate=self[vertex_list[0]].samplerate)
-        filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), fir=True,
-                                    samplerate=self[vertex_list[0]].samplerate)
-        filt = Filter(data=[filt_l, filt_r])
-        itds = list()
-        for idx in vertex_list:
-            taps = Binaural(self[idx]) # recast filter taps as Binaural sound
-            itds.append(taps.itd())  # use Binaural.itd to compute correlation lag between channels
-        avg_itd = itds[0] * weights[0] + itds[1] * weights[1] + itds[2] * weights[2]  # average ITD
-        filt = filt.delay(avg_itd / self.samplerate)
-        filt.data = filt.data[numpy.newaxis, ...]  # get into correct shape (idx, taps, ear)
+            filt = self[idx_nearest]
+        else:
+            # triangulate source positions into triangles
+            if not scipy:
+                raise ImportError('Need scipy.spatial for barycentric interpolation.')
+            tri = scipy.spatial.ConvexHull(coords)
+            if plot_tri:
+                ax = plt.subplot(projection='3d')
+                for simplex in tri.points[tri.simplices]:
+                    polygon = Poly3DCollection([simplex])
+                    polygon.set_color(numpy.random.rand(3))
+                    ax.add_collection3d(polygon)
+                    mins = coords.min(axis=0)
+                    maxs = coords.max(axis=0)
+                    xlim, ylim, zlim = list(zip(mins, maxs))
+                    ax.set_xlim(xlim)
+                    ax.set_ylim(ylim)
+                    ax.set_zlim(zlim)
+                    ax.set_xlabel('X [m]')
+                    ax.set_ylabel('Y [m]')
+                    ax.set_zlabel('Z [m]')
+                    plt.show()
+            # for each simplex, find the coords, test if target in triangle (by finding minimal d)
+            d_min = numpy.inf
+            for i, vertex_list in enumerate(tri.simplices):
+                simplex = tri.points[vertex_list]
+                d, a = HRTF._barycentric_weights(simplex, target)
+                if d < d_min:
+                    d_min, idx, weights = d, i, a
+            vertex_list = tri.simplices[idx]
+            # we now have the indices of the filters and the corresponding weights
+            amplitudes = list()
+            for idx in vertex_list:
+                freqs, amps = self[idx].tf(show=False)  # get their transfer functions
+                amplitudes.append(amps)  # we could interpolate here if frequencies differ between filters
+            avg_amps = amplitudes[0] * weights[0] + amplitudes[1] * weights[1] + amplitudes[2] * weights[2]  # average
+            gains = avg_amps - avg_amps.max()  # shift so that maximum is zero, because we can only attenuate
+            gains[gains < -60] = -60  # limit dynamic range to 60 dB
+            gains_lin = 10**(gains/20)  # transform attenuations in dB to factors
+            filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), length=self[idx].n_samples, fir=True,
+                                        samplerate=self[vertex_list[0]].samplerate)
+            filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), length=self[idx].n_samples, fir=True,
+                                        samplerate=self[vertex_list[0]].samplerate)
+            filt = Filter(data=[filt_l, filt_r])
+            itds = list()
+            for idx in vertex_list:
+                taps = Binaural(self[idx]) # recast filter taps as Binaural sound
+                itds.append(taps.itd())  # use Binaural.itd to compute correlation lag between channels
+            avg_itd = itds[0] * weights[0] + itds[1] * weights[1] + itds[2] * weights[2]  # average ITD
+            filt = filt.delay(avg_itd / self.samplerate)
+        data = filt.data[numpy.newaxis, ...]  # get into correct shape (idx, taps, ear)
         source_loc = numpy.array([[azimuth, elevation, r]])
-        out = HRTF(filt.data, sources=source_loc, listener=self.listener, samplerate=self.samplerate)
+        out = HRTF(data, sources=source_loc, listener=self.listener, samplerate=self.samplerate)
         return out
 
     @staticmethod
