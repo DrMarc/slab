@@ -9,28 +9,28 @@ def test_create_hrtf():
     assert hrtf1.data[0].fir is True
     hrtf2 = slab.HRTF.kemar()
     for i in range(len(hrtf1.data)):
-        numpy.testing.assert_equal(hrtf1.data[i].data, hrtf2.data[i].data)
+        numpy.testing.assert_equal(hrtf1[i].data, hrtf2[i].data)
     del hrtf2
     for i in range(100):
         idx = numpy.random.choice(range(hrtf1.n_sources))
-        data = hrtf1.data[idx]  # make HRTF from instance of filter
+        data = hrtf1[idx]  # make HRTF from instance of filter
         numpy.testing.assert_raises(ValueError, slab.HRTF, data)
         source = hrtf1.sources[idx]
         listener = numpy.random.randn(3)
         hrtf = slab.HRTF(data=data, sources=source, listener=listener)
         numpy.testing.assert_equal(hrtf.listener, listener)
         numpy.testing.assert_equal(hrtf.sources, source)
-        numpy.testing.assert_equal(hrtf.data[0].data.flatten(), data.data[:, 0])
-        numpy.testing.assert_equal(hrtf.data[1].data.flatten(), data.data[:, 1])
+        numpy.testing.assert_equal(hrtf[0].data.flatten(), data.data[:, 0])
+        numpy.testing.assert_equal(hrtf[1].data.flatten(), data.data[:, 1])
         idx = numpy.random.choice(range(hrtf1.n_sources), 10, replace=False)
-        data = [hrtf1.data[i].data for i in idx]  # make HRTF from array
+        data = [hrtf1[i].data for i in idx]  # make HRTF from array
         data = numpy.dstack(data)
         data = numpy.transpose(data, axes=(2, 0, 1))
         sources = hrtf1.sources[idx]
-        hrtf = slab.HRTF(data=data, sources=sources)
+        hrtf = slab.HRTF(data=data, sources=sources, samplerate=hrtf.samplerate)
         assert hrtf.n_sources == data.shape[0]
-        assert hrtf.data[0].n_samples == data.shape[1]
-        assert hrtf.data[0].n_filters == data.shape[2]
+        assert hrtf[0].n_samples == data.shape[1]
+        assert hrtf[0].n_filters == data.shape[2]
 
 
 def test_plot_hrtf():
@@ -100,11 +100,24 @@ def test_vsi():
     for _ in range(10):
         sources = hrtf.cone_sources(cone=numpy.random.uniform(-180, 180))
         vsis.append(hrtf.vsi(sources=sources))
-    assert all(numpy.logical_and(0.4 < numpy.array(vsis), numpy.array(vsis) < 1.1))
+    assert all(numpy.logical_and(numpy.array(vsis) > 0.4, numpy.array(vsis) < 1.1))
 
 
 def test_plot_sources():
+    hrtf = slab.HRTF.kemar()
     for _ in range(10):
-        hrtf = slab.HRTF.kemar()
         idx = numpy.random.choice(range(len(hrtf.sources)), numpy.random.randint(10))
         hrtf.plot_sources(idx=idx, show=False)
+
+
+def test_interpolate():
+    hrtf = slab.HRTF.kemar()
+    for _ in range(10):
+        idx = numpy.random.choice(range(len(hrtf.sources)))
+        azi, ele = hrtf.sources[idx][0:2]
+        method = numpy.random.choice(['nearest', 'bary'])
+        h = hrtf.interpolate(azimuth=azi, elevation=ele, method=method)
+        _, spec_interp = h[0].tf(show=False)
+        _, spec_origin = hrtf[idx].tf(show=False)
+        nearer_channel = 0 if azi > 0 else 1
+        assert numpy.corrcoef(hho[:, nearer_channel], hh[:, nearer_channel]).min() > 0.95
