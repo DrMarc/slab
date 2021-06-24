@@ -119,5 +119,5 @@ def test_interpolate():
         h = hrtf.interpolate(azimuth=azi, elevation=ele, method=method)
         _, spec_interp = h[0].tf(show=False)
         _, spec_origin = hrtf[idx].tf(show=False)
-        nearer_channel = 0 if azi > 0 else 1
-        assert numpy.corrcoef(hho[:, nearer_channel], hh[:, nearer_channel]).min() > 0.95
+        nearer_channel = 0 if azi-180 < 0 else 1
+        assert numpy.corrcoef(spec_interp[:, nearer_channel], spec_origin[:, nearer_channel]).min() > 0.99
