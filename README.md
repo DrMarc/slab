@@ -4,6 +4,7 @@
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/slab/graphs/commit-activity)
 ![PyPI pyversions](https://img.shields.io/badge/python-%3E%3D3.6-blue)
 ![PyPI license](https://img.shields.io/badge/license-MIT-brightgreen)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.03284/status.svg)](https://doi.org/10.21105/joss.03284)
 
 **slab**: easy manipulation of sounds and psychoacoustic experiments in Python
 ======================
