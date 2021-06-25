@@ -7,7 +7,7 @@ tags:
   - signal processing
   - teaching
 authors:
-  - name: Marc Schönwiesner^[co-first author]^[corresponding author]
+  - name: Marc Schönwiesner^[co-first author, corresponding author]
     orcid: 0000-0002-2023-1207
     affiliation: "1, 2"
   - name: Ole Bialas^[co-first author]
