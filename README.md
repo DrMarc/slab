@@ -174,6 +174,24 @@ Documentation
 
 Read the tutorial-style documentation on [ReadTheDocs](https://slab.readthedocs.io/).
 
+Citing slab
+-----------
+
+Schönwiesner et al., (2021). s(ound)lab: An easy to learn Python package for designing and running psychoacoustic experiments. Journal of Open Source Software, 6(62), 3284, https://doi.org/10.21105/joss.03284
+
+@article{Schönwiesner2021,
+  doi = {10.21105/joss.03284},
+  url = {https://doi.org/10.21105/joss.03284},
+  year = {2021},
+  publisher = {The Open Journal},
+  volume = {6},
+  number = {62},
+  pages = {3284},
+  author = {Marc Schönwiesner and Ole Bialas},
+  title = {s(ound)lab: An easy to learn Python package for designing and running psychoacoustic experiments.},
+  journal = {Journal of Open Source Software}
+}
+
 Contributing to this project
 ----------------------------
 

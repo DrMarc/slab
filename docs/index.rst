@@ -55,6 +55,25 @@ All other dependencies should have been automatically installed, and you should 
 
 Slab will then use another method to play sounds (winsound on Windows, afplay on Macs, and `SoX <http://sox.sourceforge.net>`_ on Linux), and will record sounds from the microphone using SoX. There are many other packages to play sounds, depending on our operating system. If you prefer a different one, you can easily modify or replace the :meth:`~slab.Sound.play` method.
 
+
+Citing slab
+-----------
+
+Schönwiesner et al., (2021). s(ound)lab: An easy to learn Python package for designing and running psychoacoustic experiments. Journal of Open Source Software, 6(62), 3284, https://doi.org/10.21105/joss.03284
+
+@article{Schönwiesner2021,
+  doi = {10.21105/joss.03284},
+  url = {https://doi.org/10.21105/joss.03284},
+  year = {2021},
+  publisher = {The Open Journal},
+  volume = {6},
+  number = {62},
+  pages = {3284},
+  author = {Marc Schönwiesner and Ole Bialas},
+  title = {s(ound)lab: An easy to learn Python package for designing and running psychoacoustic experiments.},
+  journal = {Journal of Open Source Software}
+}
+
 .. toctree::
   :caption: Contents
   :maxdepth: 2
