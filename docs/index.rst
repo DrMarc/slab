@@ -74,6 +74,11 @@ Schönwiesner et al., (2021). s(ound)lab: An easy to learn Python package for de
   journal = {Journal of Open Source Software}
 }
 
+To return the citations as strings, you can also call::
+
+    slab.cite()
+
+
 .. toctree::
   :caption: Contents
   :maxdepth: 2
