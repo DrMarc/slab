@@ -637,14 +637,16 @@ class HRTF:
                 n += 1
         return 1 - sum_corr / n
 
-    def plot_sources(self, idx=None, show=True, axis=None):
+    def plot_sources(self, idx=None, show=True, label=False, axis=None):
         """
         Plot source locations in 3D.
 
         Arguments:
-            idx (list of int): Indices to highlight in den plot
-            show (bool): Whether to show plot or
-            axis (mpl_toolkits.mplot3d.axes3d.Axes3D): Axis to draw the plot on
+            idx (list of int): indices to highlight in the plot
+            show (bool): whether to show plot (set to False if plotting into an axis and you want to add other elements)
+            label (bool): if True, show the index of each source in self.sources as text label, if idx is also given,
+                then only theses sources are labeled
+            axis (mpl_toolkits.mplot3d.axes3d.Axes3D): axis to draw the plot on
         """
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
@@ -656,12 +658,18 @@ class HRTF:
             ax = axis
         coords = self.cartesian_source_locations()
         ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='b', marker='.')
+        if label and idx is None:
+            for i in range(coords.shape[0]):
+                ax.text(coords[i, 0], coords[i, 1], coords[i, 2], f'{i}', size=8, zorder=1, color='k')
         ax.scatter(0, 0, 0, c='r', marker='o')
         if self.listener:
             x_, y_, z_, u, v, w = zip(*[self.listener['viewvec'], self.listener['upvec']])
             ax.quiver(x_, y_, z_, u, v, w, length=0.5, colors=['r', 'b', 'r', 'r', 'b', 'b'])
         if idx is not None:
             ax.scatter(coords[idx, 0], coords[idx, 1], coords[idx, 2], c='r', marker='o')
+            if label:
+                for i in idx:
+                    ax.text(coords[i, 0], coords[i, 1], coords[i, 2], f'{i}', size=8, zorder=1, color='k')
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
