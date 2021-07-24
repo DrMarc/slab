@@ -179,6 +179,7 @@ Citing slab
 
 Schönwiesner et al., (2021). s(ound)lab: An easy to learn Python package for designing and running psychoacoustic experiments. Journal of Open Source Software, 6(62), 3284, https://doi.org/10.21105/joss.03284
 
+```
 @article{Schönwiesner2021,
   doi = {10.21105/joss.03284},
   url = {https://doi.org/10.21105/joss.03284},
@@ -191,6 +192,7 @@ Schönwiesner et al., (2021). s(ound)lab: An easy to learn Python package for de
   title = {s(ound)lab: An easy to learn Python package for designing and running psychoacoustic experiments.},
   journal = {Journal of Open Source Software}
 }
+```
 
 Contributing to this project
 ----------------------------
