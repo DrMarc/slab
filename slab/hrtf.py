@@ -356,7 +356,7 @@ class HRTF:
         axis.xaxis.set_major_formatter(
             matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x/1000))))
         axis.tick_params('both', length=2, pad=2)
-        axis.set(xlabel='Frequency [kHz]', ylabel='Elevation [˚]', xlim=xlim, xscale=xscale)
+        axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim, xscale=xscale)
         if show:
             plt.show()
 
