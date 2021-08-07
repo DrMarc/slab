@@ -573,7 +573,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         was given to a condition for all conditions and each possible response (including None).
 
         Returns:
-            (list of lists | None): indices of the outer list represent the conditions in the sequence.Each inner
+            (list of lists | None): indices of the outer list represent the conditions in the sequence. Each inner
             list contains the number of responses per response key, with the response keys sorted in ascending order,
             the last element always represents None. If the sequence is not finished yet, None is returned.
         Examples::
@@ -851,7 +851,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         return None  # still running the staircase
 
     def print_trial_info(self):
-        """ Convenience method for printing current trial information. s """
+        """ Convenience method for printing current trial information. """
         print(
             f'{self.label} | trial # {self.this_trial_n}: reversals: {len(self.reversal_points)}/{self.n_reversals},'
             f' intensity {round(self.intensities[-1],2) if self.intensities else round(self._next_intensity,2)},'
