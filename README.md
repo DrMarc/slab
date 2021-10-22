@@ -149,6 +149,12 @@ On *Linux*, there is only one requirement outside of Python: you may need to ins
 
 ```sudo apt-get install libsndfile1```
 
+On Macs with M1 processors, the SoundCard module that slab uses to play and record sounds is currently not working. You can workaround this issue by uninstalling SoundCard:
+
+```pip uninstall soundcard```
+
+Slab will fall back to `afplay` to play sounds. Recording sounds directly from slab is not possible in this case.
+
 Other optional requirements can be installed by telling pip which extras you want:
 
 ```pip install slab[name_of_extra]```

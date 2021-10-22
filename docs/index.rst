@@ -49,7 +49,7 @@ Working with head related transfer functions requires the h5netcdf module (tryin
 
     pip install h5netcdf
 
-All other dependencies should have been automatically installed, and you should see meaningful errors if that did not happen for some reason. The dependencies are: numpy, scipy.signal (for filtering and several other DSP functions), matplotlib (for all plotting), SoundFile (for reading and writing wav files), curses or windows-curses (for getting key presses), and SoundCard (for playing and recording sounds). We have seen a hard-to-replicate problem on some Macs with the SoundCard module: a pause of several seconds after a sound is played. If you experience this issue, just uninstall SoundCard::
+All other dependencies should have been automatically installed, and you should see meaningful errors if that did not happen for some reason. The dependencies are: numpy, scipy.signal (for filtering and several other DSP functions), matplotlib (for all plotting), SoundFile (for reading and writing wav files), curses or windows-curses (for getting key presses), and SoundCard (for playing and recording sounds). We have seen a hard-to-replicate problem on some Macs with the SoundCard module: a pause of several seconds after a sound is played. *Macs with M1 processors* also have an issue with SoundCard. If you experience these issues, just uninstall SoundCard::
 
     pip uninstall SoundCard
 
