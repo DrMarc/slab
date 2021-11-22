@@ -475,9 +475,10 @@ class Sound(Signal):
         interval = int(numpy.rint(1 / frequency * samplerate))
         n = numpy.rint(duration / interval)
         oneclick = Sound.click(clickduration, samplerate=samplerate)
-        oneclick.level = level
         oneclick = oneclick.resize(interval)
-        return oneclick.repeat(n)
+        oneclick = oneclick.repeat(n)
+        oneclick.level = level
+        return oneclick
 
     @staticmethod
     def chirp(duration=1.0, from_frequency=100, to_frequency=None, samplerate=None, level=None, kind='quadratic'):
