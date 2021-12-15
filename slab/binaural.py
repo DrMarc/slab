@@ -1,5 +1,7 @@
 import copy
 import numpy
+import scipy
+import math
 from slab.sound import Sound
 from slab.signal import Signal
 from slab.filter import Filter
@@ -395,6 +397,85 @@ class Binaural(Sound):
         out_right = Filter.collapse_subbands(subbands_right, filter_bank=fbank)
         out = Binaural([out_left, out_right])
         return out.resample(samplerate=original_samplerate)
+
+    def drr(self, winlength: float = 2.5):
+
+        # Get/set the direct-to-reverberant-ratio, DRR for the impulse DRR is a 1xN array.
+        # 
+        # This is calculated in the following way:
+        # 
+        # DRR = 10 * log10( X(T0-C:T0+C)^2 / X(T0+C+1:end)^2 )
+        # 
+        # where X is the approximated integral of the impulse, T0 is the time of
+        # the direct impulse, and C=2.5ms [1].
+        # 
+        # [1] Zahorik, P., 2002: 'Direct-to-reverberant energy ratio sensitivity', 
+        # The Journal of the Acoustical Society of America, 112, 2110-2117.
+
+
+        # ARGUMENTS
+        # 'winlength':
+        #  - Specifies the winlength parameter C (in miliseconds) given above for the DRR calculation. 
+        #  - Values of up to 10 ms have been suggested in the literature.
+
+
+        # SANITY CHECK
+        # - Input arguments: winlength
+        # - Sample rate
+        # - Catch and report errors/exceptions
+
+        if winlength < 0:
+            raise Exception("'winlength' must be greater than or equal to 0.")
+        elif winlength > 10:
+            raise Exception("'winlength' is suggested to be under 10ms.")
+
+        if self.samplerate < 5000:
+            raise Exception("Sampling frequency is too low. FS must be at least 5000 Hz.")
+
+        # INITIALISE KEY VARIABLES
+        # - Check for number of channels
+        # - Set up drr array as a function of number of channels
+        # - Convert winlength parameter to samples
+        
+        n_channels = self.n_channels
+        drr = numpy.empty(n_channels, dtype=float)
+
+        winlength_in_samples = round(winlength * self.samplerate / 1000)
+        correction = round(0.5 * self.samplerate / 1000) # safety margin of 0.5ms
+
+        if winlength_in_samples > len(self.data):
+            print("'winlength' should be shorter than input sound.")
+
+
+        # CALCULATE DRR PER CHANNEL
+
+        for channel in range(n_channels):
+
+            impulse = self.data[:, channel]
+            impulse_sq = numpy.square(impulse)
+
+            # Find the location (index) of the first peak in the impulse signal
+
+            peaks = scipy.signal.find_peaks(impulse_sq)
+            if len(peaks) > 1:
+                print("More than one peak found on channel %i. Choosing first peak. Are you sure this is an impulse response?" %(channel))
+            peak_index = peaks[0][0]
+
+            # Calculate direct and reverberant energy values by integrating under their RMS curve
+
+            direct = impulse[peak_index - correction : peak_index + winlength_in_samples]
+            direct_e = numpy.trapz(numpy.square(direct))
+
+            reverb = impulse[peak_index + winlength_in_samples:]
+            reverb_e = numpy.trapz(numpy.square(reverb))
+
+            # Calculate DRR as a value in dB
+
+            drr[channel] = 10 * math.log10(direct_e/reverb_e)
+
+        # Return output
+
+        return drr
 
     @staticmethod
     def whitenoise(kind='diotic', **kwargs):
