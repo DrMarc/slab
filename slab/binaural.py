@@ -400,7 +400,7 @@ class Binaural(Sound):
 
     def drr(self, winlength: float = 2.5):
 
-        # Get/set the direct-to-reverberant-ratio, DRR for the impulse DRR is a 1xN array.
+        # Calculate the direct-to-reverberant-ratio, DRR for the impulse input.
         # 
         # This is calculated in the following way:
         # 
@@ -415,8 +415,9 @@ class Binaural(Sound):
 
         # ARGUMENTS
         # 'winlength':
-        #  - Specifies the winlength parameter C (in miliseconds) given above for the DRR calculation. 
+        #  - Specifies the winlength parameter (in miliseconds) given above as 'C'. 
         #  - Values of up to 10 ms have been suggested in the literature.
+        #  - Default value is 2.5 as suggested in literature
 
 
         # SANITY CHECK
