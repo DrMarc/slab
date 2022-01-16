@@ -1,6 +1,5 @@
 import copy
 import numpy
-import scipy
 import math
 from slab.sound import Sound
 from slab.signal import Signal
@@ -398,84 +397,43 @@ class Binaural(Sound):
         out = Binaural([out_left, out_right])
         return out.resample(samplerate=original_samplerate)
 
-    def drr(self, winlength: float = 2.5):
+    def drr(self, winlength=2.5):
+        """
+        Calculate the direct-to-reverberant-ratio, DRR for the impulse input. This is calculated by
+        DRR = 10 * log10( X(T0-C:T0+C)^2 / X(T0+C+1:end)^2 ), where X is the approximated integral of the impulse,
+        T0 is the time of the direct impulse, and C=2.5ms (Zahorik, P., 2002: 'Direct-to-reverberant energy ratio
+        sensitivity', The Journal of the Acoustical Society of America, 112, 2110-2117)
 
-        # Calculate the direct-to-reverberant-ratio, DRR for the impulse input.
-        # 
-        # This is calculated in the following way:
-        # 
-        # DRR = 10 * log10( X(T0-C:T0+C)^2 / X(T0+C+1:end)^2 )
-        # 
-        # where X is the approximated integral of the impulse, T0 is the time of
-        # the direct impulse, and C=2.5ms [1].
-        # 
-        # [1] Zahorik, P., 2002: 'Direct-to-reverberant energy ratio sensitivity', 
-        # The Journal of the Acoustical Society of America, 112, 2110-2117.
+        Arguments:
+            winlength (int | float): specifies the length of the direct sound window
 
-
-        # ARGUMENTS
-        # 'winlength':
-        #  - Specifies the winlength parameter (in miliseconds) given above as 'C'. 
-        #  - Values of up to 10 ms have been suggested in the literature.
-        #  - Default value is 2.5 as suggested in literature
-
-
-        # SANITY CHECK
-        # - Input arguments: winlength
-        # - Sample rate
-        # - Catch and report errors/exceptions
-
-        if winlength < 0:
-            raise Exception("'winlength' must be greater than or equal to 0.")
-        elif winlength > 10:
-            raise Exception("'winlength' is suggested to be under 10ms.")
-
-        if self.samplerate < 5000:
-            raise Exception("Sampling frequency is too low. FS must be at least 5000 Hz.")
-
-        # INITIALISE KEY VARIABLES
-        # - Check for number of channels
-        # - Set up drr array as a function of number of channels
-        # - Convert winlength parameter to samples
-        
-        n_channels = self.n_channels
-        drr = numpy.empty(n_channels, dtype=float)
-
+        Returns:
+            Direct-to-reverberation value of the input impulse measured in dB
+        """
+        # convert winlength parameter to samples
         winlength_in_samples = round(winlength * self.samplerate / 1000)
-        correction = round(0.5 * self.samplerate / 1000) # safety margin of 0.5ms
-
         if winlength_in_samples > len(self.data):
-            print("'winlength' should be shorter than input sound.")
-
-
-        # CALCULATE DRR PER CHANNEL
-
-        for channel in range(n_channels):
-
-            impulse = self.data[:, channel]
-            impulse_sq = numpy.square(impulse)
-
-            # Find the location (index) of the first peak in the impulse signal
-
-            peaks = scipy.signal.find_peaks(impulse_sq)
-            if len(peaks) > 1:
-                print("More than one peak found on channel %i. Choosing first peak. Are you sure this is an impulse response?" %(channel))
-            peak_index = peaks[0][0]
-
-            # Calculate direct and reverberant energy values by integrating under their RMS curve
-
-            direct = impulse[peak_index - correction : peak_index + winlength_in_samples]
-            direct_e = numpy.trapz(numpy.square(direct))
-
-            reverb = impulse[peak_index + winlength_in_samples:]
-            reverb_e = numpy.trapz(numpy.square(reverb))
-
-            # Calculate DRR as a value in dB
-
-            drr[channel] = 10 * math.log10(direct_e/reverb_e)
-
+            raise ValueError("'winlength' should be shorter than input sound.")
+        if winlength < 0:
+            raise ValueError("'winlength' must be greater than or equal to 0.")
+        elif winlength > 10:
+            raise ValueError("'winlength' is suggested to be under 10ms.")
+        if self.samplerate < 5000:
+            raise ValueError("Sampling frequency is too low. FS must be at least 5000 Hz.")
+        correction = round(0.5 * self.samplerate / 1000) # safety margin of 0.5ms
+        # calculate drr for left channel
+        impulse = self.data[:, 0]
+        impulse_sq = numpy.square(impulse)
+        # find the location (index) of the maximal peak in the impulse signal
+        peak_index = impulse_sq.argmax()
+        # calculate direct and reverberant energy values by integrating under their RMS curve
+        direct = impulse[peak_index - correction: peak_index + winlength_in_samples]
+        direct_e = numpy.trapz(numpy.square(direct))
+        reverb = impulse[peak_index + winlength_in_samples:]
+        reverb_e = numpy.trapz(numpy.square(reverb))
+        # Calculate DRR as a value in dB
+        drr = 10 * math.log10(direct_e/reverb_e)
         # Return output
-
         return drr
 
     @staticmethod
