@@ -105,3 +105,13 @@ def test_overloaded_sound_generators():
         args, _, _ = inspect.getargs(func.__code__)
         if 'n_channels' in args:
             assert getattr(slab.Binaural, method)().n_channels == 2
+
+def test_drr():
+    steepness = 1
+    duration = 2.0
+    decay_resolution = 10
+    decay_curve = [numpy.exp(-i * steepness) for i in range(decay_resolution)]
+    sound = slab.Binaural.whitenoise(kind='dichotic', duration=duration)
+    impulse = sound.envelope(apply_envelope=decay_curve)
+    drr = impulse.drr()
+    assert isinstance(drr, float)
