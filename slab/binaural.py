@@ -397,7 +397,7 @@ class Binaural(Sound):
         out = Binaural([out_left, out_right])
         return out.resample(samplerate=original_samplerate)
 
-    def drr(self, winlength=2.5):
+    def drr(self, winlength=0.0025):
         """
         Calculate the direct-to-reverberant-ratio, DRR for the impulse input. This is calculated by
         DRR = 10 * log10( X(T0-C:T0+C)^2 / X(T0+C+1:end)^2 ), where X is the approximated integral of the impulse,
@@ -405,34 +405,45 @@ class Binaural(Sound):
         sensitivity', The Journal of the Acoustical Society of America, 112, 2110-2117)
 
         Arguments:
-            winlength (int | float): specifies the length of the direct sound window
+            winlength (int | float): specifies the length of the direct sound window. This window is used to calculate
+            the energy of impulse sound, starting from the position of the peak amplitude of the impulse.
 
         Returns:
             Direct-to-reverberation value of the input impulse measured in dB
+
+        Return type:
+            (float)
         """
         # convert winlength parameter to samples
-        winlength_in_samples = round(winlength * self.samplerate / 1000)
-        if winlength_in_samples > len(self.data):
+        winlength = Sound.in_samples(winlength, self.samplerate)
+        if winlength > len(self.data):
             raise ValueError("'winlength' should be shorter than input sound.")
         if winlength < 0:
             raise ValueError("'winlength' must be greater than or equal to 0.")
-        elif winlength > 10:
+        elif winlength > 10 * self.samplerate:
             raise ValueError("'winlength' is suggested to be under 10ms.")
         if self.samplerate < 5000:
             raise ValueError("Sampling frequency is too low. FS must be at least 5000 Hz.")
-        correction = round(0.5 * self.samplerate / 1000) # safety margin of 0.5ms
+        correction = round(0.5 * self.samplerate / 1000 / 1000) # safety margin of 0.5ms
         # calculate drr for left channel
         impulse = self.data[:, 0]
         impulse_sq = numpy.square(impulse)
         # find the location (index) of the maximal peak in the impulse signal
         peak_index = impulse_sq.argmax()
         # calculate direct and reverberant energy values by integrating under their RMS curve
-        direct = impulse[peak_index - correction: peak_index + winlength_in_samples]
+        direct = impulse[peak_index - correction: peak_index + winlength]
         direct_e = numpy.trapz(numpy.square(direct))
-        reverb = impulse[peak_index + winlength_in_samples:]
+        reverb = impulse[peak_index + winlength:]
         reverb_e = numpy.trapz(numpy.square(reverb))
+        ratio = direct_e/reverb_e
         # Calculate DRR as a value in dB
-        drr = 10 * math.log10(direct_e/reverb_e)
+        if direct_e == 0:
+            raise ValueError("Direct energy is 0. Please check that your input parameters are reasonable.")
+        elif reverb_e == 0:
+            raise ValueError("Reverb energy is 0. Are you sure this is an impulse?")
+        elif reverb_e < sys.float_info.min:
+            raise ValueError("Reverb energy is too low. Please check that your input parameters are reasonable.")
+        drr = 10 * math.log10(ratio)
         # Return output
         return drr
 
