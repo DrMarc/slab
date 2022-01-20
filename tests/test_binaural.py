@@ -107,11 +107,19 @@ def test_overloaded_sound_generators():
             assert getattr(slab.Binaural, method)().n_channels == 2
 
 def test_drr():
-    steepness = 1
-    duration = 2.0
-    decay_resolution = 10
-    decay_curve = [numpy.exp(-i * steepness) for i in range(decay_resolution)]
-    sound = slab.Binaural.whitenoise(kind='dichotic', duration=duration)
-    impulse = sound.envelope(apply_envelope=decay_curve)
-    drr = impulse.drr()
-    assert isinstance(drr, float)
+    for _ in range(10):
+        steepness = numpy.random.randint(1, 3)
+        duration = numpy.random.uniform(2.0, 8.0)
+        decay_resolution = 10
+        decay_curve = [numpy.exp(-i * steepness) for i in range(decay_resolution)]
+        sound = slab.Binaural.whitenoise(kind='dichotic', duration=duration, samplerate=44100)
+        impulse = sound.envelope(apply_envelope=decay_curve)
+        winlength = numpy.random.uniform(0.0001, 0.01)
+        if numpy.random.randint(0, 2):
+            winlength = max(2, impulse.in_samples(winlength, impulse.samplerate))
+        if numpy.random.randint(0, 2):
+            drr = impulse.drr(winlength=winlength)
+        else:
+            drr = impulse.drr()
+        assert 0 > drr > -100
+        assert isinstance(drr, float)
