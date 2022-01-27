@@ -1,6 +1,7 @@
 import copy
 import numpy
 import math
+import sys
 from slab.sound import Sound
 from slab.signal import Signal
 from slab.filter import Filter
@@ -416,14 +417,14 @@ class Binaural(Sound):
         """
         # convert winlength parameter to samples
         winlength = Sound.in_samples(winlength, self.samplerate)
+        # winlength should take minimum 2 sample values
+        winlength = max(2, winlength)
         if winlength > len(self.data):
             raise ValueError("'winlength' should be shorter than input sound.")
-        if winlength < 0:
-            raise ValueError("'winlength' must be greater than or equal to 0.")
-        elif winlength > 10 * self.samplerate:
+        elif winlength > 0.01 * self.samplerate:
             raise ValueError("'winlength' is suggested to be under 10ms.")
         if self.samplerate < 5000:
-            raise ValueError("Sampling frequency is too low. FS must be at least 5000 Hz.")
+            raise ValueError("Sampling frequency is too low, it should be at least 5000 Hz.")
         correction = round(0.5 * self.samplerate / 1000 / 1000) # safety margin of 0.5ms
         # calculate drr for left channel
         impulse = self.data[:, 0]
@@ -431,11 +432,12 @@ class Binaural(Sound):
         # find the location (index) of the maximal peak in the impulse signal
         peak_index = impulse_sq.argmax()
         # calculate direct and reverberant energy values by integrating under their RMS curve
-        direct = impulse[peak_index - correction: peak_index + winlength]
+        win_start_index = max(0, peak_index - correction)
+        win_end_index = peak_index + winlength
+        direct = impulse[win_start_index: win_end_index]
         direct_e = numpy.trapz(numpy.square(direct))
-        reverb = impulse[peak_index + winlength:]
+        reverb = impulse[win_end_index + 1:]
         reverb_e = numpy.trapz(numpy.square(reverb))
-        ratio = direct_e/reverb_e
         # Calculate DRR as a value in dB
         if direct_e == 0:
             raise ValueError("Direct energy is 0. Please check that your input parameters are reasonable.")
@@ -443,6 +445,7 @@ class Binaural(Sound):
             raise ValueError("Reverb energy is 0. Are you sure this is an impulse?")
         elif reverb_e < sys.float_info.min:
             raise ValueError("Reverb energy is too low. Please check that your input parameters are reasonable.")
+        ratio = direct_e / reverb_e
         drr = 10 * math.log10(ratio)
         # Return output
         return drr
@@ -464,7 +467,7 @@ class Binaural(Sound):
         Generate binaural pink noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.pinknoise`.
         """
-        return Binaural.powerlawnoise(alpha=1, **kwargs)
+        return Binaural.powerlawnoise(alpha=1, kind=kind, **kwargs)
 
     @staticmethod
     def powerlawnoise(kind='diotic', **kwargs):
