@@ -386,7 +386,7 @@ class Sound(Signal):
         Returns:
             (slab.Sound): power law noise generated from the parameters with exponent alpha==1.
         """
-        return Sound.powerlawnoise(duration, 1, samplerate=samplerate, n_channels=n_channels)
+        return Sound.powerlawnoise(duration=duration, alpha=1, samplerate=samplerate, level=level, n_channels=n_channels)
 
     @staticmethod
     def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None, level=None, n_channels=1):
