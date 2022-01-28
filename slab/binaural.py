@@ -1,5 +1,7 @@
 import copy
 import numpy
+import math
+import sys
 from slab.sound import Sound
 from slab.signal import Signal
 from slab.filter import Filter
@@ -396,6 +398,58 @@ class Binaural(Sound):
         out = Binaural([out_left, out_right])
         return out.resample(samplerate=original_samplerate)
 
+    def drr(self, winlength=0.0025):
+        """
+        Calculate the direct-to-reverberant-ratio, DRR for the impulse input. This is calculated by
+        DRR = 10 * log10( X(T0-C:T0+C)^2 / X(T0+C+1:end)^2 ), where X is the approximated integral of the impulse,
+        T0 is the time of the direct impulse, and C=2.5ms (Zahorik, P., 2002: 'Direct-to-reverberant energy ratio
+        sensitivity', The Journal of the Acoustical Society of America, 112, 2110-2117)
+
+        Arguments:
+            winlength (int | float): specifies the length of the direct sound window. This window is used to calculate
+            the energy of impulse sound, starting from the position of the peak amplitude of the impulse.
+
+        Returns:
+            Direct-to-reverberation value of the input impulse measured in dB
+
+        Return type:
+            (float)
+        """
+        # convert winlength parameter to samples
+        winlength = Sound.in_samples(winlength, self.samplerate)
+        # winlength should take minimum 2 sample values
+        winlength = max(2, winlength)
+        if winlength > len(self.data):
+            raise ValueError("'winlength' should be shorter than input sound.")
+        elif winlength > 0.01 * self.samplerate:
+            raise ValueError("'winlength' is suggested to be under 10ms.")
+        if self.samplerate < 5000:
+            raise ValueError("Sampling frequency is too low, it should be at least 5000 Hz.")
+        correction = round(0.5 * self.samplerate / 1000 / 1000) # safety margin of 0.5ms
+        # calculate drr for left channel
+        impulse = self.data[:, 0]
+        impulse_sq = numpy.square(impulse)
+        # find the location (index) of the maximal peak in the impulse signal
+        peak_index = impulse_sq.argmax()
+        # calculate direct and reverberant energy values by integrating under their RMS curve
+        win_start_index = max(0, peak_index - correction)
+        win_end_index = peak_index + winlength
+        direct = impulse[win_start_index: win_end_index]
+        direct_e = numpy.trapz(numpy.square(direct))
+        reverb = impulse[win_end_index + 1:]
+        reverb_e = numpy.trapz(numpy.square(reverb))
+        # Calculate DRR as a value in dB
+        if direct_e == 0:
+            raise ValueError("Direct energy is 0. Please check that your input parameters are reasonable.")
+        elif reverb_e == 0:
+            raise ValueError("Reverb energy is 0. Are you sure this is an impulse?")
+        elif reverb_e < sys.float_info.min:
+            raise ValueError("Reverb energy is too low. Please check that your input parameters are reasonable.")
+        ratio = direct_e / reverb_e
+        drr = 10 * math.log10(ratio)
+        # Return output
+        return drr
+
     @staticmethod
     def whitenoise(kind='diotic', **kwargs):
         """
@@ -413,7 +467,7 @@ class Binaural(Sound):
         Generate binaural pink noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.pinknoise`.
         """
-        return Binaural.powerlawnoise(alpha=1, **kwargs)
+        return Binaural.powerlawnoise(alpha=1, kind=kind, **kwargs)
 
     @staticmethod
     def powerlawnoise(kind='diotic', **kwargs):
