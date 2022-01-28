@@ -157,7 +157,7 @@ class Filter(Signal):
                     out.data[:, i] = scipy.signal.filtfilt(
                         self.data[:, i], [1], out.data[:, i], axis=0)
             elif (self.n_filters == 1) and (sig.n_channels > 1):  # filter each channel
-                for i in range(self.n_filters):
+                for i in range(sig.n_channels):
                     out.data[:, i] = scipy.signal.filtfilt(
                         self.data.flatten(), [1], out.data[:, i], axis=0)
             elif (self.n_filters > 1) and (sig.n_channels == 1):  # apply all filters in bank to sound
