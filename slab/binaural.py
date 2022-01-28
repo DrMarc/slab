@@ -456,9 +456,14 @@ class Binaural(Sound):
         Generate binaural white noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.whitenoise`.
         """
-        out = Binaural(Sound.whitenoise(**kwargs))
-        if kind == 'diotic':
+        if kind == 'dichotic':
+            out = Binaural(Sound.whitenoise(n_channels=2, **kwargs))
+            out.left = Sound.whitenoise(n_channels=1, **kwargs)
+        elif kind == 'diotic':
+            out = Binaural(Sound.whitenoise(n_channels=2, **kwargs))
             out.left = out.right
+        else:
+            raise ValueError("kind must be 'dichotic' or 'diotic'.")
         return out
 
     @staticmethod
