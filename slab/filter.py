@@ -457,7 +457,7 @@ class Filter(Signal):
         filts = numpy.zeros((length, sound.n_channels))
         for chan in range(sound.n_channels):
             gain = [1] + list(amp_diffs[:, chan])
-            filt = Filter.band(frequency=list(center_freqs), gain=gain, samplerate=reference.samplerate, fir=True)
+            filt = Filter.band(frequency=list(center_freqs), gain=gain, samplerate=reference.samplerate, fir=True, length=length)
             filts[:, chan] = filt.data.flatten()
         return Filter(data=filts, samplerate=reference.samplerate, fir=True)
 
