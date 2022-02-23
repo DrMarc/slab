@@ -230,7 +230,8 @@ class HRTF:
         datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
         if datatype != 'FIR':
             warnings.warn('Non-FIR data: ' + datatype)
-        return numpy.array(f.variables['Data.IR'], dtype='float')
+        else:
+            return numpy.array(f.variables['Data.IR'], dtype='float')
 
     def apply(self, source, sound, allow_resampling=True):
         """
