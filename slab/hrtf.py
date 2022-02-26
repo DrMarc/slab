@@ -60,6 +60,7 @@ class HRTF:
         .listener (dict): a dictionary containing the position of the listener ("pos"), the point which the listener
             is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
         .samplerate (float): sampling rate at which the HRTF data was acquired.
+        .sofa_convention: The convention used in the SOFA file.
     Example::
 
         import slab
@@ -73,6 +74,8 @@ class HRTF:
                          doc='The number of sources in the HRTF.')
     n_elevations = property(fget=lambda self: len(self.elevations()),
                             doc='The number of elevations in the HRTF.')
+    sofa_convention = property(fget=lambda self: self.convention,
+                               doc='The convention used in the SOFA file.')
 
     def __init__(self, data, samplerate=None, sources=None, listener=None, verbose=False):
         if isinstance(data, str):
@@ -81,12 +84,23 @@ class HRTF:
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
-            data = HRTF._sofa_get_FIR(f)
+            self.convention = HRTF._sofa_get_convention(f)
+            # todo:
+            #  for now, get samplerate from HRIR AND HRTF sofa files -
+            #  necessary for Filter.apply - regardless if filter object is a fourier filter;
+            #  HRTF.apply will use sample rate (dtf_spectrum*2) to determine whether the sound has to be resampled(?)
             self.samplerate = HRTF._sofa_get_samplerate(f)
             self.data = []
-            for idx in range(data.shape[0]):
-                # n_taps x 2 (left, right) filter
-                self.data.append(Filter(data[idx, :, :].T, self.samplerate))
+            if self.convention == 'SimpleFreeFieldHRIR':
+                data = HRTF._sofa_get_FIR(f)
+                for idx in range(data.shape[0]):
+                    # n_taps x 2 (left, right) filter
+                    self.data.append(Filter(data[idx, :, :].T, self.samplerate))
+            if self.convention == 'SimpleFreeFieldHRTF':
+                data = HRTF._sofa_get_DTF(f)
+                self.dtf_spectrum = HRTF._sofa_get_dtf_spectrum(f)
+                for idx in range(data.shape[0]):
+                    self.data.append(Filter(data.real[idx, :, :].T, self.samplerate, fir=False))
             self.listener = HRTF._sofa_get_listener(f)
             self.sources = HRTF._sofa_get_sourcepositions(f)
         elif isinstance(data, Filter):
@@ -124,8 +138,9 @@ class HRTF:
         return f'{type(self)} (\n{repr(self.data)} \n{repr(self.samplerate)})'
 
     def __str__(self):
-        return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations},' \
-               f'samples {self[0].n_samples}, samplerate {self.samplerate}'
+        return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations}, ' \
+               f'samples {self[0].n_samples}, samplerate {self.samplerate}, ' \
+               f'SOFA convention {self.sofa_convention}'
 
     def __getitem__(self, key):
         return self.data.__getitem__(key)
@@ -154,6 +169,20 @@ class HRTF:
         return f
 
     @staticmethod
+    def _sofa_get_convention(f):
+        """
+        Returns the SOFA convention used in the file.
+
+        Arguments:
+            f (h5netcdf.core.File): data as returned by the `_sofa_load` method.
+        Returns:
+            (string): the SOFA convention. Supported conventions: SimpleFreeFieldHRIR.
+        """
+
+        sofa_convention = f.attrs['SOFAConventions'].decode('UTF-8')
+        return sofa_convention
+
+    @staticmethod
     def _sofa_get_samplerate(f):
         """
         Returns the sampling rate of the recordings. If the sampling rate is not given in Hz, the function assumes
@@ -170,6 +199,24 @@ class HRTF:
             return float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
         return 1000 * float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
+
+    @staticmethod
+    def _sofa_get_dtf_spectrum(f):
+        """
+        Returns the spectrum of the transfer functions. If the spectrum is not given in Hz, the function assumes
+        it is given in kHz and multiplies by 1000 to convert to Hz.
+
+        Arguments:
+            f (h5netcdf.core.File): data as returned by the `_sofa_load` method.
+        Returns:
+            (float): the sampling rate in Hz.
+        """
+        attr = dict(f.variables['N'].attrs.items())  # get attributes as dict
+        unit = attr['Units'].decode('UTF-8')  # extract and decode Units
+        if unit in ('hertz', 'Hz'):
+            return int(numpy.array(f.variables['N'], dtype='int')[0])
+        warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
+        return 1000 * int(numpy.array(f.variables['N'], dtype='int')[0])
 
     @staticmethod
     def _sofa_get_sourcepositions(f):
@@ -233,6 +280,25 @@ class HRTF:
         else:
             return numpy.array(f.variables['Data.IR'], dtype='float')
 
+    @staticmethod
+    def _sofa_get_DTF(f):
+        """
+        Returns an array of Fourier filters for all source positions.
+
+        Attributes:
+            f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
+        Returns:
+            (complex numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
+                which data was recorded and the second dimension represents the left and right ear.
+        """
+        datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
+        if datatype != 'TF':
+            warnings.warn('Non-TF data: ' + datatype)
+        else:
+            data_real = numpy.array(f.variables['Data.Real'], dtype='float')
+            data_imag = numpy.array(f.variables['Data.Imag'], dtype='float')
+            return numpy.vectorize(complex)(data_real, data_imag)
+
     def apply(self, source, sound, allow_resampling=True):
         """
         Apply a filter from the HRTF set to a sound. The sound will be recast as slab.Binaural. If the samplerates
@@ -246,20 +312,23 @@ class HRTF:
         Returns:
             (slab.Binaural): a spatialized copy of `sound`.
         """
-        from slab.binaural import Binaural  # inporting here to avoid circular import at top of class
+        from slab.binaural import Binaural  # importing here to avoid circular import at top of class
         if (sound.samplerate != self.samplerate) and (not allow_resampling):
             raise ValueError('Filter and sound must have same sampling rates.')
         original_rate = sound.samplerate
         sound = sound.resample(self.samplerate) # does nothing if samplerates are the same
-        left = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 0])
-        if sound.n_channels == 1:
-            right = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 1])
-        else:
-            right = scipy.signal.fftconvolve(sound[:, 1], self[source][:, 1])
-        convolved_sig = Signal([left, right], samplerate=self.samplerate)
-        out = copy.deepcopy(sound)
-        out.data = convolved_sig.data
-        return Binaural(out.resample(original_rate))
+        if self.sofa_convention == 'SimpleFreeFieldHRIR':
+            left = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 0])
+            if sound.n_channels == 1:
+                right = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 1])
+            else:
+                right = scipy.signal.fftconvolve(sound[:, 1], self[source][:, 1])
+            convolved_sig = Signal([left, right], samplerate=self.samplerate)
+            out = copy.deepcopy(sound)
+            out.data = convolved_sig.data
+            return Binaural(out.resample(original_rate))
+        if self.sofa_convention == 'SimpleFreeFieldHRTF':  # use Filter.apply with Fourier filters
+            return self[source].apply(sound)
 
     def elevations(self):
         """
@@ -694,3 +763,4 @@ class HRTF:
             kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
         return _kemar
+
