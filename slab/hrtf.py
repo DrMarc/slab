@@ -341,7 +341,7 @@ class HRTF:
     def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), n_bins=None, kind='waterfall',
                 linesep=20, xscale='linear', show=True, axis=None):
         """
-        Plot transfer functions of FIR filters at a list of source indices.
+        Plot transfer functions at a list of source indices.
 
         Arguments:
             ear (str): the ear from which data is plotted. Can be 'left', 'right', or 'both'.
@@ -387,8 +387,8 @@ class HRTF:
             fig = axis.figure
         if kind == 'waterfall':
             vlines = numpy.arange(0, len(sourceidx)) * linesep
-            for idx, s in enumerate(sourceidx):
-                filt = self[s]
+            for idx, source in enumerate(sourceidx):
+                filt = self[source]
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 axis.plot(freqs, h + vlines[idx],
                           linewidth=0.75, color='0.0', alpha=0.7)

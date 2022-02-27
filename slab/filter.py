@@ -240,8 +240,10 @@ class Filter(Signal):
         else:
             w = self.frequencies
             data = self.data[:, channels]
+            if numpy.iscomplex(data).any():
+                data = numpy.abs(data)  # euclidean distance of complex TF array
             data[data == 0] += numpy.finfo(float).eps
-            h = 20 * numpy.log10(data)
+            h = 20 * numpy.log10(data)  # square to obtain PSD
             if not n_bins == len(w):  # interpolate if necessary
                 w_interp = numpy.linspace(0, w[-1], n_bins)
                 h_interp = numpy.zeros((n_bins, len(channels)))
