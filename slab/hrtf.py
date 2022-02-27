@@ -95,6 +95,7 @@ class HRTF:
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             if self.convention == 'SimpleFreeFieldHRTF':
                 data = HRTF._sofa_get_DTF(f)
+                self.samplerate = HRTF._sofa_get_samplerate(f)  # redundant for TF data
                 self.frequencies = HRTF._sofa_get_frequencies(f)
                 for idx in range(data.shape[0]):
                     self.data.append(Filter(data[idx, :, :].T, fir=False))
