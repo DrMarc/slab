@@ -98,7 +98,7 @@ class HRTF:
                 self.samplerate = HRTF._sofa_get_samplerate(f)  # redundant for TF data
                 self.frequencies = HRTF._sofa_get_frequencies(f)
                 for idx in range(data.shape[0]):
-                    self.data.append(Filter(data[idx, :, :].T, self.frequencies, fir=False))
+                    self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=False))
             self.listener = HRTF._sofa_get_listener(f)
             self.sources = HRTF._sofa_get_sourcepositions(f)
         elif isinstance(data, Filter):
