@@ -146,10 +146,10 @@ class Filter(Signal):
             sound = slab.Sound.whitenoise()  # generate sound
             filtered_sound = filt.apply(sound)  # apply the filter to the sound
         """
-        if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
-            raise ValueError('Filter and sound have different sampling rates.')
         out = copy.deepcopy(sig)
         if self.fir:
+            if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
+                raise ValueError('Filter and sound have different sampling rates.')
             if scipy is False:
                 raise ImportError('Applying FIR filters requires Scipy.')
             if self.n_filters == sig.n_channels:  # filter each channel with corresponding filter

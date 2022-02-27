@@ -52,6 +52,7 @@ class HRTF:
         sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
         listener (None | list | dict): position of the listener, only relevant when not loading from .sofa file
         verbose (bool): print out items when loading .sofa files, defaults to False
+
     Attributes:
         .n_sources (int): The number of sources in the HRTF.
         .sources (array): spherical coordinates (azimuth, elevation, distance) of all sources.
@@ -61,8 +62,8 @@ class HRTF:
             is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
         .samplerate (float): sampling rate at which the HRTF data was acquired.
         .sofa_convention: The convention used in the SOFA file.
-    Example::
 
+    Example:
         import slab
         hrtf = slab.HRTF.kemar() # use inbuilt KEMAR data
         sourceidx = hrtf.cone_sources(20)
@@ -85,22 +86,18 @@ class HRTF:
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
             self.convention = HRTF._sofa_get_convention(f)
-            # todo:
-            #  for now, get samplerate from HRIR AND HRTF sofa files -
-            #  necessary for Filter.apply - regardless if filter object is a fourier filter;
-            #  HRTF.apply will use sample rate (dtf_spectrum*2) to determine whether the sound has to be resampled(?)
-            self.samplerate = HRTF._sofa_get_samplerate(f)
             self.data = []
             if self.convention == 'SimpleFreeFieldHRIR':
                 data = HRTF._sofa_get_FIR(f)
+                self.samplerate = HRTF._sofa_get_samplerate(f)
                 for idx in range(data.shape[0]):
                     # n_taps x 2 (left, right) filter
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             if self.convention == 'SimpleFreeFieldHRTF':
                 data = HRTF._sofa_get_DTF(f)
-                self.dtf_spectrum = HRTF._sofa_get_dtf_spectrum(f)
+                self.frequencies = HRTF._sofa_get_frequencies(f)
                 for idx in range(data.shape[0]):
-                    self.data.append(Filter(data.real[idx, :, :].T, self.samplerate, fir=False))
+                    self.data.append(Filter(data[idx, :, :].T, fir=False))
             self.listener = HRTF._sofa_get_listener(f)
             self.sources = HRTF._sofa_get_sourcepositions(f)
         elif isinstance(data, Filter):
@@ -201,9 +198,9 @@ class HRTF:
         return 1000 * float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
 
     @staticmethod
-    def _sofa_get_dtf_spectrum(f):
+    def _sofa_get_frequencies(f):
         """
-        Returns the spectrum of the transfer functions. If the spectrum is not given in Hz, the function assumes
+        Returns the frequencies of the transfer functions. If the spectrum is not given in Hz, the function assumes
         it is given in kHz and multiplies by 1000 to convert to Hz.
 
         Arguments:
@@ -313,11 +310,11 @@ class HRTF:
             (slab.Binaural): a spatialized copy of `sound`.
         """
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
-        if (sound.samplerate != self.samplerate) and (not allow_resampling):
-            raise ValueError('Filter and sound must have same sampling rates.')
-        original_rate = sound.samplerate
-        sound = sound.resample(self.samplerate) # does nothing if samplerates are the same
         if self.sofa_convention == 'SimpleFreeFieldHRIR':
+            if (sound.samplerate != self.samplerate) and (not allow_resampling):
+                raise ValueError('Filter and sound must have same sampling rates.')
+            original_rate = sound.samplerate
+            sound = sound.resample(self.samplerate)  # does nothing if samplerates are the same
             left = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 0])
             if sound.n_channels == 1:
                 right = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 1])
@@ -327,7 +324,7 @@ class HRTF:
             out = copy.deepcopy(sound)
             out.data = convolved_sig.data
             return Binaural(out.resample(original_rate))
-        if self.sofa_convention == 'SimpleFreeFieldHRTF':  # use Filter.apply with Fourier filters
+        if self.sofa_convention == 'SimpleFreeFieldHRTF':  # Filter.apply DTF as Fourier filter
             return self[source].apply(sound)
 
     def elevations(self):
