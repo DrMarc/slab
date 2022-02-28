@@ -244,6 +244,10 @@ class Filter(Signal):
                 data = numpy.abs(data)  # euclidean distance of complex TF array
             data[data == 0] += numpy.finfo(float).eps
             h = 20 * numpy.log10(data)  # square to obtain PSD
+            sos = scipy.signal.butter(N=3, Wn=500, btype='lp',
+                                      fs=self.samplerate, output='sos')
+            for chan in channels:  # apply digital high-pass filter to smooth transfer functions
+                h[:, chan] = scipy.signal.sosfilt(sos, h[:, chan])
             if not n_bins == len(w):  # interpolate if necessary
                 w_interp = numpy.linspace(0, w[-1], n_bins)
                 h_interp = numpy.zeros((n_bins, len(channels)))
