@@ -246,8 +246,8 @@ class Filter(Signal):
             h = 20 * numpy.log10(data)  # square to obtain PSD
             sos = scipy.signal.butter(N=3, Wn=500, btype='lp',
                                       fs=self.samplerate, output='sos')
-            for chan in channels:  # apply digital high-pass filter to smooth transfer functions
-                h[:, chan] = scipy.signal.sosfilt(sos, h[:, chan])
+            for idx, _ in enumerate(channels):  # apply digital high-pass filter to smooth transfer functions
+                h[:, idx] = scipy.signal.sosfilt(sos, h[:, idx])
             if not n_bins == len(w):  # interpolate if necessary
                 w_interp = numpy.linspace(0, w[-1], n_bins)
                 h_interp = numpy.zeros((n_bins, len(channels)))
