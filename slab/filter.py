@@ -243,7 +243,8 @@ class Filter(Signal):
             if numpy.iscomplex(data).any():
                 data = numpy.abs(data)  # euclidean distance of complex TF array
             data[data == 0] += numpy.finfo(float).eps
-            h = 20 * numpy.log10(data)  # square to obtain PSD
+            h = 20 * numpy.log10(data)  # convert to decibel square to obtain PSD
+            # todo verify if this is the appropriate way
             sos = scipy.signal.butter(N=3, Wn=500, btype='lp',
                                       fs=self.samplerate, output='sos')
             for idx, _ in enumerate(channels):  # apply digital high-pass filter to smooth transfer functions
