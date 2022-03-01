@@ -386,7 +386,7 @@ class Sound(Signal):
         Returns:
             (slab.Sound): power law noise generated from the parameters with exponent alpha==1.
         """
-        return Sound.powerlawnoise(duration, 1, samplerate=samplerate, n_channels=n_channels)
+        return Sound.powerlawnoise(duration=duration, alpha=1, samplerate=samplerate, level=level, n_channels=n_channels)
 
     @staticmethod
     def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None, level=None, n_channels=1):
@@ -1101,7 +1101,10 @@ class Sound(Signal):
 
     def spectrum(self, low_cutoff=16, high_cutoff=None, log_power=True, axis=None, show=True):
         """
-        Compute the spectrum of the sound.
+        Compute the spectrum (power spectral density, PSD) of the sound. The PSD is the squared amplitude (power)
+        in each frequency bin returned by a Fourier transform of the signal, normalized by the width of the bins.
+        This is typically more useful than the Fourier amplitudes because the values do not depend on the length of
+        the signal.
 
         Arguments:
             low_cutoff (int | float):
@@ -1113,7 +1116,7 @@ class Sound(Signal):
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
         Returns:
             If show=False, returns `Z, freqs`, where `Z` is a 1D array of powers
-                and `freqs` are the corresponding frequencies.n
+                and `freqs` are the corresponding frequencies.
         """
         freqs = numpy.fft.rfftfreq(self.n_samples, d=1 / self.samplerate)
         sig_rfft = numpy.zeros((len(freqs), self.n_channels))

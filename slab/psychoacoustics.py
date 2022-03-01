@@ -153,7 +153,7 @@ class LoadSaveMixin:
         Returns:
             (bool): True if writing was successful.
         """
-        def default(i): return int(i) if isinstance(i, numpy.int64) else i  # helper for converting numpy arrays
+        def default(i): return int(i) if isinstance(i, (numpy.int64,numpy.int32)) else i  # helper for converting numpy arrays
         if isinstance(file_name, pathlib.Path):
             file_name = str(file_name)
         if (file_name is None) or (file_name == 'stdout'):
