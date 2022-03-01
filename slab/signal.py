@@ -61,6 +61,7 @@ class Signal:
             if numpy.iscomplex(data).any():
                 self.data = numpy.array(data, dtype='complex128')
             elif numpy.isreal(data).all():
+
                 self.data = numpy.array(data, dtype='float')
         elif isinstance(data, (list, tuple)):
             if all([hasattr(c, 'data') and hasattr(c, 'samplerate') for c in data]):  # all slab objects

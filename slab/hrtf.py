@@ -95,7 +95,7 @@ class HRTF:
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             if self.convention == 'SimpleFreeFieldHRTF':
                 data = HRTF._sofa_get_DTF(f)
-                self.samplerate = HRTF._sofa_get_samplerate(f)  # redundant for TF data
+                self.samplerate = HRTF._sofa_get_samplerate(f)  # redundant for TF data?
                 self.frequencies = HRTF._sofa_get_frequencies(f)
                 for idx in range(data.shape[0]):
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=False))
@@ -295,6 +295,7 @@ class HRTF:
         else:
             data_real = numpy.array(f.variables['Data.Real'], dtype='float')
             data_imag = numpy.array(f.variables['Data.Imag'], dtype='float')
+            #todo
             return numpy.vectorize(complex)(data_real, data_imag)
 
     def apply(self, source, sound, allow_resampling=True):
@@ -761,4 +762,3 @@ class HRTF:
             kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
         return _kemar
-
