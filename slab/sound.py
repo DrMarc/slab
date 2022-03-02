@@ -59,7 +59,7 @@ class Sound(Signal):
 
     Arguments:
         data ( str | pathlib.Path | numpy.ndarray | slab.Signal | list): Given a string or Path pointing to the
-            .wav file, the `data` and `samplerate` will be loaded from the file. Given and array, and instance of
+            .wav file, the `data` and `samplerate` will be loaded from the file. Given an array, and instance of
             a `Signal` or a list, the data will be passed to the super class (see documentation of slab.Signal).
         samplerate(int | float): must only be defined when creating a `Sound` from an array.
     Attributes:

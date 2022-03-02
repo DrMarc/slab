@@ -58,11 +58,7 @@ class Signal:
         if hasattr(data, 'samplerate') and samplerate is not None:
             warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
         if isinstance(data, numpy.ndarray):
-            if numpy.iscomplex(data).any():
-                self.data = numpy.array(data, dtype='complex128')
-            elif numpy.isreal(data).all():
-
-                self.data = numpy.array(data, dtype='float')
+            self.data = numpy.array(data, dtype='float')
         elif isinstance(data, (list, tuple)):
             if all([hasattr(c, 'data') and hasattr(c, 'samplerate') for c in data]):  # all slab objects
                 if not all(c.samplerate == data[0].samplerate for c in data):

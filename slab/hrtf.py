@@ -75,8 +75,6 @@ class HRTF:
                          doc='The number of sources in the HRTF.')
     n_elevations = property(fget=lambda self: len(self.elevations()),
                             doc='The number of elevations in the HRTF.')
-    sofa_convention = property(fget=lambda self: self.convention,
-                               doc='The convention used in the SOFA file.')
 
     def __init__(self, data, samplerate=None, sources=None, listener=None, verbose=False):
         if isinstance(data, str):
@@ -85,15 +83,15 @@ class HRTF:
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
-            self.convention = HRTF._sofa_get_convention(f)
+            self.datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
             self.data = []
-            if self.convention == 'SimpleFreeFieldHRIR':
+            if self.datatype == 'FIR':
                 data = HRTF._sofa_get_FIR(f)
                 self.samplerate = HRTF._sofa_get_samplerate(f)
                 for idx in range(data.shape[0]):
                     # n_taps x 2 (left, right) filter
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate))
-            if self.convention == 'SimpleFreeFieldHRTF':
+            if self.datatype == 'TF':
                 data = HRTF._sofa_get_DTF(f)
                 self.samplerate = HRTF._sofa_get_samplerate(f)  # redundant for TF data?
                 self.frequencies = HRTF._sofa_get_frequencies(f)
@@ -138,7 +136,7 @@ class HRTF:
     def __str__(self):
         return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations}, ' \
                f'samples {self[0].n_samples}, samplerate {self.samplerate}, ' \
-               f'SOFA convention {self.sofa_convention}'
+               f'datatype {self.datatype}'
 
     def __getitem__(self, key):
         return self.data.__getitem__(key)
@@ -165,20 +163,6 @@ class HRTF:
         if verbose:
             f.items()
         return f
-
-    @staticmethod
-    def _sofa_get_convention(f):
-        """
-        Returns the SOFA convention used in the file.
-
-        Arguments:
-            f (h5netcdf.core.File): data as returned by the `_sofa_load` method.
-        Returns:
-            (string): the SOFA convention. Supported conventions: SimpleFreeFieldHRIR.
-        """
-
-        sofa_convention = f.attrs['SOFAConventions'].decode('UTF-8')
-        return sofa_convention
 
     @staticmethod
     def _sofa_get_samplerate(f):
@@ -295,8 +279,7 @@ class HRTF:
         else:
             data_real = numpy.array(f.variables['Data.Real'], dtype='float')
             data_imag = numpy.array(f.variables['Data.Imag'], dtype='float')
-            #todo
-            return numpy.vectorize(complex)(data_real, data_imag)
+            return numpy.abs(numpy.vectorize(complex)(data_real, data_imag))
 
     def apply(self, source, sound, allow_resampling=True):
         """
@@ -312,7 +295,7 @@ class HRTF:
             (slab.Binaural): a spatialized copy of `sound`.
         """
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
-        if self.sofa_convention == 'SimpleFreeFieldHRIR':
+        if self.datatype == 'FIR':
             if (sound.samplerate != self.samplerate) and (not allow_resampling):
                 raise ValueError('Filter and sound must have same sampling rates.')
             original_rate = sound.samplerate
@@ -326,7 +309,7 @@ class HRTF:
             out = copy.deepcopy(sound)
             out.data = convolved_sig.data
             return Binaural(out.resample(original_rate))
-        if self.sofa_convention == 'SimpleFreeFieldHRTF':  # Filter.apply DTF as Fourier filter
+        if self.datatype == 'TF':  # Filter.apply DTF as Fourier filter
             return self[source].apply(sound)
 
     def elevations(self):
@@ -762,3 +745,4 @@ class HRTF:
             kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
         return _kemar
+

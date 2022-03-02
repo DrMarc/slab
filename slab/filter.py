@@ -146,10 +146,10 @@ class Filter(Signal):
             sound = slab.Sound.whitenoise()  # generate sound
             filtered_sound = filt.apply(sound)  # apply the filter to the sound
         """
+        if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
+            raise ValueError('Filter and sound have different sampling rates.')
         out = copy.deepcopy(sig)
         if self.fir:
-            if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
-                raise ValueError('Filter and sound have different sampling rates.')
             if scipy is False:
                 raise ImportError('Applying FIR filters requires Scipy.')
             if self.n_filters == sig.n_channels:  # filter each channel with corresponding filter
@@ -168,7 +168,7 @@ class Filter(Signal):
             else:
                 raise ValueError(
                     'Number of filters must equal number of sound channels, or either one of them must be equal to 1.')
-        else:  # FFT filter
+        else:  # FFT
             sig_rfft = numpy.fft.rfft(sig.data, axis=0)
             sig_freq_bins = numpy.fft.rfftfreq(sig.n_samples, d=1 / sig.samplerate)
             filt_freq_bins = self.frequencies
@@ -240,15 +240,8 @@ class Filter(Signal):
         else:
             w = self.frequencies
             data = self.data[:, channels]
-            if numpy.iscomplex(data).any():
-                data = numpy.abs(data)  # euclidean distance of complex TF array
             data[data == 0] += numpy.finfo(float).eps
             h = 20 * numpy.log10(data)  # convert to decibel (square to obtain PSD?)
-            # todo verify if this is the appropriate way
-            sos = scipy.signal.butter(N=3, Wn=500, btype='lp',
-                                      fs=self.samplerate, output='sos')
-            for idx, _ in enumerate(channels):  # apply digital high-pass filter to smooth transfer functions
-                h[:, idx] = scipy.signal.sosfilt(sos, h[:, idx])
             if not n_bins == len(w):  # interpolate if necessary
                 w_interp = numpy.linspace(0, w[-1], n_bins)
                 h_interp = numpy.zeros((n_bins, len(channels)))
