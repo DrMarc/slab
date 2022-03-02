@@ -168,7 +168,7 @@ class Filter(Signal):
             else:
                 raise ValueError(
                     'Number of filters must equal number of sound channels, or either one of them must be equal to 1.')
-        else:  # FFT
+        else:  # FFT filter
             sig_rfft = numpy.fft.rfft(sig.data, axis=0)
             sig_freq_bins = numpy.fft.rfftfreq(sig.n_samples, d=1 / sig.samplerate)
             filt_freq_bins = self.frequencies
@@ -241,7 +241,7 @@ class Filter(Signal):
             w = self.frequencies
             data = self.data[:, channels]
             data[data == 0] += numpy.finfo(float).eps
-            h = 20 * numpy.log10(data)  # convert to decibel (square to obtain PSD?)
+            h = 20 * numpy.log10(data)
             if not n_bins == len(w):  # interpolate if necessary
                 w_interp = numpy.linspace(0, w[-1], n_bins)
                 h_interp = numpy.zeros((n_bins, len(channels)))
