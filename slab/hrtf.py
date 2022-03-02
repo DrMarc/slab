@@ -61,8 +61,6 @@ class HRTF:
         .listener (dict): a dictionary containing the position of the listener ("pos"), the point which the listener
             is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
         .samplerate (float): sampling rate at which the HRTF data was acquired.
-        .sofa_convention: The convention used in the SOFA file.
-
     Example:
         import slab
         hrtf = slab.HRTF.kemar() # use inbuilt KEMAR data
