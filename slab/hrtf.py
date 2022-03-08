@@ -56,6 +56,7 @@ class HRTF:
         samplerate (None | float): rate at which the data was acquired, only relevant when not loading from .sofa file
         sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
         listener (None | list | dict): position of the listener, only relevant when not loading from .sofa file
+        datatype (None | string): type of HRTF data, can be FIR or TF
         verbose (bool): print out items when loading .sofa files, defaults to False
 
     Attributes:
@@ -123,13 +124,14 @@ class HRTF:
                 raise ValueError('Must specify samplerate when initialising HRTF from an array.')
             self.samplerate = samplerate
             if datatype is None:
-                raise ValueError('Must specify datatype (eg. FIR or TF) when initialising HRTF from an array.')
+                raise ValueError('Must specify datatype when initialising HRTF from an array.')
             if datatype == 'FIR':
                 fir = True
             elif datatype == 'TF':
                 fir = False
             else:
                 raise ValueError('Datatype must be FIR or TF.')
+            self.datatype = datatype
             self.data = []
             for idx in range(data.shape[0]):
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
