@@ -74,7 +74,7 @@ class HRTF:
     n_elevations = property(fget=lambda self: len(self.elevations()),
                             doc='The number of elevations in the HRTF.')
 
-    def __init__(self, data, samplerate=None, sources=None, listener=None, verbose=False):
+    def __init__(self, data, samplerate=None, sources=None, listener=None, datatype=None, verbose=False):
         if isinstance(data, str):
             if samplerate is not None:
                 raise ValueError('Cannot specify samplerate when initialising HRTF from a file.')
@@ -91,7 +91,7 @@ class HRTF:
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate))
             if self.datatype == 'TF':
                 data = HRTF._sofa_get_DTF(f)
-                self.samplerate = HRTF._sofa_get_samplerate(f)  # redundant for TF data?
+                self.samplerate = HRTF._sofa_get_samplerate(f)
                 self.frequencies = HRTF._sofa_get_frequencies(f)
                 for idx in range(data.shape[0]):
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=False))
@@ -113,13 +113,21 @@ class HRTF:
                 self.listener = [0, 0, 0]
             else:
                 self.listener = listener
-        elif isinstance(data, numpy.ndarray):  # should have shape (ind x taps x ear), 2 x n_taps filter (left right)
-            if samplerate is None:
+        elif isinstance(data, numpy.ndarray):
+            if samplerate is None:  # should have shape (ind x ear x taps), 2 x n_taps filter (left right)
                 raise ValueError('Must specify samplerate when initialising HRTF from an array.')
             self.samplerate = samplerate
+            if datatype is None:
+                raise ValueError('Must specify datatype (eg. FIR or TF) when initialising HRTF from an array.')
+            if datatype == 'FIR':
+                fir = True
+            elif datatype == 'TF':
+                fir = False
+            else:
+                raise ValueError('Datatype must be FIR or TF.')
             self.data = []
             for idx in range(data.shape[0]):
-                self.data.append(Filter(data[idx, :, :].T, self.samplerate))
+                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
             self.sources = sources
             if listener is None:
                 self.listener = [0, 0, 0]
@@ -399,7 +407,6 @@ class HRTF:
             divider = make_axes_locatable(axis)
             cax = divider.append_axes('right', size='5%', pad=0.05)
             fig.colorbar(contour, cax, orientation="vertical")
-
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
         axis.autoscale(tight=True)
@@ -744,3 +751,132 @@ class HRTF:
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
         return _kemar
 
+    @staticmethod
+    def estimate_hrtf(signal, recordings, sources):
+        """
+        Compute a set of HRTFs from in-ear recordings stored in the channels of a slab.Sound object
+        and an input signal. For each sound source, compute the DFT of left- and right-ear recordings
+        and divide by the DFT of the input signal to obtain the head related transfer function.
+
+        Arguments:
+            signal (slab.Signal | slab.Sound): the signal used to produce the in-ear recordings.
+            recordings (slab.Signal | slab.Sound): the in-ear recordings
+            sources (numpy.array): spherical coordinates (azimuth, elevation, distance) of all sources,
+                number and order of sources must match the recordings.
+
+        Returns:
+            (slab.HRTF): an HRTF object with the dimensions specified by the recordings and the source file.
+        """
+        if len(sources) != recordings.n_channels / 2:
+            raise ValueError('Number of sound sources must be equal to number of recordings.')
+        m = int(recordings.n_channels / 2)  # number of measurements
+        n = int(recordings.n_samples / 2 + 1)  # samples - frequencies in the transfer function
+        r = 2  # number of receivers (HRTFs measured for 2 ears)
+        hrtf_data = numpy.empty([m, r, n], dtype=complex) # store fft output [Measurements, Receivers, N_datapoints]
+        sig = signal.data[:, 0]
+        rec_data = numpy.empty([m, r, recordings.n_samples], dtype=float)  # store Sound.data
+        if not signal.samplerate == recordings.samplerate:
+            signal = signal.resample(recordings.samplerate)
+        if not signal.n_samples == recordings.n_samples:
+            sig_freq_bins = numpy.fft.rfftfreq(signal.n_samples, d=1 / signal.samplerate)
+            rec_freq_bins = numpy.fft.rfftfreq(recordings.n_samples, d=1 / recordings.samplerate)
+            sig_fft = numpy.interp(rec_freq_bins, sig_freq_bins, numpy.fft.rfft(sig))
+        else:
+            sig_fft = numpy.fft.rfft(sig)
+        for z in range(0, m * 2, 2):
+            source_idx = int(z / 2)  # indices to array with sofa dimensions (m, r, n)
+            channel_idx = [z, z + 1]  # pick data of left and right channels from Slab object
+            rec_data[source_idx] = recordings.data.T[channel_idx, :]
+            hrtf_data[source_idx] = [numpy.fft.rfft(rec_data[source_idx, 0]),
+                                     numpy.fft.rfft(rec_data[source_idx, 1])]
+            hrtf_data[source_idx] = hrtf_data[source_idx] / sig_fft
+        return HRTF(data=hrtf_data, samplerate=recordings.samplerate, sources=sources, datatype='TF')
+
+    def write_sofa(self, filename):
+        """
+        Save the HRTF as a SOFA.
+
+        Arguments:
+            filename (str | pathlib.Path): path, the file is written to.
+        """
+        if isinstance(filename, pathlib.Path):
+            filename = str(filename)
+        # Create SOFA file
+        if Path(filename).is_file():
+            Path(filename).unlink()
+        sofa = Dataset(filename, 'w', format='NETCDF4')
+        # ----------Dimensions----------#
+        m = self.n_sources  # number of measurements (= n_sources)
+        n = self[0].n_samples  # n_samples - frequencies of fourier filter or taps of FIR filter
+        r = 2  # number of receivers (HRTFs measured for 2 ears)
+        e = 1  # number of emitters (1 speaker per measurement)
+        i = 1  # always 1
+        c = 3  # number of dimensions in space (elevation, azimuth, radius)
+        # store complex fft output [Measurements, Receivers, N_datapoints]
+        sofa.createDimension('M', m)
+        sofa.createDimension('N', n)
+        sofa.createDimension('E', e)
+        sofa.createDimension('R', r)
+        sofa.createDimension('I', i)
+        sofa.createDimension('C', c)
+        # ----------Attributes----------#
+        sofa.DataType = self.datatype
+        sofa.RoomType = 'free field'
+        sofa.Conventions, sofa.Version = 'SOFA', '2.0'
+        if self.datatype == 'TF':
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '2.0'
+        elif self.datatype == 'FIR':
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '2.0'
+        sofa.APIName, sofa.APIVersion = 'pysofaconventions', '0.1'
+        sofa.AuthorContact, sofa.License = 'Leipzig University', 'PublicLicence'
+        sofa.ListenerShortName, sofa.Organization = 'sub01', 'Eurecat - UPF'
+        sofa.DateCreated, sofa.DateModified = time.ctime(time.time()), time.ctime(time.time())
+        sofa.Title, sofa.DatabaseName = 'sofa_title', 'UniLeipzig Freefield'
+        # ----------Variables----------#
+        listenerPositionVar = sofa.createVariable('ListenerPosition', 'f8', ('I', 'C'))
+        listenerPositionVar.Units = 'metre'
+        listenerPositionVar.Type = 'cartesian'
+        listenerPositionVar[:] = numpy.zeros(c)
+        receiverPositionVar = sofa.createVariable('ReceiverPosition', 'f8', ('R', 'C', 'I'))
+        receiverPositionVar.Units = 'metre'
+        receiverPositionVar.Type = 'cartesian'
+        receiverPositionVar[:] = numpy.zeros((r, c, i))
+        sourcePositionVar = sofa.createVariable('SourcePosition', 'f8', ('M', 'C'))
+        sourcePositionVar.Units = 'degree, degree, metre'
+        sourcePositionVar.Type = 'spherical'
+        sourcePositionVar[:] = self.sources  # array of speaker positions
+        emitterPositionVar = sofa.createVariable('EmitterPosition', 'f8', ('E', 'C', 'I'))
+        emitterPositionVar.Units = 'metre'
+        emitterPositionVar.Type = 'cartesian'
+        emitterPositionVar[:] = numpy.zeros((e, c, i))
+        listenerUpVar = sofa.createVariable('ListenerUp', 'f8', ('I', 'C'))
+        listenerUpVar.Units = 'metre'
+        listenerUpVar.Type = 'cartesian'
+        listenerUpVar[:] = numpy.asarray([0, 0, 1])
+        listenerViewVar = sofa.createVariable('ListenerView', 'f8', ('I', 'C'))
+        listenerViewVar.Units = 'metre'
+        listenerViewVar.Type = 'cartesian'
+        listenerViewVar[:] = numpy.asarray([0, 1, 0])
+        if self.datatype == 'TF':
+            dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
+            dataRealVar[:] = numpy.real(hrtf_data)
+            dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
+            dataImagVar[:] = numpy.imag(hrtf_data)
+            NVar = sofa.createVariable('N', 'f8', ('N'))
+            NVar.LongName = 'frequency'
+            NVar.Units = 'hertz'
+            NVar[:] = n
+        if self.datatype == 'FIR':
+            delayVar = rootgrp.createVariable('Data.Delay', 'f8', ('I', 'R'))
+            delay = np.zeros((i, r))
+            delayVar[:, :] = self.delay     # todo:
+            dataIRVar = rootgrp.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
+            dataIRVar.ChannelOrdering = 'acn'
+            dataIRVar.Normalization = 'sn3d'
+            dataIRVar[:] = np.random.rand(m, r, n)
+
+        samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', ('I'))
+        samplingRateVar.Units = 'hertz'
+        samplingRateVar[:] = r.samplerate
+        sofa.close()
+        return slab.HRTF(data=str(filepath))
