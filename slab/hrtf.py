@@ -871,7 +871,7 @@ class HRTF:
                 TF_data.append(idx.T)
             dataRealVar[:] = numpy.asarray(TF_data)
             dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
-            dataImagVar[:] = numpy.zeros(m, r, n)  # for internal use, store real data only
+            dataImagVar[:] = numpy.zeros((m, r, n))  # for internal use, store real data only
             NVar = sofa.createVariable('N', 'f8', ('N'))
             NVar.LongName = 'frequency'
             NVar.Units = 'hertz'
