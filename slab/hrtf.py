@@ -9,6 +9,7 @@ import pathlib
 import pickle
 import bz2
 import numpy
+import datetime
 try:
     import matplotlib
     from matplotlib import pyplot as plt
@@ -25,6 +26,10 @@ try:
     import h5netcdf
 except ImportError:
     h5netcdf = False
+try:
+    from netCDF4 import Dataset
+except ImportError:
+    Dataset = False
 try:
     import scipy.signal
     import scipy.spatial
@@ -238,7 +243,7 @@ class HRTF:
         """
         Returns dict with listeners positional information - used for plotting.
 
-        Attributes:
+        Arguments:
             f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
         Returns:
             (dict): position of the listener ("pos"), the point which the listener is fixating ("view")
@@ -256,7 +261,7 @@ class HRTF:
         """
         Returns an array of FIR filters for all source positions.
 
-        Attributes:
+        Arguments:
             f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
         Returns:
             (numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
@@ -273,7 +278,7 @@ class HRTF:
         """
         Returns an array of Fourier filters for all source positions.
 
-        Attributes:
+        Arguments:
             f (h5netcdf.core.File): data as returned by the `_sofa_load()` method.
         Returns:
             (complex numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
@@ -514,9 +519,9 @@ class HRTF:
         Get the transfer function from sources in the hrtf.
 
         Arguments:
-            sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method), for
-                which the transfer function is extracted.
-            n_bins (int): The number of frequency bins for each transfer function
+            sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method),
+                for which the transfer function is extracted.
+            n_bins (int): The number of frequency bins for each transfer function.
         Returns:
             (numpy.ndarray): 2-dimensional array where the first dimension represents the frequency bins and the
                 second dimension represents the sources.
@@ -752,15 +757,15 @@ class HRTF:
         return _kemar
 
     @staticmethod
-    def estimate_hrtf(signal, recordings, sources):
+    def estimate_hrtf(recordings, signal, sources):
         """
-        Compute a set of HRTFs from in-ear recordings stored in the channels of a slab.Sound object
+        Compute a set of transfer functions from in-ear recordings stored in the channels of a slab.Sound object
         and an input signal. For each sound source, compute the DFT of left- and right-ear recordings
         and divide by the DFT of the input signal to obtain the head related transfer function.
 
         Arguments:
             signal (slab.Signal | slab.Sound): the signal used to produce the in-ear recordings.
-            recordings (slab.Signal | slab.Sound): the in-ear recordings
+            recordings (slab.Signal | slab.Sound): the in-ear recordings.
             sources (numpy.array): spherical coordinates (azimuth, elevation, distance) of all sources,
                 number and order of sources must match the recordings.
 
@@ -794,17 +799,18 @@ class HRTF:
 
     def write_sofa(self, filename):
         """
-        Save the HRTF as a SOFA.
+        Save the HRTF data to a SOFA file.
 
         Arguments:
             filename (str | pathlib.Path): path, the file is written to.
         """
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
-        # Create SOFA file
-        if Path(filename).is_file():
-            Path(filename).unlink()
-        sofa = Dataset(filename, 'w', format='NETCDF4')
+        if pathlib.Path(filename).is_file():
+            pathlib.Path(filename).unlink()  # overwrite if filename already exists
+        if Dataset is False:
+            raise ImportError('Writing sofa files requires netCDF4.')
+        sofa = Dataset(filename, 'w', format='NETCDF4')         # Create SOFA file
         # ----------Dimensions----------#
         m = self.n_sources  # number of measurements (= n_sources)
         n = self[0].n_samples  # n_samples - frequencies of fourier filter or taps of FIR filter
@@ -812,7 +818,6 @@ class HRTF:
         e = 1  # number of emitters (1 speaker per measurement)
         i = 1  # always 1
         c = 3  # number of dimensions in space (elevation, azimuth, radius)
-        # store complex fft output [Measurements, Receivers, N_datapoints]
         sofa.createDimension('M', m)
         sofa.createDimension('N', n)
         sofa.createDimension('E', e)
@@ -830,7 +835,7 @@ class HRTF:
         sofa.APIName, sofa.APIVersion = 'pysofaconventions', '0.1'
         sofa.AuthorContact, sofa.License = 'Leipzig University', 'PublicLicence'
         sofa.ListenerShortName, sofa.Organization = 'sub01', 'Eurecat - UPF'
-        sofa.DateCreated, sofa.DateModified = time.ctime(time.time()), time.ctime(time.time())
+        sofa.DateCreated, sofa.DateModified = str(datetime.datetime.now()), str(datetime.datetime.now())
         sofa.Title, sofa.DatabaseName = 'sofa_title', 'UniLeipzig Freefield'
         # ----------Variables----------#
         listenerPositionVar = sofa.createVariable('ListenerPosition', 'f8', ('I', 'C'))
@@ -859,9 +864,12 @@ class HRTF:
         listenerViewVar[:] = numpy.asarray([0, 1, 0])
         if self.datatype == 'TF':
             dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
-            dataRealVar[:] = numpy.real(hrtf_data)
+            TF_data = []
+            for idx in numpy.asarray(self[:]):
+                TF_data.append(idx.T)
+            dataRealVar[:] = numpy.asarray(TF_data)
             dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
-            dataImagVar[:] = numpy.imag(hrtf_data)
+            dataImagVar[:] = numpy.zeros(m, r, n)  # for internal use, store real data only
             NVar = sofa.createVariable('N', 'f8', ('N'))
             NVar.LongName = 'frequency'
             NVar.Units = 'hertz'
@@ -873,8 +881,11 @@ class HRTF:
             dataIRVar = sofa.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
             dataIRVar.ChannelOrdering = 'acn'
             dataIRVar.Normalization = 'sn3d'
-            dataIRVar[:] = numpy.random.rand(m, r, n)
+            IR_data = []
+            for idx in numpy.asarray(self[:]):
+                IR_data.append(idx.T)
+            dataIRVar[:] = numpy.asarray(IR_data)
         samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', ('I'))
         samplingRateVar.Units = 'hertz'
-        samplingRateVar[:] = r.samplerate
+        samplingRateVar[:] = self.samplerate
         sofa.close()
