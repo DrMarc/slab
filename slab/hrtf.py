@@ -770,9 +770,9 @@ class HRTF:
         if len(sources) != recordings.n_channels / 2:
             raise ValueError('Number of sound sources must be equal to number of recordings.')
         m = int(recordings.n_channels / 2)  # number of measurements
-        n = int(recordings.n_samples / 2 + 1)  # samples - frequencies in the transfer function
         r = 2  # number of receivers (HRTFs measured for 2 ears)
-        hrtf_data = numpy.empty([m, r, n], dtype=complex) # store fft output [Measurements, Receivers, N_datapoints]
+        n = int(recordings.n_samples / 2 + 1)  # samples - frequencies in the transfer function
+        hrtf_data = numpy.empty([m, r, n], dtype=complex)  # store fft output [Measurements, Receivers, N_datapoints]
         sig = signal.data[:, 0]
         rec_data = numpy.empty([m, r, recordings.n_samples], dtype=float)  # store Sound.data
         if not signal.samplerate == recordings.samplerate:
@@ -790,7 +790,7 @@ class HRTF:
             hrtf_data[source_idx] = [numpy.fft.rfft(rec_data[source_idx, 0]),
                                      numpy.fft.rfft(rec_data[source_idx, 1])]
             hrtf_data[source_idx] = hrtf_data[source_idx] / sig_fft
-        return HRTF(data=hrtf_data, samplerate=recordings.samplerate, sources=sources, datatype='TF')
+        return HRTF(data=numpy.abs(hrtf_data), samplerate=recordings.samplerate, sources=sources, datatype='TF')
 
     def write_sofa(self, filename):
         """
@@ -867,16 +867,14 @@ class HRTF:
             NVar.Units = 'hertz'
             NVar[:] = n
         if self.datatype == 'FIR':
-            delayVar = rootgrp.createVariable('Data.Delay', 'f8', ('I', 'R'))
-            delay = np.zeros((i, r))
-            delayVar[:, :] = self.delay     # todo:
-            dataIRVar = rootgrp.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
+            delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
+            delay = numpy.zeros((i, r))
+            delayVar[:, :] = delay
+            dataIRVar = sofa.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
             dataIRVar.ChannelOrdering = 'acn'
             dataIRVar.Normalization = 'sn3d'
-            dataIRVar[:] = np.random.rand(m, r, n)
-
+            dataIRVar[:] = numpy.random.rand(m, r, n)
         samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', ('I'))
         samplingRateVar.Units = 'hertz'
         samplingRateVar[:] = r.samplerate
         sofa.close()
-        return slab.HRTF(data=str(filepath))
