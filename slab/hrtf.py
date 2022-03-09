@@ -812,7 +812,7 @@ class HRTF:
             pathlib.Path(filename).unlink()  # overwrite if filename already exists
         if Dataset is False:
             raise ImportError('Writing sofa files requires netCDF4.')
-        sofa = Dataset(filename, 'w', format='NETCDF4')         # Create SOFA file
+        sofa = Dataset(filename + '.sofa', 'w', format='NETCDF4')         # Create SOFA file
         # ----------Dimensions----------#
         m = self.n_sources  # number of measurements (= n_sources)
         n = self[0].n_samples  # n_samples - frequencies of fourier filter or taps of FIR filter
