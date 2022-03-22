@@ -27,7 +27,7 @@ def test_create_hrtf():
         data = numpy.dstack(data)
         data = numpy.transpose(data, axes=(2, 0, 1))
         sources = hrtf1.sources[idx]
-        hrtf = slab.HRTF(data=data, sources=sources, samplerate=hrtf.samplerate)
+        hrtf = slab.HRTF(data=data, sources=sources, samplerate=hrtf.samplerate, datatype='FIR')
         assert hrtf.n_sources == data.shape[0]
         assert hrtf[0].n_samples == data.shape[1]
         assert hrtf[0].n_filters == data.shape[2]
