@@ -614,7 +614,7 @@ class HRTF:
             filt = filt.delay(avg_itd / self.samplerate)
         data = filt.data[numpy.newaxis, ...]  # get into correct shape (idx, taps, ear)
         source_loc = numpy.array([[azimuth, elevation, r]])
-        out = HRTF(data, sources=source_loc, listener=self.listener, samplerate=self.samplerate)
+        out = HRTF(data, sources=source_loc, listener=self.listener, samplerate=self.samplerate, datatype='FIR')
         return out
 
     @staticmethod
