@@ -286,7 +286,7 @@ class HRTF:
             (complex numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
                 which data was recorded and the second dimension represents the left and right ear.
         """
-        datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
+        datatype = f.attrs['DataType']  # get data type
         if datatype != 'TF':
             warnings.warn('Non-TF data: ' + datatype)
         else:
