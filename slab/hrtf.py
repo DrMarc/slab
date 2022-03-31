@@ -851,7 +851,7 @@ class HRTF:
         sourcePositionVar = sofa.createVariable('SourcePosition', 'f8', ('M', 'C'))
         sourcePositionVar.Units = 'degree, degree, metre'
         sourcePositionVar.Type = 'spherical'
-        sourcePositionVar[:] = self.sources  # array of speaker positions
+        sourcePositionVar[:] = self.sources[:, 1:] # array of speaker positions
         emitterPositionVar = sofa.createVariable('EmitterPosition', 'f8', ('E', 'C', 'I'))
         emitterPositionVar.Units = 'metre'
         emitterPositionVar.Type = 'cartesian'
