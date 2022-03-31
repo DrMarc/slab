@@ -87,7 +87,7 @@ class HRTF:
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
-            self.datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
+            self.datatype = f.attrs['DataType']  # get data type
             self.data = []
             if self.datatype == 'FIR':
                 data = HRTF._sofa_get_FIR(f)
