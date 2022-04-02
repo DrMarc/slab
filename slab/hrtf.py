@@ -87,7 +87,7 @@ class HRTF:
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
-            self.datatype = f.attrs['DataType']  # get data type
+            self.datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
             self.data = []
             if self.datatype == 'FIR':
                 data = HRTF._sofa_get_FIR(f)
@@ -189,7 +189,7 @@ class HRTF:
             (float): the sampling rate in Hz.
         """
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
-        unit = attr['Units']  # extract and decode Units
+        unit = attr['Units'].decode('UTF-8')  # extract and decode Units
         if unit in ('hertz', 'Hz'):
             return float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
@@ -207,7 +207,7 @@ class HRTF:
             (float): the sampling rate in Hz.
         """
         attr = dict(f.variables['N'].attrs.items())  # get attributes as dict
-        unit = attr['Units']  # extract and decode Units
+        unit = attr['Units'].decode('UTF-8')  # extract and decode Units
         if unit in ('hertz', 'Hz'):
             return int(numpy.array(f.variables['N'], dtype='int')[0])
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
@@ -269,7 +269,7 @@ class HRTF:
             (numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
                 which data was recorded and the second dimension represents the left and right ear.
         """
-        datatype = f.attrs['DataType']  # get data type
+        datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
         if datatype != 'FIR':
             warnings.warn('Non-FIR data: ' + datatype)
         else:
@@ -286,7 +286,7 @@ class HRTF:
             (complex numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
                 which data was recorded and the second dimension represents the left and right ear.
         """
-        datatype = f.attrs['DataType']  # get data type
+        datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
         if datatype != 'TF':
             warnings.warn('Non-TF data: ' + datatype)
         else:
@@ -538,7 +538,7 @@ class HRTF:
     def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
         """
         Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
-        3 closest HRTFs in the set is computed i>qasd5f67zh8ujklpüöä-+üöploi5q1 ^2´´0i8u7z6t5r4e3wn the spectral domain with barycentric weights. The resulting filter
+        3 closest HRTFs in the set is computed in the spectral domain with barycentric weights. The resulting filter
         values vary smoothly with changes in azimuth and elevation. The fidelity of the interpolated filter decreases
         with increasing distance of the closest sources and should only be regarded as appropriate approximation when
         the contributing filters are less than 20˚ away.
