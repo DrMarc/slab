@@ -772,22 +772,24 @@ class HRTF:
         Returns:
             (slab.HRTF): an HRTF object with the dimensions specified by the recordings and the source file.
         """
+        filt = Filter.band(frequency=200, samplerate=recordings.samplerate)
+        recordings = filt.apply(recordings)  # bandpass filter the recordings
+        recordings.data -= numpy.mean(recordings.data, axis=0)  # remove DC component in FFT output
         if len(sources) != recordings.n_channels / 2:
             raise ValueError('Number of sound sources must be equal to number of recordings.')
         m = int(recordings.n_channels / 2)  # number of measurements
         r = 2  # number of receivers (HRTFs measured for 2 ears)
         n = int(recordings.n_samples / 2 + 1)  # samples - frequencies in the transfer function
         hrtf_data = numpy.empty([m, r, n], dtype=complex)  # store fft output [Measurements, Receivers, N_datapoints]
-        sig = signal.data[:, 0]
         rec_data = numpy.empty([m, r, recordings.n_samples], dtype=float)  # store Sound.data
         if not signal.samplerate == recordings.samplerate:
             signal = signal.resample(recordings.samplerate)
         if not signal.n_samples == recordings.n_samples:
             sig_freq_bins = numpy.fft.rfftfreq(signal.n_samples, d=1 / signal.samplerate)
             rec_freq_bins = numpy.fft.rfftfreq(recordings.n_samples, d=1 / recordings.samplerate)
-            sig_fft = numpy.interp(rec_freq_bins, sig_freq_bins, numpy.fft.rfft(sig))
+            sig_fft = numpy.interp(rec_freq_bins, sig_freq_bins, numpy.fft.rfft(signal.data[:, 0]))
         else:
-            sig_fft = numpy.fft.rfft(sig)
+            sig_fft = numpy.fft.rfft(signal.data[:, 0])
         for z in range(0, m * 2, 2):
             source_idx = int(z / 2)  # indices to array with sofa dimensions (m, r, n)
             channel_idx = [z, z + 1]  # pick data of left and right channels from Slab object
