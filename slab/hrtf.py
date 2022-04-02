@@ -225,7 +225,7 @@ class HRTF:
         """
         # spherical coordinates, (azi,ele,radius), azi 0..360 (0=front, 90=left, 180=back), ele -90..90
         attr = dict(f.variables['SourcePosition'].attrs.items())  # get attributes as dict
-        unit = attr['Units']..decode('UTF-8').split(',')[0]  # extract and decode Units
+        unit = attr['Units'].decode('UTF-8').split(',')[0]  # extract and decode Units
         if unit in ('degree', 'degrees', 'deg'):
             return numpy.array(f.variables['SourcePosition'], dtype='float')
         if unit in ('meter', 'meters', 'metre', 'metres', 'm'):
