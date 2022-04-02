@@ -774,8 +774,8 @@ class HRTF:
         Returns:
             (slab.HRTF): an HRTF object with the dimensions specified by the recordings and the source file.
         """
-        filt = Filter.band(frequency=200, samplerate=recordings.samplerate)
-        recordings = filt.apply(recordings)  # bandpass filter the recordings
+        filt = Filter.band(frequency=(200, 16000), kind='bp', samplerate=recordings.samplerate)
+        recordings = filt.apply(recordings)  # bandpass filter recordings
         recordings.data -= numpy.mean(recordings.data, axis=0)  # remove DC component in FFT output
         if len(sources) != recordings.n_channels / 2:
             raise ValueError('Number of sound sources must be equal to number of recordings.')
