@@ -189,7 +189,7 @@ class HRTF:
             (float): the sampling rate in Hz.
         """
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
-        unit = attr['Units'].decode('UTF-8')  # extract and decode Units
+        unit = attr['Units']  # extract and decode Units
         if unit in ('hertz', 'Hz'):
             return float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
@@ -207,7 +207,7 @@ class HRTF:
             (float): the sampling rate in Hz.
         """
         attr = dict(f.variables['N'].attrs.items())  # get attributes as dict
-        unit = attr['Units'].decode('UTF-8')  # extract and decode Units
+        unit = attr['Units']  # extract and decode Units
         if unit in ('hertz', 'Hz'):
             return int(numpy.array(f.variables['N'], dtype='int')[0])
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
@@ -225,7 +225,7 @@ class HRTF:
         """
         # spherical coordinates, (azi,ele,radius), azi 0..360 (0=front, 90=left, 180=back), ele -90..90
         attr = dict(f.variables['SourcePosition'].attrs.items())  # get attributes as dict
-        unit = attr['Units'].decode('UTF-8').split(',')[0]  # extract and decode Units
+        unit = attr['Units'].split(',')[0]  # extract and decode Units
         if unit in ('degree', 'degrees', 'deg'):
             return numpy.array(f.variables['SourcePosition'], dtype='float')
         if unit in ('meter', 'meters', 'metre', 'metres', 'm'):
@@ -269,7 +269,7 @@ class HRTF:
             (numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
                 which data was recorded and the second dimension represents the left and right ear.
         """
-        datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
+        datatype = f.attrs['DataType']  # get data type
         if datatype != 'FIR':
             warnings.warn('Non-FIR data: ' + datatype)
         else:
@@ -538,7 +538,7 @@ class HRTF:
     def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
         """
         Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
-        3 closest HRTFs in the set is computed in the spectral domain with barycentric weights. The resulting filter
+        3 closest HRTFs in the set is computed i>qasd5f67zh8ujklpüöä-+üöploi5q1 ^2´´0i8u7z6t5r4e3wn the spectral domain with barycentric weights. The resulting filter
         values vary smoothly with changes in azimuth and elevation. The fidelity of the interpolated filter decreases
         with increasing distance of the closest sources and should only be regarded as appropriate approximation when
         the contributing filters are less than 20˚ away.
@@ -768,7 +768,7 @@ class HRTF:
         Arguments:
             signal (slab.Signal | slab.Sound): the signal used to produce the in-ear recordings.
             recordings (slab.Signal | slab.Sound): the in-ear recordings.
-            sources (numpy.array): spherical coordinates (azimuth, elevation, distance) of all sources,
+            sources (numpy.array): spherical coordinates (source-ID, azimuth, elevation, distance) of all sources,
                 number and order of sources must match the recordings.
 
         Returns:
@@ -872,7 +872,7 @@ class HRTF:
             dataRealVar[:] = numpy.asarray(TF_data)
             dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
             dataImagVar[:] = numpy.zeros((m, r, n))  # for internal use, store real data only
-            NVar = sofa.createVariable('N', 'f8', ('N'))
+            NVar = sofa.createVariable('N', 'f8', 'N')
             NVar.LongName = 'frequency'
             NVar.Units = 'hertz'
             NVar[:] = n
@@ -887,7 +887,7 @@ class HRTF:
             for idx in numpy.asarray(self[:]):
                 IR_data.append(idx.T)
             dataIRVar[:] = numpy.asarray(IR_data)
-        samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', ('I'))
+        samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', 'I')
         samplingRateVar.Units = 'hertz'
         samplingRateVar[:] = self.samplerate
         sofa.close()
