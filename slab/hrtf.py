@@ -331,7 +331,7 @@ class HRTF:
         Returns:
              (list): a sorted list of source elevations.
         """
-        return sorted(list(set(hrtf.sources[:, 1])))
+        return sorted(list(set(numpy.round(self.sources[:, 1]))))
 
     def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), n_bins=None, kind='waterfall',
                 linesep=20, xscale='linear', show=True, axis=None):
@@ -464,7 +464,7 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0):
+    def cone_sources(self, cone=0, polar_system='single'):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
@@ -472,6 +472,8 @@ class HRTF:
 
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
+            polar_system (str): Coordinate system in which polar coordinates are provided. Can be 'single' for
+                single pole or 'double' for double (interaural) polar coordinates.
         Returns:
             (list): elements of the list are the indices of sound sources on the frontal half of the cone.
         Examples::
@@ -483,11 +485,17 @@ class HRTF:
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot
         """
         cone = numpy.sin(numpy.deg2rad(cone))
-        azimuth = numpy.deg2rad(self.sources[:, 0])
-        elevation = numpy.deg2rad(90 - self.sources[:, 1])
         # the points defined by x and y are the source locations projected onto the azimuth plane
-        x = numpy.sin(elevation) * numpy.cos(azimuth)
-        y = numpy.sin(elevation) * numpy.sin(azimuth)
+        if polar_system == 'single':
+            azimuth = numpy.deg2rad(-self.sources[:, 0])
+            elevation = numpy.deg2rad(90 - self.sources[:, 1])
+            x = numpy.sin(elevation) * numpy.cos(azimuth)
+            y = numpy.sin(elevation) * numpy.sin(azimuth)
+        elif polar_system == 'double':
+            azimuth = numpy.deg2rad(self.sources[:, 0])
+            elevation = numpy.deg2rad(self.sources[:, 1])
+            x = numpy.cos(azimuth) * numpy.cos(elevation)
+            y = numpy.sin(azimuth)
         eles = self.elevations()
         out = []
         for ele in eles:  # for each elevation, find the source closest to the reference y
@@ -533,7 +541,7 @@ class HRTF:
             tfs[:, idx] = jwd.flatten()
         return tfs
 
-    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
+    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False, polar_system='single'):
         """
         Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
         3 closest HRTFs in the set is computed in the spectral domain with barycentric weights. The resulting filter
@@ -553,9 +561,9 @@ class HRTF:
         """
         from slab.binaural import Binaural  # inporting here to avoid circular import at top of class
         # spherical to cartesian
-        coords = self.cartesian_source_locations()
+        coords = self.cartesian_source_locations(None, polar_system)
         r = self.sources[:, 2].mean()
-        target = self.cartesian_source_locations((azimuth, elevation, r))
+        target = self.cartesian_source_locations((azimuth, elevation, r), polar_system)
         # compute distances from target direction
         distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
         if method == 'nearest':
@@ -642,7 +650,7 @@ class HRTF:
         tot = numpy.sqrt(p * (p-d12) * (p-d13) * (p-d23))
         return a.sum() - tot, a / a.sum()  # normalize by total area = barycentric weights of sources in idx_triangle
 
-    def cartesian_source_locations(self, coordinates=None):
+    def cartesian_source_locations(self, coordinates=None, polar_system='single'):
         """
         Convert spherical coordinates of source locations in an HRTF object into cartesian coordinates useful for
         plotting and distance calculations. If you supply a list or array of coordinates, then those are converted.
@@ -650,6 +658,8 @@ class HRTF:
         Arguments:
             coodrdinates (None | numpy.ndarray): source locations in spherical coordinates. If None use the object's
                 coordinate array (self.sources).
+            polar_system (str): Coordinate system in which polar coordinates are provided. Can be 'single' for single
+                polar or 'double' for double (interaural-) polar coordinates.
         Returns:
             (numpy.ndarray): the source locations in cartesian coordinates as (n x 3) array
         """
@@ -659,13 +669,28 @@ class HRTF:
             coordinates = numpy.array(coordinates)
         if len(coordinates.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
             coordinates = coordinates[numpy.newaxis, ...]
-        azimuths = numpy.deg2rad(coordinates[:, 0])
-        elevations = numpy.deg2rad(90 - coordinates[:, 1])
         r = coordinates[:, 2]
-        out = numpy.empty(coordinates.shape)
-        out[:, 0] = r * numpy.sin(elevations) * numpy.cos(azimuths)
-        out[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
-        out[:, 2] = r * numpy.cos(elevations)
+        if isinstance(polar_system, str):
+            if polar_system == 'single':
+                azimuths = numpy.deg2rad(coordinates[:, 0])
+                elevations = numpy.deg2rad(90 - coordinates[:, 1])
+                out = numpy.empty(coordinates.shape)
+                out[:, 0] = r * numpy.sin(elevations) * numpy.cos(azimuths)
+                out[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
+                out[:, 2] = r * numpy.cos(elevations)
+            elif polar_system == 'double':
+                azimuths = numpy.deg2rad(self.sources[:, 0])
+                elevations = numpy.deg2rad(self.sources[:, 1])
+                x = numpy.cos(azimuths) * numpy.cos(elevations)
+                y = numpy.sin(azimuths)
+                out = numpy.empty(coordinates.shape)
+                out[:, 0] = r * numpy.cos(azimuths) * numpy.cos(elevations)
+                out[:, 1] = r * numpy.sin(azimuths)
+                out[:, 2] = r * numpy.cos(azimuths) * numpy.sin(elevations)
+            else:
+                raise ValueError('Coordinate system must be single or double.')
+        else:
+            raise ValueError('Coordinate system must be a string')
         return out
 
     def vsi(self, sources=None, equalize=True):
@@ -699,7 +724,7 @@ class HRTF:
                 n += 1
         return 1 - sum_corr / n
 
-    def plot_sources(self, idx=None, show=True, label=False, axis=None):
+    def plot_sources(self, idx=None, show=True, label=False, axis=None, polar_system='single'):
         """
         Plot source locations in 3D.
 
@@ -718,7 +743,7 @@ class HRTF:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
             ax = axis
-        coords = self.cartesian_source_locations()
+        coords = self.cartesian_source_locations(None, polar_system)
         ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='b', marker='.')
         if label and idx is None:
             for i in range(coords.shape[0]):
