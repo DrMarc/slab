@@ -464,7 +464,7 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0, polar_system='single'):
+    def cone_sources(self, cone=0, polar_system='single', full_cone=False):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
@@ -499,12 +499,21 @@ class HRTF:
         eles = self.elevations()
         out = []
         for ele in eles:  # for each elevation, find the source closest to the reference y
-            subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x >= 0))
-            cmin = numpy.min(numpy.abs(y[subidx]-cone))
-            if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
-                idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
-                    numpy.abs(y-cone) == cmin))
-                out.append(idx[0])
+            if full_cone == False:  # only use sources in front of the listener
+                subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x >= 0))
+                cmin = numpy.min(numpy.abs(y[subidx]-cone))
+                if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
+                    idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
+                        numpy.abs(y-cone) == cmin))
+                    out.append(idx[0])
+            else:  # include cone sources behind listener
+                subidx, = numpy.where(numpy.round(self.sources[:, 1]) == ele)
+                cmin = numpy.partition(numpy.abs(y[subidx]-cone), 1)[:2]  # find 2 closest sources
+                for c in cmin:
+                    if c < 0.05:
+                        idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
+                            numpy.abs(y-cone) == c))
+                        out.append(idx[0])
         return sorted(out, key=lambda x: self.sources[x, 1])
 
     def elevation_sources(self, elevation=0):
