@@ -331,7 +331,7 @@ class HRTF:
         Returns:
              (list): a sorted list of source elevations.
         """
-        return sorted(list(set(numpy.round(self.sources[:, 1]))))
+        return sorted(list(set(hrtf.sources[:, 1])))
 
     def plot_tf(self, sourceidx, ear='left', xlim=(1000, 18000), n_bins=None, kind='waterfall',
                 linesep=20, xscale='linear', show=True, axis=None):
