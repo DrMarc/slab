@@ -87,7 +87,7 @@ class HRTF:
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
-            self.datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
+            self.datatype = f.attrs['DataType']  # get data type
             self.data = []
             if self.datatype == 'FIR':
                 data = HRTF._sofa_get_FIR(f)
@@ -189,7 +189,7 @@ class HRTF:
             (float): the sampling rate in Hz.
         """
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
-        unit = attr['Units'].decode('UTF-8')  # extract and decode Units
+        unit = attr['Units']  # extract and decode Units
         if unit in ('hertz', 'Hz'):
             return float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
@@ -207,7 +207,7 @@ class HRTF:
             (float): the sampling rate in Hz.
         """
         attr = dict(f.variables['N'].attrs.items())  # get attributes as dict
-        unit = attr['Units'].decode('UTF-8')  # extract and decode Units
+        unit = attr['Units']  # extract and decode Units
         if unit in ('hertz', 'Hz'):
             return int(numpy.array(f.variables['N'], dtype='int')[0])
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
@@ -225,7 +225,7 @@ class HRTF:
         """
         # spherical coordinates, (azi,ele,radius), azi 0..360 (0=front, 90=left, 180=back), ele -90..90
         attr = dict(f.variables['SourcePosition'].attrs.items())  # get attributes as dict
-        unit = attr['Units'].decode('UTF-8').split(',')[0]  # extract and decode Units
+        unit = attr['Units'].split(',')[0]  # extract and decode Units
         if unit in ('degree', 'degrees', 'deg'):
             return numpy.array(f.variables['SourcePosition'], dtype='float')
         if unit in ('meter', 'meters', 'metre', 'metres', 'm'):
@@ -269,7 +269,7 @@ class HRTF:
             (numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
                 which data was recorded and the second dimension represents the left and right ear.
         """
-        datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
+        datatype = f.attrs['DataType']  # get data type
         if datatype != 'FIR':
             warnings.warn('Non-FIR data: ' + datatype)
         else:
@@ -286,7 +286,7 @@ class HRTF:
             (complex numpy.ndarray): a 3-dimensional array where the first dimension represents the number of sources from
                 which data was recorded and the second dimension represents the left and right ear.
         """
-        datatype = f.attrs['DataType'].decode('UTF-8')  # get data type
+        datatype = f.attrs['DataType']  # get data type
         if datatype != 'TF':
             warnings.warn('Non-TF data: ' + datatype)
         else:
