@@ -56,6 +56,7 @@ class HRTF:
         samplerate (None | float): rate at which the data was acquired, only relevant when not loading from .sofa file
         sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
         listener (None | list | dict): position of the listener, only relevant when not loading from .sofa file
+        fir (bool): whether the HRTF filter bank are finite impulse filters (True) or a Fourier filters (False)
         verbose (bool): print out items when loading .sofa files, defaults to False
 
     Attributes:
@@ -79,22 +80,28 @@ class HRTF:
     n_elevations = property(fget=lambda self: len(self.elevations()),
                             doc='The number of elevations in the HRTF.')
 
-    def __init__(self, data, samplerate=None, sources=None, listener=None, datatype=None, verbose=False):
+    def __init__(self, data, samplerate=None, sources=None, listener=None, fir=True, verbose=False):
         if isinstance(data, str):
             if samplerate is not None:
                 raise ValueError('Cannot specify samplerate when initialising HRTF from a file.')
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
-            self.datatype = f.attrs['DataType']  # get data type
+            datatype = f.attrs['DataType']
+            if datatype == 'FIR':  # get data type
+                self.fir = True
+            elif datatype == 'TF':
+                self.fir = False
+            else:                 # todo see if this can be done using fir = False / True
+                raise ValueError('Unsuppored datatype: {datatype}')
             self.data = []
-            if self.datatype == 'FIR':
+            if self.fir:
                 data = HRTF._sofa_get_FIR(f)
                 self.samplerate = HRTF._sofa_get_samplerate(f)
                 for idx in range(data.shape[0]):
                     # n_taps x 2 (left, right) filter
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate))
-            if self.datatype == 'TF':
+            else:
                 data = HRTF._sofa_get_DTF(f)
                 self.samplerate = HRTF._sofa_get_samplerate(f)
                 self.frequencies = HRTF._sofa_get_frequencies(f)
@@ -107,12 +114,12 @@ class HRTF:
             if sources is None:
                 raise ValueError('Must provide source positions when using a Filter object.')
             self.samplerate = data.samplerate
-            fir = data.fir  # save the fir property of the filterbank
+            self.fir = data.fir  # save the fir property of the filterbank
             # reshape the filterbank data to fit into HRTF (ind x taps x ear)
             data = data.data.T[..., None]
             self.data = []
             for idx in range(data.shape[0]):
-                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
+                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=self.fir))
             self.sources = sources
             if listener is None:
                 self.listener = [0, 0, 0]
@@ -122,17 +129,9 @@ class HRTF:
             if samplerate is None:  # should have shape (ind x ear x taps), 2 x n_taps filter (left right)
                 raise ValueError('Must specify samplerate when initialising HRTF from an array.')
             self.samplerate = samplerate
-            if datatype is None:
-                raise ValueError('Must specify datatype (eg. FIR or TF) when initialising HRTF from an array.')
-            if datatype == 'FIR':
-                fir = True
-            elif datatype == 'TF':
-                fir = False
-            else:
-                raise ValueError('Datatype must be FIR or TF.')
             self.data = []
             for idx in range(data.shape[0]):
-                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
+                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=self.fir))
             self.sources = sources
             if listener is None:
                 self.listener = [0, 0, 0]
@@ -147,7 +146,7 @@ class HRTF:
     def __str__(self):
         return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations}, ' \
                f'samples {self[0].n_samples}, samplerate {self.samplerate}, ' \
-               f'datatype {self.datatype}'
+               f'fir {self.fir}'
 
     def __getitem__(self, key):
         return self.data.__getitem__(key)
@@ -306,7 +305,7 @@ class HRTF:
             (slab.Binaural): a spatialized copy of `sound`.
         """
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
-        if self.datatype == 'FIR':
+        if self.fir:
             if (sound.samplerate != self.samplerate) and (not allow_resampling):
                 raise ValueError('Filter and sound must have same sampling rates.')
             original_rate = sound.samplerate
@@ -320,7 +319,7 @@ class HRTF:
             out = copy.deepcopy(sound)
             out.data = convolved_sig.data
             return Binaural(out.resample(original_rate))
-        if self.datatype == 'TF':  # Filter.apply DTF as Fourier filter
+        if self.fir == 'TF':  # Filter.apply DTF as Fourier filter
             return self[source].apply(sound)
 
     def elevations(self):
@@ -828,7 +827,7 @@ class HRTF:
             hrtf_data[source_idx] = [numpy.fft.rfft(rec_data[source_idx, 0]),
                                      numpy.fft.rfft(rec_data[source_idx, 1])]
             hrtf_data[source_idx] = hrtf_data[source_idx] / sig_fft
-        return HRTF(data=numpy.abs(hrtf_data), samplerate=recordings.samplerate, sources=sources, datatype='TF')
+        return HRTF(data=numpy.abs(hrtf_data), samplerate=recordings.samplerate, sources=sources, fir=False)
 
     def write_sofa(self, filename):
         """
@@ -858,13 +857,35 @@ class HRTF:
         sofa.createDimension('I', i)
         sofa.createDimension('C', c)
         # ----------Attributes----------#
-        sofa.DataType = self.datatype
+        if self.fir:
+            sofa.DataType = 'FIR'
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '2.0'
+            delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
+            delay = numpy.zeros((i, r))
+            delayVar[:, :] = delay
+            dataIRVar = sofa.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
+            dataIRVar.ChannelOrdering = 'acn'
+            dataIRVar.Normalization = 'sn3d'
+            IR_data = []
+            for idx in numpy.asarray(self[:]):
+                IR_data.append(idx.T)
+            dataIRVar[:] = numpy.asarray(IR_data)
+        else:
+            sofa.DataType = 'TF'
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '2.0'
+            dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
+            TF_data = []
+            for idx in numpy.asarray(self[:]):
+                TF_data.append(idx.T)
+            dataRealVar[:] = numpy.asarray(TF_data)
+            dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
+            dataImagVar[:] = numpy.zeros(m, r, n)  # for internal use, store real data only
+            NVar = sofa.createVariable('N', 'f8', ('N'))
+            NVar.LongName = 'frequency'
+            NVar.Units = 'hertz'
+            NVar[:] = n
         sofa.RoomType = 'free field'
         sofa.Conventions, sofa.Version = 'SOFA', '2.0'
-        if self.datatype == 'TF':
-            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '2.0'
-        elif self.datatype == 'FIR':
-            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '2.0'
         sofa.APIName, sofa.APIVersion = 'pysofaconventions', '0.1'
         sofa.AuthorContact, sofa.License = 'Leipzig University', 'PublicLicence'
         sofa.ListenerShortName, sofa.Organization = 'sub01', 'Eurecat - UPF'
@@ -895,29 +916,29 @@ class HRTF:
         listenerViewVar.Units = 'metre'
         listenerViewVar.Type = 'cartesian'
         listenerViewVar[:] = numpy.asarray([1, 0, 0])
-        if self.datatype == 'TF':
-            dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
-            TF_data = []
-            for idx in numpy.asarray(self[:]):
-                TF_data.append(idx.T)
-            dataRealVar[:] = numpy.asarray(TF_data)
-            dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
-            dataImagVar[:] = numpy.zeros(m, r, n)  # for internal use, store real data only
-            NVar = sofa.createVariable('N', 'f8', ('N'))
-            NVar.LongName = 'frequency'
-            NVar.Units = 'hertz'
-            NVar[:] = n
-        if self.datatype == 'FIR':
-            delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
-            delay = numpy.zeros((i, r))
-            delayVar[:, :] = delay
-            dataIRVar = sofa.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
-            dataIRVar.ChannelOrdering = 'acn'
-            dataIRVar.Normalization = 'sn3d'
-            IR_data = []
-            for idx in numpy.asarray(self[:]):
-                IR_data.append(idx.T)
-            dataIRVar[:] = numpy.asarray(IR_data)
+        # if self.datatype == 'TF':
+        #     dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
+        #     TF_data = []
+        #     for idx in numpy.asarray(self[:]):
+        #         TF_data.append(idx.T)
+        #     dataRealVar[:] = numpy.asarray(TF_data)
+        #     dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
+        #     dataImagVar[:] = numpy.zeros(m, r, n)  # for internal use, store real data only
+        #     NVar = sofa.createVariable('N', 'f8', ('N'))
+        #     NVar.LongName = 'frequency'
+        #     NVar.Units = 'hertz'
+        #     NVar[:] = n
+        # if self.datatype == 'FIR':
+        #     delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
+        #     delay = numpy.zeros((i, r))
+        #     delayVar[:, :] = delay
+        #     dataIRVar = sofa.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
+        #     dataIRVar.ChannelOrdering = 'acn'
+        #     dataIRVar.Normalization = 'sn3d'
+        #     IR_data = []
+        #     for idx in numpy.asarray(self[:]):
+        #         IR_data.append(idx.T)
+        #     dataIRVar[:] = numpy.asarray(IR_data)
         samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', ('I'))
         samplingRateVar.Units = 'hertz'
         samplingRateVar[:] = self.samplerate
