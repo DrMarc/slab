@@ -92,7 +92,7 @@ class HRTF:
                 self.fir = True
             elif datatype == 'TF':
                 self.fir = False
-            else:                 # todo see if this can be done using fir = False / True
+            else:
                 raise ValueError('Unsuppored datatype: {datatype}')
             self.data = []
             if self.fir:
@@ -320,7 +320,7 @@ class HRTF:
             out = copy.deepcopy(sound)
             out.data = convolved_sig.data
             return Binaural(out.resample(original_rate))
-        if self.fir == False:  # Filter.apply DTF as Fourier filter
+        if not self.fir:  # Filter.apply DTF as Fourier filter
             return self[source].apply(sound)
 
     def elevations(self):
@@ -394,7 +394,7 @@ class HRTF:
             axis.set(yticks=ticks, yticklabels=labels)
             axis.grid(b=True, axis='y', which='both', linewidth=0.25)
             axis.plot([xlim[0]+500, xlim[0]+500], [vlines[-1]+10, vlines[-1] +
-                                                   10+linesep], linewidth=1, color='0.0', alpha=0.9)
+                      10+linesep], linewidth=1, color='0.0', alpha=0.9)
             axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
                       s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
         elif kind == 'image':
@@ -507,10 +507,10 @@ class HRTF:
                 subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x >= 0))
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources[:, 1]) == ele)
-            cmin = numpy.min(numpy.abs(y[subidx]-cone))
+            cmin = numpy.min(numpy.abs(y[subidx]-cone).astype('float16'))
             if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                 idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
-                    numpy.abs(y-cone) == cmin))
+                    numpy.abs(y-cone).astype('float16') == cmin)) # avoid rounding error
                 out.append(idx[0])
                 if full_cone:
                     out.append(idx[1])
@@ -810,14 +810,15 @@ class HRTF:
             raise ValueError('Number of sound sources must be equal to number of recordings.')
         rec_samplerate = recordings[0].samplerate
         rec_n_samples = recordings[0].n_samples
-        filt = Filter.band(frequency=200, samplerate=rec_samplerate)
+        # filt = Filter.band(frequency=200, samplerate=rec_samplerate)
         rec_data = []
         for recording in recordings:
             if not (recording.n_channels == 2 and recording.n_samples == recordings[0].n_samples
                     and recording.samplerate == rec_samplerate):
                 raise ValueError('Number of channels, samples and samplerate must be equal for all recordings.')
-            recording = filt.apply(recording)  # bandpass filter the recordings
-            recording.data -= numpy.mean(recording.data, axis=0)  # remove DC component in FFT output
+            # rec = copy.deepcopy(recording)
+            # rec.data -= numpy.mean(rec.data, axis=0)  # remove DC component in FFT of recordings
+            # rec = filt.apply(rec)  # bandpass filter the recordings
             rec_data.append(recording.data.T)
         rec_data = numpy.asarray(rec_data)
         if not signal.samplerate == rec_samplerate:
@@ -829,6 +830,7 @@ class HRTF:
         else:
             sig_fft = numpy.fft.rfft(signal.data[:, 0])
         hrtf_data = numpy.fft.rfft(rec_data) / sig_fft  # store TFs [measurements, receivers, N data points]
+        hrtf_data[:, :, :200] = 0  # remove low frequency artifacts
         return HRTF(data=numpy.abs(hrtf_data), samplerate=rec_n_samples, sources=sources, fir=False)
 
     def write_sofa(self, filename):
