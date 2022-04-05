@@ -240,7 +240,8 @@ class Filter(Signal):
         else:
             w = self.frequencies
             data = self.data[:, channels]
-            data[data == 0] += numpy.finfo(float).eps
+            # data[data == 0] += numpy.finfo(float).eps
+            data[data < 10e-10] = 10e-10  # no zeros
             h = 20 * numpy.log10(data)
             if not n_bins == len(w):  # interpolate if necessary
                 w_interp = numpy.linspace(0, w[-1], n_bins)
