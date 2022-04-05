@@ -464,7 +464,7 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0, polar_system='single', full_cone=False):
+    def cone_sources(self, cone=0, coord_system='polar', full_cone=False):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
@@ -472,8 +472,10 @@ class HRTF:
 
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
-            polar_system (str): Coordinate system in which polar coordinates are provided. Can be 'single' for
-                single pole or 'double' for double (interaural) polar coordinates.
+            coord_system (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+                single pole or 'interaural' for double-pole coordinate system.
+            full_cone (bool): If True, return all sources that lie on the cone, otherwise, return only sources
+                in front of the listener.
         Returns:
             (list): elements of the list are the indices of sound sources on the frontal half of the cone.
         Examples::
@@ -486,34 +488,32 @@ class HRTF:
         """
         cone = numpy.sin(numpy.deg2rad(cone))
         # the points defined by x and y are the source locations projected onto the azimuth plane
-        if polar_system == 'single':
+        if coord_system == 'polar':
             azimuth = numpy.deg2rad(-self.sources[:, 0])
             elevation = numpy.deg2rad(90 - self.sources[:, 1])
             x = numpy.sin(elevation) * numpy.cos(azimuth)
             y = numpy.sin(elevation) * numpy.sin(azimuth)
-        elif polar_system == 'double':
+        elif coord_system == 'interaural':
             azimuth = numpy.deg2rad(self.sources[:, 0])
             elevation = numpy.deg2rad(self.sources[:, 1])
             x = numpy.cos(azimuth) * numpy.cos(elevation)
             y = numpy.sin(azimuth)
+        else:
+            raise ValueError('Coordinate system must be polar or interaural.')
         eles = self.elevations()
         out = []
         for ele in eles:  # for each elevation, find the source closest to the reference y
-            if full_cone == False:  # only use sources in front of the listener
+            if full_cone == False:  # get cone sources in front of listener
                 subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x >= 0))
-                cmin = numpy.min(numpy.abs(y[subidx]-cone))
-                if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
-                    idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
-                        numpy.abs(y-cone) == cmin))
-                    out.append(idx[0])
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources[:, 1]) == ele)
-                cmin = numpy.partition(numpy.abs(y[subidx]-cone), 1)[:2]  # find 2 closest sources
-                for c in cmin:
-                    if c < 0.05:
-                        idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
-                            numpy.abs(y-cone) == c))
-                        out.append(idx[0])
+            cmin = numpy.min(numpy.abs(y[subidx]-cone))
+            if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
+                idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
+                    numpy.abs(y-cone) == cmin))
+                out.append(idx[0])
+                if full_cone:
+                    out.append(idx[1])
         return sorted(out, key=lambda x: self.sources[x, 1])
 
     def elevation_sources(self, elevation=0):
@@ -550,7 +550,7 @@ class HRTF:
             tfs[:, idx] = jwd.flatten()
         return tfs
 
-    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False, polar_system='single'):
+    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False, coord_system='polar'):
         """
         Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
         3 closest HRTFs in the set is computed in the spectral domain with barycentric weights. The resulting filter
@@ -570,9 +570,9 @@ class HRTF:
         """
         from slab.binaural import Binaural  # inporting here to avoid circular import at top of class
         # spherical to cartesian
-        coords = self.cartesian_source_locations(None, polar_system)
+        coords = self.cartesian_source_locations(None, coord_system)
         r = self.sources[:, 2].mean()
-        target = self.cartesian_source_locations((azimuth, elevation, r), polar_system)
+        target = self.cartesian_source_locations((azimuth, elevation, r), coord_system)
         # compute distances from target direction
         distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
         if method == 'nearest':
@@ -659,7 +659,7 @@ class HRTF:
         tot = numpy.sqrt(p * (p-d12) * (p-d13) * (p-d23))
         return a.sum() - tot, a / a.sum()  # normalize by total area = barycentric weights of sources in idx_triangle
 
-    def cartesian_source_locations(self, coordinates=None, polar_system='single'):
+    def cartesian_source_locations(self, coordinates=None, coord_system='polar'):
         """
         Convert spherical coordinates of source locations in an HRTF object into cartesian coordinates useful for
         plotting and distance calculations. If you supply a list or array of coordinates, then those are converted.
@@ -667,8 +667,8 @@ class HRTF:
         Arguments:
             coodrdinates (None | numpy.ndarray): source locations in spherical coordinates. If None use the object's
                 coordinate array (self.sources).
-            polar_system (str): Coordinate system in which polar coordinates are provided. Can be 'single' for single
-                polar or 'double' for double (interaural-) polar coordinates.
+            coord_system (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+                single pole or 'interaural' for double-pole coordinate system.
         Returns:
             (numpy.ndarray): the source locations in cartesian coordinates as (n x 3) array
         """
@@ -679,27 +679,24 @@ class HRTF:
         if len(coordinates.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
             coordinates = coordinates[numpy.newaxis, ...]
         r = coordinates[:, 2]
-        if isinstance(polar_system, str):
-            if polar_system == 'single':
-                azimuths = numpy.deg2rad(coordinates[:, 0])
-                elevations = numpy.deg2rad(90 - coordinates[:, 1])
-                out = numpy.empty(coordinates.shape)
-                out[:, 0] = r * numpy.sin(elevations) * numpy.cos(azimuths)
-                out[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
-                out[:, 2] = r * numpy.cos(elevations)
-            elif polar_system == 'double':
-                azimuths = numpy.deg2rad(self.sources[:, 0])
-                elevations = numpy.deg2rad(self.sources[:, 1])
-                x = numpy.cos(azimuths) * numpy.cos(elevations)
-                y = numpy.sin(azimuths)
-                out = numpy.empty(coordinates.shape)
-                out[:, 0] = r * numpy.cos(azimuths) * numpy.cos(elevations)
-                out[:, 1] = r * numpy.sin(azimuths)
-                out[:, 2] = r * numpy.cos(azimuths) * numpy.sin(elevations)
-            else:
-                raise ValueError('Coordinate system must be single or double.')
+        if coord_system == 'polar':
+            azimuths = numpy.deg2rad(coordinates[:, 0])
+            elevations = numpy.deg2rad(90 - coordinates[:, 1])
+            out = numpy.empty(coordinates.shape)
+            out[:, 0] = r * numpy.sin(elevations) * numpy.cos(azimuths)
+            out[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
+            out[:, 2] = r * numpy.cos(elevations)
+        elif coord_system == 'interaural':
+            azimuths = numpy.deg2rad(self.sources[:, 0])
+            elevations = numpy.deg2rad(self.sources[:, 1])
+            # x = numpy.cos(azimuths) * numpy.cos(elevations)
+            # y = numpy.sin(azimuths)
+            out = numpy.empty(coordinates.shape)
+            out[:, 0] = r * numpy.cos(azimuths) * numpy.cos(elevations)
+            out[:, 1] = r * numpy.sin(azimuths)
+            out[:, 2] = r * numpy.cos(azimuths) * numpy.sin(elevations)
         else:
-            raise ValueError('Coordinate system must be a string')
+            raise ValueError('Coordinate system must be polar or interaural.')
         return out
 
     def vsi(self, sources=None, equalize=True):
@@ -733,7 +730,7 @@ class HRTF:
                 n += 1
         return 1 - sum_corr / n
 
-    def plot_sources(self, idx=None, show=True, label=False, axis=None, polar_system='single'):
+    def plot_sources(self, idx=None, show=True, label=False, axis=None, coord_system='polar'):
         """
         Plot source locations in 3D.
 
@@ -752,7 +749,7 @@ class HRTF:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
             ax = axis
-        coords = self.cartesian_source_locations(None, polar_system)
+        coords = self.cartesian_source_locations(None, coord_system)
         ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='b', marker='.')
         if label and idx is None:
             for i in range(coords.shape[0]):
@@ -897,7 +894,7 @@ class HRTF:
         listenerViewVar = sofa.createVariable('ListenerView', 'f8', ('I', 'C'))
         listenerViewVar.Units = 'metre'
         listenerViewVar.Type = 'cartesian'
-        listenerViewVar[:] = numpy.asarray([0, 1, 0])
+        listenerViewVar[:] = numpy.asarray([1, 0, 0])
         if self.datatype == 'TF':
             dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
             TF_data = []
