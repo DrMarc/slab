@@ -510,9 +510,9 @@ class HRTF:
             cmin = numpy.min(numpy.abs(y[subidx]-cone).astype('float16'))
             if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                 idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
-                    numpy.abs(y-cone).astype('float16') == cmin)) # avoid rounding error
+                    numpy.abs(y-cone).astype('float16') == cmin))  # avoid rounding error
                 out.append(idx[0])
-                if full_cone:
+                if full_cone and len(idx) > 1:
                     out.append(idx[1])
         return sorted(out, key=lambda x: self.sources[x, 1])
 
