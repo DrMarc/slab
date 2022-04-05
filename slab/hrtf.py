@@ -810,7 +810,6 @@ class HRTF:
             raise ValueError('Number of sound sources must be equal to number of recordings.')
         rec_samplerate = recordings[0].samplerate
         rec_n_samples = recordings[0].n_samples
-        # filt = Filter.band(frequency=200, samplerate=rec_samplerate)
         rec_data = []
         for recording in recordings:
             if not (recording.n_channels == 2 and recording.n_samples == recordings[0].n_samples
@@ -818,7 +817,6 @@ class HRTF:
                 raise ValueError('Number of channels, samples and samplerate must be equal for all recordings.')
             rec = copy.deepcopy(recording)
             rec.data -= numpy.mean(rec.data, axis=0)  # remove DC component in FFT of recordings
-            # rec = filt.apply(rec)  # bandpass filter the recordings
             rec_data.append(rec.data.T)
         rec_data = numpy.asarray(rec_data)
         if not signal.samplerate == rec_samplerate:
@@ -830,7 +828,6 @@ class HRTF:
         else:
             sig_fft = numpy.fft.rfft(signal.data[:, 0])
         hrtf_data = numpy.fft.rfft(rec_data) / sig_fft  # store TFs [measurements, receivers, N data points]
-        # hrtf_data[:, :, :200] = 0  # remove low frequency artifacts
         return HRTF(data=numpy.abs(hrtf_data), samplerate=rec_n_samples, sources=sources, fir=False)
 
     def write_sofa(self, filename):
