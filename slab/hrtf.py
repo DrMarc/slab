@@ -464,7 +464,7 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0, coord_system='polar', full_cone=False):
+    def cone_sources(self, cone=0, coords='polar', full_cone=False):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
@@ -472,7 +472,7 @@ class HRTF:
 
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
-            coord_system (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+            coords (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
                 single pole or 'interaural' for double-pole coordinate system.
             full_cone (bool): If True, return all sources that lie on the cone, otherwise, return only sources
                 in front of the listener.
@@ -488,12 +488,12 @@ class HRTF:
         """
         cone = numpy.sin(numpy.deg2rad(cone))
         # the points defined by x and y are the source locations projected onto the azimuth plane
-        if coord_system == 'polar':
+        if coords == 'polar':
             azimuth = numpy.deg2rad(-self.sources[:, 0])
             elevation = numpy.deg2rad(90 - self.sources[:, 1])
             x = numpy.sin(elevation) * numpy.cos(azimuth)
             y = numpy.sin(elevation) * numpy.sin(azimuth)
-        elif coord_system == 'interaural':
+        elif coords == 'interaural':
             azimuth = numpy.deg2rad(self.sources[:, 0])
             elevation = numpy.deg2rad(self.sources[:, 1])
             x = numpy.cos(azimuth) * numpy.cos(elevation)
@@ -550,7 +550,7 @@ class HRTF:
             tfs[:, idx] = jwd.flatten()
         return tfs
 
-    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False, coord_system='polar'):
+    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False, coords='polar'):
         """
         Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
         3 closest HRTFs in the set is computed in the spectral domain with barycentric weights. The resulting filter
@@ -565,16 +565,18 @@ class HRTF:
                 returns a barycentric interpolation.
             plot_tri (bool): plot the triangulation of source positions used of interpolation. Useful for checking
                 for areas where the interpolation may not be accurate (look for irregular or elongated triangles).
+            coords (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+                single pole or 'interaural' for double-pole coordinate system.
         Returns:
             (slab.HRTF): an HRTF object with a single source
         """
         from slab.binaural import Binaural  # inporting here to avoid circular import at top of class
         # spherical to cartesian
-        coords = self.cartesian_source_locations(None, coord_system)
+        coordinates = self.cartesian_source_locations(None, coords)
         r = self.sources[:, 2].mean()
-        target = self.cartesian_source_locations((azimuth, elevation, r), coord_system)
+        target = self.cartesian_source_locations((azimuth, elevation, r), coords)
         # compute distances from target direction
-        distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
+        distances = numpy.sqrt(((target - coordinates)**2).sum(axis=1))
         if method == 'nearest':
             idx_nearest = numpy.argmin(distances)
             filt = self[idx_nearest]
@@ -582,15 +584,15 @@ class HRTF:
             # triangulate source positions into triangles
             if not scipy:
                 raise ImportError('Need scipy.spatial for barycentric interpolation.')
-            tri = scipy.spatial.ConvexHull(coords)
+            tri = scipy.spatial.ConvexHull(coordinates)
             if plot_tri:
                 ax = plt.subplot(projection='3d')
                 for simplex in tri.points[tri.simplices]:
                     polygon = Poly3DCollection([simplex])
                     polygon.set_color(numpy.random.rand(3))
                     ax.add_collection3d(polygon)
-                    mins = coords.min(axis=0)
-                    maxs = coords.max(axis=0)
+                    mins = coordinates.min(axis=0)
+                    maxs = coordinates.max(axis=0)
                     xlim, ylim, zlim = list(zip(mins, maxs))
                     ax.set_xlim(xlim)
                     ax.set_ylim(ylim)
@@ -599,7 +601,7 @@ class HRTF:
                     ax.set_ylabel('Y [m]')
                     ax.set_zlabel('Z [m]')
                     plt.show()
-            # for each simplex, find the coords, test if target in triangle (by finding minimal d)
+            # for each simplex, find the coordinates, test if target in triangle (by finding minimal d)
             d_min = numpy.inf
             for i, vertex_list in enumerate(tri.simplices):
                 simplex = tri.points[vertex_list]
@@ -659,7 +661,7 @@ class HRTF:
         tot = numpy.sqrt(p * (p-d12) * (p-d13) * (p-d23))
         return a.sum() - tot, a / a.sum()  # normalize by total area = barycentric weights of sources in idx_triangle
 
-    def cartesian_source_locations(self, coordinates=None, coord_system='polar'):
+    def cartesian_source_locations(self, coordinates=None, coords='polar'):
         """
         Convert spherical coordinates of source locations in an HRTF object into cartesian coordinates useful for
         plotting and distance calculations. If you supply a list or array of coordinates, then those are converted.
@@ -667,7 +669,7 @@ class HRTF:
         Arguments:
             coodrdinates (None | numpy.ndarray): source locations in spherical coordinates. If None use the object's
                 coordinate array (self.sources).
-            coord_system (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+            coords (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
                 single pole or 'interaural' for double-pole coordinate system.
         Returns:
             (numpy.ndarray): the source locations in cartesian coordinates as (n x 3) array
@@ -679,14 +681,14 @@ class HRTF:
         if len(coordinates.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
             coordinates = coordinates[numpy.newaxis, ...]
         r = coordinates[:, 2]
-        if coord_system == 'polar':
+        if coords == 'polar':
             azimuths = numpy.deg2rad(coordinates[:, 0])
             elevations = numpy.deg2rad(90 - coordinates[:, 1])
             out = numpy.empty(coordinates.shape)
             out[:, 0] = r * numpy.sin(elevations) * numpy.cos(azimuths)
             out[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
             out[:, 2] = r * numpy.cos(elevations)
-        elif coord_system == 'interaural':
+        elif coords == 'interaural':
             azimuths = numpy.deg2rad(self.sources[:, 0])
             elevations = numpy.deg2rad(self.sources[:, 1])
             # x = numpy.cos(azimuths) * numpy.cos(elevations)
@@ -730,7 +732,7 @@ class HRTF:
                 n += 1
         return 1 - sum_corr / n
 
-    def plot_sources(self, idx=None, show=True, label=False, axis=None, coord_system='polar'):
+    def plot_sources(self, idx=None, show=True, label=False, axis=None, coords='polar'):
         """
         Plot source locations in 3D.
 
@@ -740,6 +742,8 @@ class HRTF:
             label (bool): if True, show the index of each source in self.sources as text label, if idx is also given,
                 then only theses sources are labeled
             axis (mpl_toolkits.mplot3d.axes3d.Axes3D): axis to draw the plot on
+            coords (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+                single pole or 'interaural' for double-pole coordinate system.
         """
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
@@ -749,21 +753,21 @@ class HRTF:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
             ax = axis
-        coords = self.cartesian_source_locations(None, coord_system)
-        ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='b', marker='.')
-        ax.axes.set_xlim3d(left=numpy.min(coords), right=numpy.max(coords))
+        coordinates = self.cartesian_source_locations(None, coords)
+        ax.scatter(coordinates[:, 0], coordinates[:, 1], coordinates[:, 2], c='b', marker='.')
+        ax.axes.set_xlim3d(left=numpy.min(coordinates), right=numpy.max(coordinates))
         if label and idx is None:
-            for i in range(coords.shape[0]):
-                ax.text(coords[i, 0], coords[i, 1], coords[i, 2], f'{i}', size=8, zorder=1, color='k')
+            for i in range(coordinates.shape[0]):
+                ax.text(coordinates[i, 0], coordinates[i, 1], coordinates[i, 2], f'{i}', size=8, zorder=1, color='k')
         ax.scatter(0, 0, 0, c='r', marker='o')
         if self.listener:
             x_, y_, z_, u, v, w = zip(*[self.listener['viewvec'], self.listener['upvec']])
             ax.quiver(x_, y_, z_, u, v, w, length=0.5, colors=['r', 'b', 'r', 'r', 'b', 'b'])
         if idx is not None:
-            ax.scatter(coords[idx, 0], coords[idx, 1], coords[idx, 2], c='r', marker='o')
+            ax.scatter(coordinates[idx, 0], coordinates[idx, 1], coordinates[idx, 2], c='r', marker='o')
             if label:
                 for i in idx:
-                    ax.text(coords[i, 0], coords[i, 1], coords[i, 2], f'{i}', size=8, zorder=1, color='k')
+                    ax.text(coordinates[i, 0], coordinates[i, 1], coordinates[i, 2], f'{i}', size=8, zorder=1, color='k')
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
