@@ -822,7 +822,7 @@ class HRTF:
                     and recording.samplerate == rec_samplerate):
                 raise ValueError('Number of channels, samples and samplerate must be equal for all recordings.')
             rec = copy.deepcopy(recording)
-            rec.data -= numpy.mean(rec.data, axis=0)  # remove DC component in FFT of recordings
+            # rec.data -= numpy.mean(rec.data, axis=0)  # remove DC component in FFT of recordings
             rec_data.append(rec.data.T)
         rec_data = numpy.asarray(rec_data)
         if not signal.samplerate == rec_samplerate:
@@ -837,6 +837,7 @@ class HRTF:
         r_avg = numpy.mean(numpy.fft.rfft(rec_data),axis=0)  # avg magnitude of recordings (direction-independent)
         comm = r_avg / sig_fft  # R ( f, az,el,x) = S( f ) X D( f, az,el) X comm(f,x); Middlebrooks (1990)
         hrtf_data = numpy.fft.rfft(rec_data) / (sig_fft * comm)  # HRTFs with common component removed
+        # hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
         return HRTF(data=numpy.abs(hrtf_data), samplerate=rec_samplerate, sources=sources, fir=False)
 
     def write_sofa(self, filename):
