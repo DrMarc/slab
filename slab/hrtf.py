@@ -834,10 +834,10 @@ class HRTF:
         else:
             sig_fft = numpy.fft.rfft(signal.data[:, 0])
         # remove common component and store DTFs [measurements, receivers, N data points]
-        r_avg = numpy.mean(numpy.fft.rfft(rec_data),axis=0)  # avg magnitude of recordings (direction-independent)
-        comm = r_avg / sig_fft  # R ( f, az,el,x) = S( f ) X D( f, az,el) X comm(f,x); Middlebrooks (1990)
-        hrtf_data = numpy.fft.rfft(rec_data) / (sig_fft * comm)  # HRTFs with common component removed
-        # hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
+        # r_avg = numpy.mean(numpy.fft.rfft(rec_data),axis=0)  # avg magnitude of recordings (direction-independent)
+        # comm = r_avg / sig_fft  # R ( f, az,el,x) = S( f ) X D( f, az,el) X comm(f,x); Middlebrooks (1990)
+        # hrtf_data = numpy.fft.rfft(rec_data) / (sig_fft * comm)  # HRTFs with common component removed
+        hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
         return HRTF(data=numpy.abs(hrtf_data), samplerate=rec_samplerate, sources=sources, fir=False)
 
     def write_sofa(self, filename):
