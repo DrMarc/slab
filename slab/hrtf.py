@@ -345,8 +345,8 @@ class HRTF:
             sourceidx (list of int): sources to plot. Typically be generated using the `hrtf.cone_sources` Method.
             xlim (tuple of int): frequency range of the plot
             n_bins (int) : passed to :meth:`slab.Filter.tf` and determines frequency resolution
-            kind (str): type of plot to draw. Can be `waterfall` (as in Wightman and Kistler, 1989) or
-                `image` (as in Hofman 1998).
+            kind (str): type of plot to draw. Can be `waterfall` (as in Wightman and Kistler, 1989),
+                `image` (as in Hofman, 1998) or 'surface' (as in Schnupp and Nelken, 2011).
             linesep (int): vertical distance between transfer functions in the waterfall plot
             xscale (str): sets x-axis scaling ('linear', 'log')
             show (bool): If True, show the plot immediately
@@ -421,20 +421,21 @@ class HRTF:
                 x[x < xlim[0]] = numpy.nan  # trim edges
                 x[x > xlim[1]] = numpy.nan
                 axis = plt.axes(projection='3d')
-                cmap = plt.get_cmap('hot')
+                cmap = plt.get_cmap('cool')
                 contour = axis.plot_surface(x, y, img.T, cmap=cmap)
                 fig.colorbar(contour, aspect=30, orientation="horizontal")
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
         axis.xaxis.set_major_formatter(
             matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x / 1000))))
-        if kind == 'surface':
-            axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', zlabel='Pinna gain [dB]', xlim=xlim,
-                     xscale=xscale)
-        axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim,
-                 xscale=xscale)
         axis.autoscale(tight=True)
         axis.tick_params('both', length=2, pad=2)
+        if kind == 'surface':
+            axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', zlabel='Pinna gain [dB]',
+                     xlim=xlim, xscale=xscale)
+        else:
+            axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim,
+                     xscale=xscale)
         if show:
             plt.show()
 
