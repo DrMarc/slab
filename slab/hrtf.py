@@ -399,7 +399,7 @@ class HRTF:
                       10+linesep], linewidth=1, color='0.0', alpha=0.9)
             axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
                       s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
-        elif kind == 'image':
+        elif kind == 'image' or 'surface':
             if not n_bins:
                 img = numpy.zeros((self[sourceidx[0]].n_taps, len(sourceidx)))
             else:
@@ -410,17 +410,31 @@ class HRTF:
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
-            contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
-            divider = make_axes_locatable(axis)
-            cax = divider.append_axes('right', size='5%', pad=0.05)
-            fig.colorbar(contour, cax, orientation="vertical")
+            if kind == 'image':
+                contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
+                divider = make_axes_locatable(axis)
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                fig.colorbar(contour, cax, orientation="vertical")
+            elif kind == 'surface':
+                y = numpy.tile(elevations, (len(freqs), 1)).T
+                x = numpy.tile(freqs, (len(elevations), 1))
+                x[x < xlim[0]] = numpy.nan  # trim edges
+                x[x > xlim[1]] = numpy.nan
+                axis = plt.axes(projection='3d')
+                cmap = plt.get_cmap('hot')
+                contour = axis.plot_surface(x, y, img.T, cmap=cmap)
+                fig.colorbar(contour, aspect=30, orientation="horizontal")
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
-        axis.autoscale(tight=True)
         axis.xaxis.set_major_formatter(
-            matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x/1000))))
+            matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x / 1000))))
+        if kind == 'surface':
+            axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', zlabel='Pinna gain [dB]', xlim=xlim,
+                     xscale=xscale)
+        axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim,
+                 xscale=xscale)
+        axis.autoscale(tight=True)
         axis.tick_params('both', length=2, pad=2)
-        axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim, xscale=xscale)
         if show:
             plt.show()
 
