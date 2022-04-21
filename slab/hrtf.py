@@ -411,19 +411,23 @@ class HRTF:
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
             if kind == 'image':
-                contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
+                contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=50)
                 divider = make_axes_locatable(axis)
                 cax = divider.append_axes('right', size='5%', pad=0.05)
                 fig.colorbar(contour, cax, orientation="vertical")
             elif kind == 'surface':
-                y = numpy.tile(elevations, (len(freqs), 1)).T
-                x = numpy.tile(freqs, (len(elevations), 1))
+                xi, yi = numpy.meshgrid(freqs, elevations)  # interpolate to smooth surface plot
+                spline = scipy.interpolate.Rbf(xi, yi, img.T, function='thin_plate')  # interpolator instance
+                x, y = numpy.meshgrid(numpy.linspace(freqs.min(), freqs.max(), len(freqs)),
+                      numpy.linspace(elevations.min(), elevations.max(), 100))
+                z = spline(x, y)
                 x[x < xlim[0]] = numpy.nan  # trim edges
                 x[x > xlim[1]] = numpy.nan
+                fig, axis = plt.subplots()
+                axis.axis('off')
                 axis = plt.axes(projection='3d')
-                cmap = plt.get_cmap('cool')
-                contour = axis.plot_surface(x, y, img.T, cmap=cmap)
-                fig.colorbar(contour, aspect=30, orientation="horizontal")
+                contour = axis.plot_surface(x, y, z, rcount=200, ccount=200, cmap='cool')
+                fig.colorbar(contour, fraction=0.046, pad=0.04, orientation="horizontal")
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
         axis.xaxis.set_major_formatter(
