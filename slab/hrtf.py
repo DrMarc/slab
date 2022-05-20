@@ -345,8 +345,8 @@ class HRTF:
             sourceidx (list of int): sources to plot. Typically be generated using the `hrtf.cone_sources` Method.
             xlim (tuple of int): frequency range of the plot
             n_bins (int) : passed to :meth:`slab.Filter.tf` and determines frequency resolution
-            kind (str): type of plot to draw. Can be `waterfall` (as in Wightman and Kistler, 1989) or
-                `image` (as in Hofman 1998).
+            kind (str): type of plot to draw. Can be `waterfall` (as in Wightman and Kistler, 1989),
+                `image` (as in Hofman, 1998) or 'surface' (as in Schnupp and Nelken, 2011).
             linesep (int): vertical distance between transfer functions in the waterfall plot
             xscale (str): sets x-axis scaling ('linear', 'log')
             show (bool): If True, show the plot immediately
@@ -399,7 +399,7 @@ class HRTF:
                       10+linesep], linewidth=1, color='0.0', alpha=0.9)
             axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
                       s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
-        elif kind == 'image':
+        elif kind == 'image' or 'surface':
             if not n_bins:
                 img = numpy.zeros((self[sourceidx[0]].n_taps, len(sourceidx)))
             else:
@@ -410,17 +410,36 @@ class HRTF:
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
-            contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
-            divider = make_axes_locatable(axis)
-            cax = divider.append_axes('right', size='5%', pad=0.05)
-            fig.colorbar(contour, cax, orientation="vertical")
+            if kind == 'image':
+                contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
+                divider = make_axes_locatable(axis)
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                fig.colorbar(contour, cax, orientation="vertical")
+            elif kind == 'surface':
+                xi, yi = numpy.meshgrid(freqs, elevations)  # interpolate to smooth surface plot
+                spline = scipy.interpolate.Rbf(xi, yi, img.T, function='thin_plate')  # interpolator instance
+                x, y = numpy.meshgrid(numpy.linspace(freqs.min(), freqs.max(), len(freqs)),
+                      numpy.linspace(elevations.min(), elevations.max(), 100))
+                z = spline(x, y)
+                x[x < xlim[0]] = numpy.nan  # trim edges
+                x[x > xlim[1]] = numpy.nan
+                fig, axis = plt.subplots()
+                axis.axis('off')
+                axis = plt.axes(projection='3d')
+                contour = axis.plot_surface(x, y, z, rcount=200, ccount=200, cmap='cool')
+                fig.colorbar(contour, fraction=0.046, pad=0.04, orientation="horizontal")
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
-        axis.autoscale(tight=True)
         axis.xaxis.set_major_formatter(
-            matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x/1000))))
+            matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x / 1000))))
+        axis.autoscale(tight=True)
         axis.tick_params('both', length=2, pad=2)
-        axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim, xscale=xscale)
+        if kind == 'surface':
+            axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', zlabel='Pinna gain [dB]',
+                     xlim=xlim, xscale=xscale)
+        else:
+            axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim,
+                     xscale=xscale)
         if show:
             plt.show()
 
