@@ -80,7 +80,9 @@ class HRTF:
                             doc='The number of elevations in the HRTF.')
 
     def __init__(self, data, samplerate=None, sources=None, listener=None, datatype=None, verbose=False):
-        if isinstance(data, str):
+        if isinstance(data, pathlib.Path):
+            data = str(data)
+        if isinstance(data, str, ):
             if samplerate is not None:
                 raise ValueError('Cannot specify samplerate when initialising HRTF from a file.')
             if pathlib.Path(data).suffix != '.sofa':
