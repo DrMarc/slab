@@ -56,6 +56,7 @@ class HRTF:
         samplerate (None | float): rate at which the data was acquired, only relevant when not loading from .sofa file
         sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
         listener (None | list | dict): position of the listener, only relevant when not loading from .sofa file
+        fir (bool): whether the HRTF filter bank are finite impulse filters (True) or a Fourier filters (False)
         verbose (bool): print out items when loading .sofa files, defaults to False
 
     Attributes:
@@ -79,24 +80,30 @@ class HRTF:
     n_elevations = property(fget=lambda self: len(self.elevations()),
                             doc='The number of elevations in the HRTF.')
 
-    def __init__(self, data, samplerate=None, sources=None, listener=None, datatype=None, verbose=False):
+    def __init__(self, data, samplerate=None, sources=None, listener=None, fir=True, verbose=False):
         if isinstance(data, pathlib.Path):
             data = str(data)
-        if isinstance(data, str, ):
+        if isinstance(data, str):
             if samplerate is not None:
                 raise ValueError('Cannot specify samplerate when initialising HRTF from a file.')
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
-            self.datatype = f.attrs['DataType']  # get data type
+            datatype = f.attrs['DataType']
+            if datatype == 'FIR':  # get data type
+                self.fir = True
+            elif datatype == 'TF':
+                self.fir = False
+            else:
+                raise ValueError('Unsuppored datatype: {datatype}')
             self.data = []
-            if self.datatype == 'FIR':
+            if self.fir:
                 data = HRTF._sofa_get_FIR(f)
                 self.samplerate = HRTF._sofa_get_samplerate(f)
                 for idx in range(data.shape[0]):
                     # n_taps x 2 (left, right) filter
                     self.data.append(Filter(data[idx, :, :].T, self.samplerate))
-            if self.datatype == 'TF':
+            else:
                 data = HRTF._sofa_get_DTF(f)
                 self.samplerate = HRTF._sofa_get_samplerate(f)
                 self.frequencies = HRTF._sofa_get_frequencies(f)
@@ -109,12 +116,12 @@ class HRTF:
             if sources is None:
                 raise ValueError('Must provide source positions when using a Filter object.')
             self.samplerate = data.samplerate
-            fir = data.fir  # save the fir property of the filterbank
+            self.fir = data.fir  # save the fir property of the filterbank
             # reshape the filterbank data to fit into HRTF (ind x taps x ear)
             data = data.data.T[..., None]
             self.data = []
             for idx in range(data.shape[0]):
-                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
+                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=self.fir))
             self.sources = sources
             if listener is None:
                 self.listener = [0, 0, 0]
@@ -124,17 +131,10 @@ class HRTF:
             if samplerate is None:  # should have shape (ind x ear x taps), 2 x n_taps filter (left right)
                 raise ValueError('Must specify samplerate when initialising HRTF from an array.')
             self.samplerate = samplerate
-            if datatype is None:
-                raise ValueError('Must specify datatype (eg. FIR or TF) when initialising HRTF from an array.')
-            if datatype == 'FIR':
-                fir = True
-            elif datatype == 'TF':
-                fir = False
-            else:
-                raise ValueError('Datatype must be FIR or TF.')
+            self.fir = fir
             self.data = []
             for idx in range(data.shape[0]):
-                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
+                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=self.fir))
             self.sources = sources
             if listener is None:
                 self.listener = [0, 0, 0]
@@ -149,7 +149,7 @@ class HRTF:
     def __str__(self):
         return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations}, ' \
                f'samples {self[0].n_samples}, samplerate {self.samplerate}, ' \
-               f'datatype {self.datatype}'
+               f'fir {self.fir}'
 
     def __getitem__(self, key):
         return self.data.__getitem__(key)
@@ -308,7 +308,7 @@ class HRTF:
             (slab.Binaural): a spatialized copy of `sound`.
         """
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
-        if self.datatype == 'FIR':
+        if self.fir:
             if (sound.samplerate != self.samplerate) and (not allow_resampling):
                 raise ValueError('Filter and sound must have same sampling rates.')
             original_rate = sound.samplerate
@@ -322,7 +322,7 @@ class HRTF:
             out = copy.deepcopy(sound)
             out.data = convolved_sig.data
             return Binaural(out.resample(original_rate))
-        if self.datatype == 'TF':  # Filter.apply DTF as Fourier filter
+        if not self.fir:  # Filter.apply DTF as Fourier filter
             return self[source].apply(sound)
 
     def elevations(self):
@@ -345,8 +345,8 @@ class HRTF:
             sourceidx (list of int): sources to plot. Typically be generated using the `hrtf.cone_sources` Method.
             xlim (tuple of int): frequency range of the plot
             n_bins (int) : passed to :meth:`slab.Filter.tf` and determines frequency resolution
-            kind (str): type of plot to draw. Can be `waterfall` (as in Wightman and Kistler, 1989) or
-                `image` (as in Hofman 1998).
+            kind (str): type of plot to draw. Can be `waterfall` (as in Wightman and Kistler, 1989),
+                `image` (as in Hofman, 1998) or 'surface' (as in Schnupp and Nelken, 2011).
             linesep (int): vertical distance between transfer functions in the waterfall plot
             xscale (str): sets x-axis scaling ('linear', 'log')
             show (bool): If True, show the plot immediately
@@ -396,10 +396,10 @@ class HRTF:
             axis.set(yticks=ticks, yticklabels=labels)
             axis.grid(b=True, axis='y', which='both', linewidth=0.25)
             axis.plot([xlim[0]+500, xlim[0]+500], [vlines[-1]+10, vlines[-1] +
-                                                   10+linesep], linewidth=1, color='0.0', alpha=0.9)
+                      10+linesep], linewidth=1, color='0.0', alpha=0.9)
             axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
                       s=str(linesep)+'dB', va='center', ha='left', fontsize=6, alpha=0.7)
-        elif kind == 'image':
+        elif kind == 'image' or 'surface':
             if not n_bins:
                 img = numpy.zeros((self[sourceidx[0]].n_taps, len(sourceidx)))
             else:
@@ -410,17 +410,36 @@ class HRTF:
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
-            contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
-            divider = make_axes_locatable(axis)
-            cax = divider.append_axes('right', size='5%', pad=0.05)
-            fig.colorbar(contour, cax, orientation="vertical")
+            if kind == 'image':
+                contour = axis.contourf(freqs, elevations, img.T, cmap='hot', origin='upper', levels=20)
+                divider = make_axes_locatable(axis)
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                fig.colorbar(contour, cax, orientation="vertical")
+            elif kind == 'surface':
+                xi, yi = numpy.meshgrid(freqs, elevations)  # interpolate to smooth surface plot
+                spline = scipy.interpolate.Rbf(xi, yi, img.T, function='thin_plate')  # interpolator instance
+                x, y = numpy.meshgrid(numpy.linspace(freqs.min(), freqs.max(), len(freqs)),
+                      numpy.linspace(elevations.min(), elevations.max(), 100))
+                z = spline(x, y)
+                x[x < xlim[0]] = numpy.nan  # trim edges
+                x[x > xlim[1]] = numpy.nan
+                fig, axis = plt.subplots()
+                axis.axis('off')
+                axis = plt.axes(projection='3d')
+                contour = axis.plot_surface(x, y, z, rcount=200, ccount=200, cmap='cool')
+                fig.colorbar(contour, fraction=0.046, pad=0.04, orientation="horizontal")
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
-        axis.autoscale(tight=True)
         axis.xaxis.set_major_formatter(
-            matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x/1000))))
+            matplotlib.ticker.FuncFormatter(lambda x, pos: str(int(x / 1000))))
+        axis.autoscale(tight=True)
         axis.tick_params('both', length=2, pad=2)
-        axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim, xscale=xscale)
+        if kind == 'surface':
+            axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', zlabel='Pinna gain [dB]',
+                     xlim=xlim, xscale=xscale)
+        else:
+            axis.set(xlabel='Frequency [Hz]', ylabel='Elevation [˚]', xlim=xlim,
+                     xscale=xscale)
         if show:
             plt.show()
 
@@ -466,7 +485,7 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0, coord_system='polar', full_cone=False):
+    def cone_sources(self, cone=0, coords='polar', full_cone=False):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
@@ -474,7 +493,7 @@ class HRTF:
 
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
-            coord_system (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+            coords (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
                 single pole or 'interaural' for double-pole coordinate system.
             full_cone (bool): If True, return all sources that lie on the cone, otherwise, return only sources
                 in front of the listener.
@@ -490,12 +509,12 @@ class HRTF:
         """
         cone = numpy.sin(numpy.deg2rad(cone))
         # the points defined by x and y are the source locations projected onto the azimuth plane
-        if coord_system == 'polar':
+        if coords == 'polar':
             azimuth = numpy.deg2rad(-self.sources[:, 0])
             elevation = numpy.deg2rad(90 - self.sources[:, 1])
             x = numpy.sin(elevation) * numpy.cos(azimuth)
             y = numpy.sin(elevation) * numpy.sin(azimuth)
-        elif coord_system == 'interaural':
+        elif coords == 'interaural':
             azimuth = numpy.deg2rad(self.sources[:, 0])
             elevation = numpy.deg2rad(self.sources[:, 1])
             x = numpy.cos(azimuth) * numpy.cos(elevation)
@@ -509,12 +528,12 @@ class HRTF:
                 subidx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (x >= 0))
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources[:, 1]) == ele)
-            cmin = numpy.min(numpy.abs(y[subidx]-cone))
+            cmin = numpy.min(numpy.abs(y[subidx]-cone).astype('float16'))
             if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                 idx, = numpy.where((numpy.round(self.sources[:, 1]) == ele) & (
-                    numpy.abs(y-cone) == cmin))
+                    numpy.abs(y-cone).astype('float16') == cmin))  # avoid rounding error
                 out.append(idx[0])
-                if full_cone:
+                if full_cone and len(idx) > 1:
                     out.append(idx[1])
         return sorted(out, key=lambda x: self.sources[x, 1])
 
@@ -552,7 +571,7 @@ class HRTF:
             tfs[:, idx] = jwd.flatten()
         return tfs
 
-    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False, coord_system='polar'):
+    def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False, coords='polar'):
         """
         Interpolate a filter at a given azimuth and elevation from the neighboring HRTFs. A weighted average of the
         3 closest HRTFs in the set is computed in the spectral domain with barycentric weights. The resulting filter
@@ -567,16 +586,18 @@ class HRTF:
                 returns a barycentric interpolation.
             plot_tri (bool): plot the triangulation of source positions used of interpolation. Useful for checking
                 for areas where the interpolation may not be accurate (look for irregular or elongated triangles).
+            coords (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+                single pole or 'interaural' for double-pole coordinate system.
         Returns:
             (slab.HRTF): an HRTF object with a single source
         """
         from slab.binaural import Binaural  # inporting here to avoid circular import at top of class
         # spherical to cartesian
-        coords = self.cartesian_source_locations(None, coord_system)
+        coordinates = self.cartesian_source_locations(None, coords)
         r = self.sources[:, 2].mean()
-        target = self.cartesian_source_locations((azimuth, elevation, r), coord_system)
+        target = self.cartesian_source_locations((azimuth, elevation, r), coords)
         # compute distances from target direction
-        distances = numpy.sqrt(((target - coords)**2).sum(axis=1))
+        distances = numpy.sqrt(((target - coordinates)**2).sum(axis=1))
         if method == 'nearest':
             idx_nearest = numpy.argmin(distances)
             filt = self[idx_nearest]
@@ -584,15 +605,15 @@ class HRTF:
             # triangulate source positions into triangles
             if not scipy:
                 raise ImportError('Need scipy.spatial for barycentric interpolation.')
-            tri = scipy.spatial.ConvexHull(coords)
+            tri = scipy.spatial.ConvexHull(coordinates)
             if plot_tri:
                 ax = plt.subplot(projection='3d')
                 for simplex in tri.points[tri.simplices]:
                     polygon = Poly3DCollection([simplex])
                     polygon.set_color(numpy.random.rand(3))
                     ax.add_collection3d(polygon)
-                    mins = coords.min(axis=0)
-                    maxs = coords.max(axis=0)
+                    mins = coordinates.min(axis=0)
+                    maxs = coordinates.max(axis=0)
                     xlim, ylim, zlim = list(zip(mins, maxs))
                     ax.set_xlim(xlim)
                     ax.set_ylim(ylim)
@@ -601,7 +622,7 @@ class HRTF:
                     ax.set_ylabel('Y [m]')
                     ax.set_zlabel('Z [m]')
                     plt.show()
-            # for each simplex, find the coords, test if target in triangle (by finding minimal d)
+            # for each simplex, find the coordinates, test if target in triangle (by finding minimal d)
             d_min = numpy.inf
             for i, vertex_list in enumerate(tri.simplices):
                 simplex = tri.points[vertex_list]
@@ -661,7 +682,7 @@ class HRTF:
         tot = numpy.sqrt(p * (p-d12) * (p-d13) * (p-d23))
         return a.sum() - tot, a / a.sum()  # normalize by total area = barycentric weights of sources in idx_triangle
 
-    def cartesian_source_locations(self, coordinates=None, coord_system='polar'):
+    def cartesian_source_locations(self, coordinates=None, coords='polar'):
         """
         Convert spherical coordinates of source locations in an HRTF object into cartesian coordinates useful for
         plotting and distance calculations. If you supply a list or array of coordinates, then those are converted.
@@ -669,7 +690,7 @@ class HRTF:
         Arguments:
             coodrdinates (None | numpy.ndarray): source locations in spherical coordinates. If None use the object's
                 coordinate array (self.sources).
-            coord_system (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+            coords (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
                 single pole or 'interaural' for double-pole coordinate system.
         Returns:
             (numpy.ndarray): the source locations in cartesian coordinates as (n x 3) array
@@ -681,14 +702,14 @@ class HRTF:
         if len(coordinates.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
             coordinates = coordinates[numpy.newaxis, ...]
         r = coordinates[:, 2]
-        if coord_system == 'polar':
+        if coords == 'polar':
             azimuths = numpy.deg2rad(coordinates[:, 0])
             elevations = numpy.deg2rad(90 - coordinates[:, 1])
             out = numpy.empty(coordinates.shape)
             out[:, 0] = r * numpy.sin(elevations) * numpy.cos(azimuths)
             out[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
             out[:, 2] = r * numpy.cos(elevations)
-        elif coord_system == 'interaural':
+        elif coords == 'interaural':
             azimuths = numpy.deg2rad(self.sources[:, 0])
             elevations = numpy.deg2rad(self.sources[:, 1])
             # x = numpy.cos(azimuths) * numpy.cos(elevations)
@@ -732,7 +753,7 @@ class HRTF:
                 n += 1
         return 1 - sum_corr / n
 
-    def plot_sources(self, idx=None, show=True, label=False, axis=None, coord_system='polar'):
+    def plot_sources(self, idx=None, show=True, label=False, axis=None, coords='polar'):
         """
         Plot source locations in 3D.
 
@@ -742,6 +763,8 @@ class HRTF:
             label (bool): if True, show the index of each source in self.sources as text label, if idx is also given,
                 then only theses sources are labeled
             axis (mpl_toolkits.mplot3d.axes3d.Axes3D): axis to draw the plot on
+            coords (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
+                single pole or 'interaural' for double-pole coordinate system.
         """
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
@@ -751,20 +774,21 @@ class HRTF:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
             ax = axis
-        coords = self.cartesian_source_locations(None, coord_system)
-        ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='b', marker='.')
+        coordinates = self.cartesian_source_locations(None, coords)
+        ax.scatter(coordinates[:, 0], coordinates[:, 1], coordinates[:, 2], c='b', marker='.')
+        ax.axes.set_xlim3d(left=numpy.min(coordinates), right=numpy.max(coordinates))
         if label and idx is None:
-            for i in range(coords.shape[0]):
-                ax.text(coords[i, 0], coords[i, 1], coords[i, 2], f'{i}', size=8, zorder=1, color='k')
+            for i in range(coordinates.shape[0]):
+                ax.text(coordinates[i, 0], coordinates[i, 1], coordinates[i, 2], f'{i}', size=8, zorder=1, color='k')
         ax.scatter(0, 0, 0, c='r', marker='o')
         if self.listener:
             x_, y_, z_, u, v, w = zip(*[self.listener['viewvec'], self.listener['upvec']])
             ax.quiver(x_, y_, z_, u, v, w, length=0.5, colors=['r', 'b', 'r', 'r', 'b', 'b'])
         if idx is not None:
-            ax.scatter(coords[idx, 0], coords[idx, 1], coords[idx, 2], c='r', marker='o')
+            ax.scatter(coordinates[idx, 0], coordinates[idx, 1], coordinates[idx, 2], c='r', marker='o')
             if label:
                 for i in idx:
-                    ax.text(coords[i, 0], coords[i, 1], coords[i, 2], f'{i}', size=8, zorder=1, color='k')
+                    ax.text(coordinates[i, 0], coordinates[i, 1], coordinates[i, 2], f'{i}', size=8, zorder=1, color='k')
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
@@ -792,45 +816,48 @@ class HRTF:
     @staticmethod
     def estimate_hrtf(recordings, signal, sources):
         """
-        Compute a set of transfer functions from in-ear recordings stored in the channels of a slab.Sound object
-        and an input signal. For each sound source, compute the DFT of left- and right-ear recordings
-        and divide by the DFT of the input signal to obtain the head related transfer function.
+        Compute a set of transfer functions from binaural recordings and an input signal.
+        For each sound source, compute the DFT of left- and right-ear recordings
+        and divide by the Fourier transform of the input signal to obtain the head related transfer function.
 
         Arguments:
             signal (slab.Signal | slab.Sound): the signal used to produce the in-ear recordings.
-            recordings (slab.Signal | slab.Sound): the in-ear recordings.
+            recordings (list): in-ear recordings stored in a list of 2-channel slab.Sound objects.
             sources (numpy.array): spherical coordinates (azimuth, elevation, distance) of all sources,
                 number and order of sources must match the recordings.
 
         Returns:
             (slab.HRTF): an HRTF object with the dimensions specified by the recordings and the source file.
         """
-        filt = Filter.band(frequency=200, samplerate=recordings.samplerate)
-        recordings = filt.apply(recordings)  # bandpass filter the recordings
-        recordings.data -= numpy.mean(recordings.data, axis=0)  # remove DC component in FFT output
-        if len(sources) != recordings.n_channels / 2:
+        if not isinstance(recordings, list):
+            raise ValueError('Recordings must be provided as a list of slab.Sound objects.')
+        if len(sources) != len(recordings):
             raise ValueError('Number of sound sources must be equal to number of recordings.')
-        m = int(recordings.n_channels / 2)  # number of measurements
-        r = 2  # number of receivers (HRTFs measured for 2 ears)
-        n = int(recordings.n_samples / 2 + 1)  # samples - frequencies in the transfer function
-        hrtf_data = numpy.empty([m, r, n], dtype=complex)  # store fft output [Measurements, Receivers, N_datapoints]
-        rec_data = numpy.empty([m, r, recordings.n_samples], dtype=float)  # store Sound.data
-        if not signal.samplerate == recordings.samplerate:
-            signal = signal.resample(recordings.samplerate)
-        if not signal.n_samples == recordings.n_samples:
+        rec_samplerate = recordings[0].samplerate
+        rec_n_samples = recordings[0].n_samples
+        rec_data = []
+        for recording in recordings:
+            if not (recording.n_channels == 2 and recording.n_samples == recordings[0].n_samples
+                    and recording.samplerate == rec_samplerate):
+                raise ValueError('Number of channels, samples and samplerate must be equal for all recordings.')
+            rec = copy.deepcopy(recording)
+            # rec.data -= numpy.mean(rec.data, axis=0)  # remove DC component in FFT of recordings
+            rec_data.append(rec.data.T)
+        rec_data = numpy.asarray(rec_data)
+        if not signal.samplerate == rec_samplerate:
+            signal = signal.resample(rec_samplerate)
+        if not signal.n_samples == rec_n_samples:
             sig_freq_bins = numpy.fft.rfftfreq(signal.n_samples, d=1 / signal.samplerate)
-            rec_freq_bins = numpy.fft.rfftfreq(recordings.n_samples, d=1 / recordings.samplerate)
+            rec_freq_bins = numpy.fft.rfftfreq(rec_n_samples, d=1 / rec_samplerate)
             sig_fft = numpy.interp(rec_freq_bins, sig_freq_bins, numpy.fft.rfft(signal.data[:, 0]))
         else:
             sig_fft = numpy.fft.rfft(signal.data[:, 0])
-        for z in range(0, m * 2, 2):
-            source_idx = int(z / 2)  # indices to array with sofa dimensions (m, r, n)
-            channel_idx = [z, z + 1]  # pick data of left and right channels from Slab object
-            rec_data[source_idx] = recordings.data.T[channel_idx, :]
-            hrtf_data[source_idx] = [numpy.fft.rfft(rec_data[source_idx, 0]),
-                                     numpy.fft.rfft(rec_data[source_idx, 1])]
-            hrtf_data[source_idx] = hrtf_data[source_idx] / sig_fft
-        return HRTF(data=numpy.abs(hrtf_data), samplerate=recordings.samplerate, sources=sources, datatype='TF')
+        # remove common component and store DTFs [measurements, receivers, N data points]
+        r_avg = numpy.mean(numpy.fft.rfft(rec_data),axis=0)  # avg magnitude of recordings (direction-independent)
+        comm = r_avg / sig_fft  # R ( f, az,el,x) = S( f ) X D( f, az,el) X comm(f,x); Middlebrooks (1990)
+        hrtf_data = numpy.fft.rfft(rec_data) / (sig_fft * comm)  # HRTFs with common component removed
+        # hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
+        return HRTF(data=numpy.abs(hrtf_data), samplerate=rec_samplerate, sources=sources, fir=False)
 
     def write_sofa(self, filename):
         """
@@ -860,13 +887,35 @@ class HRTF:
         sofa.createDimension('I', i)
         sofa.createDimension('C', c)
         # ----------Attributes----------#
-        sofa.DataType = self.datatype
+        if self.fir:
+            sofa.DataType = 'FIR'
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '2.0'
+            delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
+            delay = numpy.zeros((i, r))
+            delayVar[:, :] = delay
+            dataIRVar = sofa.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
+            dataIRVar.ChannelOrdering = 'acn'
+            dataIRVar.Normalization = 'sn3d'
+            IR_data = []
+            for idx in numpy.asarray(self[:]):
+                IR_data.append(idx.T)
+            dataIRVar[:] = numpy.asarray(IR_data)
+        else:
+            sofa.DataType = 'TF'
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '2.0'
+            dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
+            TF_data = []
+            for idx in numpy.asarray(self[:]):
+                TF_data.append(idx.T)
+            dataRealVar[:] = numpy.asarray(TF_data)
+            dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
+            dataImagVar[:] = numpy.zeros((m, r, n))  # for internal use, store real data only
+            NVar = sofa.createVariable('N', 'f8', ('N'))
+            NVar.LongName = 'frequency'
+            NVar.Units = 'hertz'
+            NVar[:] = n
         sofa.RoomType = 'free field'
         sofa.Conventions, sofa.Version = 'SOFA', '2.0'
-        if self.datatype == 'TF':
-            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '2.0'
-        elif self.datatype == 'FIR':
-            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '2.0'
         sofa.APIName, sofa.APIVersion = 'pysofaconventions', '0.1'
         sofa.AuthorContact, sofa.License = 'Leipzig University', 'PublicLicence'
         sofa.ListenerShortName, sofa.Organization = 'sub01', 'Eurecat - UPF'
@@ -876,7 +925,7 @@ class HRTF:
         listenerPositionVar = sofa.createVariable('ListenerPosition', 'f8', ('I', 'C'))
         listenerPositionVar.Units = 'metre'
         listenerPositionVar.Type = 'cartesian'
-        listenerPositionVar[:] = numpy.zeros(c)
+        listenerPositionVar[:] = self.listener
         receiverPositionVar = sofa.createVariable('ReceiverPosition', 'f8', ('R', 'C', 'I'))
         receiverPositionVar.Units = 'metre'
         receiverPositionVar.Type = 'cartesian'
@@ -897,29 +946,6 @@ class HRTF:
         listenerViewVar.Units = 'metre'
         listenerViewVar.Type = 'cartesian'
         listenerViewVar[:] = numpy.asarray([1, 0, 0])
-        if self.datatype == 'TF':
-            dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
-            TF_data = []
-            for idx in numpy.asarray(self[:]):
-                TF_data.append(idx.T)
-            dataRealVar[:] = numpy.asarray(TF_data)
-            dataImagVar = sofa.createVariable('Data.Imag', 'f8', ('M', 'R', 'N'))
-            dataImagVar[:] = numpy.zeros(m, r, n)  # for internal use, store real data only
-            NVar = sofa.createVariable('N', 'f8', ('N'))
-            NVar.LongName = 'frequency'
-            NVar.Units = 'hertz'
-            NVar[:] = n
-        if self.datatype == 'FIR':
-            delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
-            delay = numpy.zeros((i, r))
-            delayVar[:, :] = delay
-            dataIRVar = sofa.createVariable('Data.IR', 'f8', ('M', 'R', 'N'))
-            dataIRVar.ChannelOrdering = 'acn'
-            dataIRVar.Normalization = 'sn3d'
-            IR_data = []
-            for idx in numpy.asarray(self[:]):
-                IR_data.append(idx.T)
-            dataIRVar[:] = numpy.asarray(IR_data)
         samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', ('I'))
         samplingRateVar.Units = 'hertz'
         samplingRateVar[:] = self.samplerate
