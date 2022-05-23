@@ -101,6 +101,9 @@ def test_center_freqs():
 
 def test_equalization():
     for i in range(10):
+        length = numpy.random.randint(1000, 5000)
+        low_cutoff = numpy.random.randint(20, 2000)
+        high_cutoff = numpy.random.randint(10000, 20000)
         sound = slab.Sound.pinknoise(samplerate=44100)
         filt = slab.Filter.band(frequency=[100., 800., 2000., 4300., 8000., 14500., 18000.],
                                 gain=[0., 1., 0., 1., 0., 1., 0.], samplerate=sound.samplerate)

@@ -135,7 +135,7 @@ stims.write('stims.zip') # save the sounds as zip file of wavs
 stims = slab.Precomputed.read('stims.zip') # reloads the file into a Precomputed object
 ```
 
-<b id="f1">1)</b> The basic functionality of the Signal class and some of the sound generation methods in the Sound class were based on the brian.hears Sound class (now [brain2hears](https://brian2hears.readthedocs.io/en/stable/), an auditory modelling package). [↩](#a1)
+<b id="f1">1)</b> The basic functionality of the Signal class and some of the sound generation methods in the Sound class were based on the brian.hears Sound class (now [brian2hears](https://brian2hears.readthedocs.io/en/stable/), an auditory modelling package). [↩](#a1)
 
 Installation
 ------------
