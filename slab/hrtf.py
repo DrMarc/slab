@@ -389,10 +389,10 @@ class HRTF:
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 axis.plot(freqs, h + vlines[idx],
                           linewidth=0.75, color='0.0', alpha=0.7)
-            ticks = vlines[::3]  # plot every third elevation
+            ticks = vlines[::2]  # plot every second elevation
             labels = numpy.round(self.sources[sourceidx, 1]*2, decimals=-1)/2
             # plot every third elevation label, omit comma to save space
-            labels = labels[::3].astype(int)
+            labels = labels[::2].astype(int)
             axis.set(yticks=ticks, yticklabels=labels)
             axis.grid(b=True, axis='y', which='both', linewidth=0.25)
             axis.plot([xlim[0]+500, xlim[0]+500], [vlines[-1]+10, vlines[-1] +
