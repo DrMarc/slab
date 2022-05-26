@@ -852,11 +852,11 @@ class HRTF:
             sig_fft = numpy.interp(rec_freq_bins, sig_freq_bins, numpy.fft.rfft(signal.data[:, 0]))
         else:
             sig_fft = numpy.fft.rfft(signal.data[:, 0])
-        # remove common component and store DTFs [measurements, receivers, N data points]
-        r_avg = numpy.mean(numpy.fft.rfft(rec_data),axis=0)  # avg magnitude of recordings (direction-independent)
-        comm = r_avg / sig_fft  # R ( f, az,el,x) = S( f ) X D( f, az,el) X comm(f,x); Middlebrooks (1990)
-        hrtf_data = numpy.fft.rfft(rec_data) / (sig_fft * comm)  # HRTFs with common component removed
-        # hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
+        # # remove common component and store DTFs [measurements, receivers, N data points]
+        # r_avg = numpy.mean(numpy.fft.rfft(rec_data),axis=0)  # avg magnitude of recordings (direction-independent)
+        # comm = r_avg / sig_fft  # R ( f, az,el,x) = S( f ) X D( f, az,el) X comm(f,x); Middlebrooks (1990)
+        # hrtf_data = numpy.fft.rfft(rec_data) / (sig_fft * comm)  # HRTFs with common component removed
+        hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
         listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
                     'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
                     'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
