@@ -244,7 +244,7 @@ class TrialPresentationOptionsMixin:
         stimulus.play()
         with slab.key() as k:
             response = k.getch()
-        response = response in [key_codes[i] for i in correct_key_idx]
+        response = response == key_codes[correct_key_idx] 
         self.add_response(response)
         if print_info:
             self.print_trial_info()
