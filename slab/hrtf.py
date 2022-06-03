@@ -66,7 +66,7 @@ class HRTF:
         . data (list): The HRTF data. The elements of the list are instances of slab.Filter.
         .listener (dict): a dictionary containing the position of the listener ("pos"), the point which the listener
             is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
-        .samplerate (float): sampling rate at which the HRTF data was acquired.
+        .samplerate (int): sampling rate at which the HRTF data was acquired.
     Example:
         import slab
         hrtf = slab.HRTF.kemar() # use inbuilt KEMAR data
@@ -191,9 +191,9 @@ class HRTF:
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
         unit = attr['Units']  # extract and decode Units
         if unit in ('hertz', 'Hz'):
-            return float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
+            return int(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
-        return 1000 * float(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
+        return 1000 * int(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
 
     @staticmethod
     def _sofa_get_frequencies(f):
@@ -813,8 +813,52 @@ class HRTF:
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
         return _kemar
 
+    def equalize_frequencies(self):
+        """
+        Description
+        Arguments:
+        Returns:
+        Examples:
+        """
+        # use cosine filter bank
+        fbank = Filter.cos_filterbank(length=(self.frequencies * 2) - 1, bandwidth=1 / 10,
+                                      samplerate=self.samplerate, pass_bands=True)
+
+        # triangular filter bank
+        freq_bins = numpy.fft.rfftfreq((self.frequencies * 2) - 1, d=1 / self.samplerate)
+        n_freqs = len(freq_bins)
+        center_freqs, bandwidth, erb_spacing = Filter._center_freqs(
+            low_cutoff=0, high_cutoff=self.samplerate/2, bandwidth=1/20, pass_bands=True)
+        n_filters = len(center_freqs)
+        filts = numpy.zeros((n_freqs, n_filters))
+        freqs_erb = Filter._freq2erb(freq_bins)
+        for i in range(n_filters):
+            l = center_freqs[i] - erb_spacing
+            h = center_freqs[i] + erb_spacing
+            avg = center_freqs[i]  # center of filter
+            # width = erb_spacing * 2  # width of filter
+            filts[(freqs_erb > l) & (freqs_erb < avg), i] = numpy.interp(freqs_erb[(freqs_erb > l) & (freqs_erb < avg)],
+                                                                         numpy.array((l, avg)), numpy.array((0, 1)))
+            filts[(freqs_erb > avg) & (freqs_erb < h), i] = numpy.interp(freqs_erb[(freqs_erb > avg) & (freqs_erb < h)],
+                                                                         numpy.array((avg, h)), numpy.array((1, 0)))
+        fbank = Filter(data=filts, samplerate=self.samplerate, fir=False)
+
+        out = copy.deepcopy(self)
+        for src_idx, dtf in enumerate(self.data):
+            subbands = numpy.empty((dtf.n_samples, fbank.n_filters, 2))
+            band_rms = numpy.empty((fbank.n_filters, 2))
+            for filt in range(fbank.n_filters):
+                subbands[ :, filt, 0] = dtf[:, 0] * fbank[:, filt]
+                subbands[ :, filt, 1] = dtf[:, 1] * fbank[:, filt]
+                band_rms[filt, 0] = numpy.sqrt(numpy.mean(numpy.square(subbands[ :, filt, 0]), axis=0))
+                band_rms[filt, 1] = numpy.sqrt(numpy.mean(numpy.square(subbands[ :, filt, 1]), axis=0))
+            out.data[src_idx].data = subbands.sum(axis=1)
+        center_freqs = Filter._erb2freq(center_freqs)
+
+        return out
+
     @staticmethod
-    def estimate_hrtf(recordings, signal, sources):
+    def estimate_hrtf(recordings, signal, sources, equalize_frequencies=True):
         """
         Compute a set of transfer functions from binaural recordings and an input signal.
         For each sound source, compute the DFT of left- and right-ear recordings
