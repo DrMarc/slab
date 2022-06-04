@@ -418,7 +418,7 @@ class Filter(Signal):
             filtered = filt.apply(sound)
             # make an equalizing filter and apply it to the filtered signal. The result looks more like the original
             fbank = slab.Filter.equalizing_filterbank(sound, filtered, low_cutoff=200, high_cutoff=16000)
-            equalized = fbank.apply(sound)
+            equalized = fbank.apply(filtered)
         """
         if scipy is False:
             raise ImportError('Generating equalizing filter banks requires Scipy.')
