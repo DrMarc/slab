@@ -909,24 +909,25 @@ class Sound(Signal):
         Returns:
             (slab.Sound): The recorded sound.
         """
+        if samplerate is None:
+            samplerate = slab.signal._default_samplerate
         if soundcard is not False:
-            if samplerate is None:
-                samplerate = slab.signal._default_samplerate
             duration = Sound.in_samples(duration, samplerate)
             mic = soundcard.default_microphone()
             data = mic.record(samplerate=samplerate, numframes=duration, channels=1)
             out = Sound(data, samplerate=samplerate)
         else:  # use sox
             try:
+                filename = _tmpdir / 'rec.wav'
                 subprocess.call(
-                    ['sox', '-d', '-r', str(samplerate), str(_tmpdir / 'tmp.wav'), 'trim', '0', str(duration)])
+                    ['sox', '-d', '-r', str(samplerate), filename, 'trim', '0', str(duration)])
             except FileNotFoundError:
                 raise ImportError(
                     'Recording without SoundCard module requires SoX.\n'
                     'Install: pip install SoundCard OR install SoX (Linux: sudo apt-get install sox libsox-fmt-all.\n'
                     'Windows: see SoX website: http://sox.sourceforge.net/)')
-            time.sleep(duration)
-            out = Sound('tmp.wav')
+            time.sleep(duration/samplerate+0.1)  # add 100ms to make sure the tmp file is written
+            out = Sound(filename)
         return out
 
     def play(self):
