@@ -1084,7 +1084,7 @@ class Sound(Signal):
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         envs = envs.data ** (1 / 3)  # apply non-linearity (cube-root compression)
         if show or (axis is not None):
-            if not matplotlib is False:
+            if matplotlib is False:
                 raise ImportError('Plotting cochleagrams requires matplotlib.')
             cmap = matplotlib.cm.get_cmap('Greys')
             if axis is None:
