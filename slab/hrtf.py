@@ -901,9 +901,9 @@ class HRTF:
         # comm = r_avg / sig_fft  # R ( f, az,el,x) = S( f ) X D( f, az,el) X comm(f,x); Middlebrooks (1990)
         # hrtf_data = numpy.fft.rfft(rec_data) / (sig_fft * comm)  # HRTFs with common component removed
         hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
-        listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
-                    'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
-                    'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
+        listener = {'pos': numpy.array([0., 0., 0.]),
+                    'view': numpy.array([1., 0., 0.]),
+                    'up': numpy.array([0., 0., 1.])}
         return HRTF(data=numpy.abs(hrtf_data), samplerate=rec_samplerate, sources=sources, fir=False, listener=listener)
 
     def write_sofa(self, filename):
@@ -972,7 +972,7 @@ class HRTF:
         listenerPositionVar = sofa.createVariable('ListenerPosition', 'f8', ('I', 'C'))
         listenerPositionVar.Units = 'metre'
         listenerPositionVar.Type = 'cartesian'
-        listenerPositionVar[:] = self.listener
+        listenerPositionVar[:] = self.listener['pos']
         receiverPositionVar = sofa.createVariable('ReceiverPosition', 'f8', ('R', 'C', 'I'))
         receiverPositionVar.Units = 'metre'
         receiverPositionVar.Type = 'cartesian'
@@ -988,11 +988,11 @@ class HRTF:
         listenerUpVar = sofa.createVariable('ListenerUp', 'f8', ('I', 'C'))
         listenerUpVar.Units = 'metre'
         listenerUpVar.Type = 'cartesian'
-        listenerUpVar[:] = numpy.asarray([0, 0, 1])
+        listenerUpVar[:] = self.listener['up']
         listenerViewVar = sofa.createVariable('ListenerView', 'f8', ('I', 'C'))
         listenerViewVar.Units = 'metre'
         listenerViewVar.Type = 'cartesian'
-        listenerViewVar[:] = numpy.asarray([1, 0, 0])
+        listenerViewVar[:] = self.listener['view']
         samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', ('I'))
         samplingRateVar.Units = 'hertz'
         samplingRateVar[:] = self.samplerate
