@@ -104,15 +104,15 @@ def test_equalization():
         length = numpy.random.randint(1000, 5000)
         low_cutoff = numpy.random.randint(20, 2000)
         high_cutoff = numpy.random.randint(10000, 20000)
-        sound = slab.Sound.pinknoise(samplerate=44100)
+        sound = slab.Sound.pinknoise(samplerate=44100, duration=length/1000)
         filt = slab.Filter.band(frequency=[100., 800., 2000., 4300., 8000., 14500., 18000.],
                                 gain=[0., 1., 0., 1., 0., 1., 0.], samplerate=sound.samplerate)
         filtered = filt.apply(sound)
-        fbank = slab.Filter.equalizing_filterbank(sound, filtered, low_cutoff=200, high_cutoff=16000)
-        equalized = fbank.apply(sound)
-        Z_equalized, _ = equalized.spectrum(show=False)
-        Z_sound, _ = sound.spectrum(show=False)
-        Z_filtered, _ = filtered.spectrum(show=False)
+        fbank = slab.Filter.equalizing_filterbank(sound, filtered, low_cutoff=low_cutoff, high_cutoff=high_cutoff)
+        equalized = fbank.apply(filtered)
+        Z_equalized, _ = equalized.spectrum(low_cutoff, high_cutoff, show=False)
+        Z_sound, _ = sound.spectrum(low_cutoff, high_cutoff, show=False)
+        Z_filtered, _ = filtered.spectrum(low_cutoff, high_cutoff, show=False)
         # The difference between spectra should be smaller after equalization
         assert numpy.abs(Z_sound-Z_filtered).sum() / numpy.abs(Z_sound-Z_equalized).sum() > 2
 
