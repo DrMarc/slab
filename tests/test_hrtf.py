@@ -57,13 +57,14 @@ def test_diffuse_field():
         assert numpy.abs(mag_eq.mean()) < numpy.abs(mag_raw.mean())
 
 
+# TODO: working per software level, but need to check if the testing logic makes sense
 def test_cone_sources():  # this is not working properly!
     hrtf = slab.HRTF.kemar()
     sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
     for _ in range(10):
         cone = numpy.random.uniform(-1000, 1000)
         idx = hrtf.cone_sources(cone)
-        filtered = [hrtf.data[i].apply(sound) for i in idx]
+        filtered = [hrtf.apply(i, sound) for i in idx]
         ilds = [f.ild() for f in filtered]
         assert numpy.abs(numpy.diff(ilds)).max() < 20
 
