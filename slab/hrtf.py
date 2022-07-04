@@ -329,7 +329,7 @@ class HRTF:
             # plot every third elevation label, omit comma to save space
             labels = labels[::3].astype(int)
             axis.set(yticks=ticks, yticklabels=labels)
-            axis.grid(b=True, axis='y', which='both', linewidth=0.25)
+            axis.grid(visible=True, axis='y', which='both', linewidth=0.25)
             axis.plot([xlim[0]+500, xlim[0]+500], [vlines[-1]+10, vlines[-1] +
                                                    10+linesep], linewidth=1, color='0.0', alpha=0.9)
             axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
@@ -537,10 +537,10 @@ class HRTF:
             gains = avg_amps - avg_amps.max()  # shift so that maximum is zero, because we can only attenuate
             gains[gains < -60] = -60  # limit dynamic range to 60 dB
             gains_lin = 10**(gains/20)  # transform attenuations in dB to factors
-            filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), length=self[idx].n_samples, fir=True,
-                                        samplerate=self[vertex_list[0]].samplerate)
-            filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), length=self[idx].n_samples, fir=True,
-                                        samplerate=self[vertex_list[0]].samplerate)
+            filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), length=self[idx].n_samples,
+                                 fir=True, samplerate=self[vertex_list[0]].samplerate)
+            filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), length=self[idx].n_samples,
+                                 fir=True, samplerate=self[vertex_list[0]].samplerate)
             filt = Filter(data=[filt_l, filt_r])
             itds = list()
             for idx in vertex_list:
