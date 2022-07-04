@@ -51,6 +51,11 @@ def set_calibration_intensity(intensity):
     _calibration_intensity = intensity
 
 
+def get_calibration_intensity():
+    global _calibration_intensity
+    return _calibration_intensity
+
+
 class Sound(Signal):
     """
     Class for working with sounds, including loading/saving, manipulating and playing. Inherits from the base class
