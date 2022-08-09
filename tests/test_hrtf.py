@@ -15,18 +15,18 @@ def test_create_hrtf():
         idx = numpy.random.choice(range(hrtf1.n_sources))
         data = hrtf1[idx]  # make HRTF from instance of filter
         numpy.testing.assert_raises(ValueError, slab.HRTF, data)
-        source = hrtf1.sources[idx]
+        source = hrtf1.sources.vertical_polar[idx]
         listener = numpy.random.randn(3)
         hrtf = slab.HRTF(data=data, sources=source, listener=listener)
         numpy.testing.assert_equal(hrtf.listener, listener)
-        numpy.testing.assert_equal(hrtf.sources, source)
+        numpy.testing.assert_equal(hrtf.sources.vertical_polar, source)
         numpy.testing.assert_equal(hrtf[0].data.flatten(), data.data[:, 0])
         numpy.testing.assert_equal(hrtf[1].data.flatten(), data.data[:, 1])
         idx = numpy.random.choice(range(hrtf1.n_sources), 10, replace=False)
         data = [hrtf1[i].data for i in idx]  # make HRTF from array
         data = numpy.dstack(data)
         data = numpy.transpose(data, axes=(2, 0, 1))
-        sources = hrtf1.sources[idx]
+        sources = hrtf1.sources.cartesian[idx]
         hrtf = slab.HRTF(data=data, sources=sources, samplerate=hrtf.samplerate, datatype='FIR')
         assert hrtf.n_sources == data.shape[0]
         assert hrtf[0].n_samples == data.shape[1]
@@ -41,7 +41,9 @@ def test_plot_hrtf():
         else:
             _, ax = plt.subplots(1)
         for kind in ["waterfall", "image"]:
-            sources = hrtf.cone_sources(cone=numpy.random.uniform(-180, 180))
+            cone = numpy.random.uniform(-180, 180)
+            sources = hrtf.cone_sources(cone=cone)
+            # sources = hrtf.cone_sources(cone=numpy.random.uniform(-180, 180))
             hrtf.plot_tf(sourceidx=sources, kind=kind, ear=ear, axis=ax, show=False)
 
 
@@ -70,13 +72,14 @@ def test_cone_sources():  # this is not working properly!
 
 def test_elevation_sources():
     hrtf = slab.HRTF.kemar()
-    elevations = numpy.unique(hrtf.sources[:, 1])
+    elevations = numpy.unique(hrtf.sources.vertical_polar[:, 1])
     elevations = numpy.concatenate([elevations, [-35, 3, 21]])
     for e in elevations:
         sources = hrtf.elevation_sources(e)
-        if e in numpy.unique(hrtf.sources[:, 1]):
-            assert all(numpy.logical_or(hrtf.sources[sources][:, 0] <= 90, hrtf.sources[sources][:, 0] >= 270))
-            assert all(hrtf.sources[sources][:, 1] == e)
+        if e in numpy.unique(hrtf.sources.vertical_polar[:, 1]):
+            assert all(numpy.logical_or(hrtf.sources.vertical_polar[sources][:, 0] <= 90,
+                                        hrtf.sources.vertical_polar[sources][:, 0] >= 270))
+            assert all(hrtf.sources.vertical_polar[sources][:, 1] == e)
         else:
             assert len(sources) == 0
 
@@ -106,15 +109,15 @@ def test_vsi():
 def test_plot_sources():
     hrtf = slab.HRTF.kemar()
     for _ in range(10):
-        idx = numpy.random.choice(range(len(hrtf.sources)), numpy.random.randint(10))
+        idx = numpy.random.choice(range(len(hrtf.sources.vertical_polar)), numpy.random.randint(10))
         hrtf.plot_sources(idx=idx, show=False)
 
 
 def test_interpolate():
     hrtf = slab.HRTF.kemar()
     for _ in range(10):
-        idx = numpy.random.choice(range(len(hrtf.sources)))
-        azi, ele = hrtf.sources[idx][0:2]
+        idx = numpy.random.choice(range(len(hrtf.sources.vertical_polar)))
+        azi, ele = hrtf.sources.vertical_polar[idx][0:2]
         method = numpy.random.choice(['nearest', 'bary'])
         h = hrtf.interpolate(azimuth=azi, elevation=ele, method=method)
         _, spec_interp = h[0].tf(show=False)
