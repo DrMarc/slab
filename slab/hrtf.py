@@ -97,17 +97,19 @@ class HRTF:
         elif isinstance(data, Filter):
             # This is a hacky shortcut for casting a filterbank as HRTF. Avoid unless you know what you are doing.
             if sources is None:
-                raise ValueError('Must provide source positions when initializing HRTF from a Filter object.')
+                raise ValueError('Must provide spherical source positions when initializing HRTF from a Filter object.')
             self.samplerate = data.samplerate
             if data.fir:
                 self.datatype = 'FIR'
+                fir = True
             else:
                 self.datatype = 'TF'
+                fir = False
             # reshape the filterbank data to fit into HRTF (ind x taps x ear)
             data = data.data.T[..., None]
             self.data = []
             for idx in range(data.shape[0]):
-                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=data.fir))
+                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
             self.sources = HRTF._convert_coordinates(sources, 'spherical')
             if listener is None:
                 self.listener = [0, 0, 0]
@@ -117,15 +119,21 @@ class HRTF:
             if samplerate is None:  # should have shape (ind x ear x taps), 2 x n_taps filter (left right)
                 raise ValueError('Must specify samplerate when initialising HRTF from an array.')
             self.samplerate = samplerate
-            if datatype is None:
+            if datatype is None or type(datatype) is not str:
                 raise ValueError('Must specify datatype (FIR or TF) when initialising HRTF from an array.')
+            if datatype.upper() == 'FIR':
+                self.datatype = 'FIR'
+                fir = True
+            elif datatype.upper() == 'TF':
+                self.datatype = 'TF'
+                fir = False
             self.datatype = datatype
             if sources is None:
-                raise ValueError('Must provide source positions when initializing HRTF from a Filter object.')
+                raise ValueError('Must provide spherical source positions when initializing HRTF from a Filter object.')
             self.sources = HRTF._convert_coordinates(sources, 'spherical')  # todo provide custom coord type
             self.data = []
             for idx in range(data.shape[0]):
-                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=self.fir))
+                self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
             if listener is None:
                 self.listener = [0, 0, 0]
             else:
@@ -866,6 +874,7 @@ class HRTF:
         if _kemar is None:
             kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
+            _kemar.sources = HRTF._convert_coordinates(_kemar.sources, 'spherical')
         return _kemar
 
     def equalize_frequencies(self):
