@@ -296,8 +296,6 @@ class HRTF:
         """
         if isinstance(sources, (list, tuple)):
             sources = numpy.array(sources)
-        if len(sources.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
-            sources = sources[numpy.newaxis, ...]
         source_coordinates = namedtuple('sources', 'cartesian vertical_polar interaural_polar')
         if coordinate_system == 'spherical':
             vertical_polar = sources
@@ -328,6 +326,8 @@ class HRTF:
         Returns:
             (numpy.ndarray): cartesian coordinates.
         """
+        if len(vertical_polar.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+            vertical_polar = vertical_polar[numpy.newaxis, ...]
         cartesian = numpy.zeros_like(vertical_polar)
         azimuths = numpy.deg2rad(vertical_polar[:, 0])
         elevations = numpy.deg2rad(90 - vertical_polar[:, 1])
@@ -347,6 +347,8 @@ class HRTF:
         Returns:
             (numpy.ndarray): cartesian coordinates.
         """
+        if len(interaural_polar.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+            interaural_polar = interaural_polar[numpy.newaxis, ...]
         cartesian = numpy.zeros_like(interaural_polar)
         azimuths = numpy.deg2rad(interaural_polar[:, 0])
         elevations = numpy.deg2rad(90 - interaural_polar[:, 1])
@@ -366,6 +368,8 @@ class HRTF:
         Returns:
             (numpy.ndarray): vertical-polar coordinates.
         """
+        if len(cartesian.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+            cartesian = cartesian[numpy.newaxis, ...]
         vertical_polar = numpy.zeros_like(cartesian)
         xy = cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2
         vertical_polar[:, 0] = numpy.rad2deg(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]))
@@ -383,6 +387,8 @@ class HRTF:
         Returns:
             (numpy.ndarray): interaural-polar coordinates.
         """
+        if len(vertical_polar.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+            vertical_polar = vertical_polar[numpy.newaxis, ...]
         interaural_polar = numpy.zeros_like(vertical_polar)
         azimuths = numpy.deg2rad(vertical_polar[:, 0])
         elevations = numpy.deg2rad(vertical_polar[:, 1])
