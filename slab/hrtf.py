@@ -294,7 +294,7 @@ class HRTF:
         if coordinate_system == 'spherical':
             vertical_polar = sources
             cartesian = HRTF._vertical_polar_to_cartesian(vertical_polar)
-            interaural_polar = HRTF._vertical_polar_to_interaural_polar(vertical_polar)  # todo fix
+            interaural_polar = HRTF._vertical_polar_to_interaural_polar(vertical_polar)
         elif coordinate_system == 'interaural':
             interaural_polar = sources
             cartesian = HRTF._interaural_polar_to_cartesian(interaural_polar)
@@ -302,7 +302,7 @@ class HRTF:
         elif coordinate_system == 'cartesian':
             cartesian = sources
             vertical_polar = HRTF._cartesian_to_vertical_polar(cartesian)
-            interaural_polar = HRTF._vertical_polar_to_interaural_polar(vertical_polar)  # todo fix
+            interaural_polar = HRTF._vertical_polar_to_interaural_polar(vertical_polar)
         else:
             warnings.warn('Unrecognized coordinate system for source positions: ' + coordinate_system)
             return None
@@ -333,29 +333,6 @@ class HRTF:
         return cartesian
 
     @staticmethod
-    def _interaural_polar_to_cartesian(sources):
-        """
-        Convert interaural-polar to cartesian coordinates.
-
-        Arguments:
-            sources (numpy.ndarray): interaural-polar coordinates (azimuth, elevation, distance)
-        Returns:
-            (numpy.ndarray): cartesian coordinates.
-        """
-        if isinstance(sources, (list, tuple)):
-            sources = numpy.array(sources)
-        if len(sources.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
-            sources = sources[numpy.newaxis, ...]
-        cartesian = numpy.zeros(sources.shape)
-        azimuths = numpy.deg2rad(sources[:, 0])
-        elevations = numpy.deg2rad(90 - sources[:, 1])
-        r = sources[:, 2].mean()  # get radii of sound sources
-        cartesian[:, 0] = r * numpy.cos(elevations) * numpy.cos(azimuths)
-        cartesian[:, 1] = r * numpy.sin(azimuths)
-        cartesian[:, 2] = r * numpy.cos(azimuths) * numpy.sin(elevations)
-        return cartesian
-
-    @staticmethod
     def _cartesian_to_vertical_polar(sources):
         """
         Convert cartesian to vertical-polar coordinates.
@@ -376,11 +353,33 @@ class HRTF:
         vertical_polar[:, 2] = numpy.sqrt(xy + sources[:, 2] ** 2)
         return vertical_polar
 
-    @staticmethod  # todo fix
-    def _vertical_polar_to_interaural_polar(sources):
-    # def cartesian_to_interaural_polar(): # todo better alternative
+    @staticmethod
+    def _interaural_polar_to_cartesian(sources):
         """
-        Convert cartesian to interaural-polar coordinates.
+        Convert interaural-polar to cartesian coordinates.
+
+        Arguments:
+            sources (numpy.ndarray): interaural-polar coordinates (azimuth, elevation, distance)
+        Returns:
+            (numpy.ndarray): cartesian coordinates.
+        """
+        if isinstance(sources, (list, tuple)):
+            sources = numpy.array(sources)
+        if len(sources.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+            sources = sources[numpy.newaxis, ...]
+        cartesian = numpy.zeros(sources.shape)
+        azimuths = numpy.deg2rad(sources[:, 0])
+        elevations = numpy.deg2rad(90 - sources[:, 1])
+        r = sources[:, 2].mean()  # get radii of sound sources
+        cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
+        cartesian[:, 1] = r * numpy.sin(azimuths)
+        cartesian[:, 2] = r * numpy.cos(elevations) * numpy.cos(azimuths)
+        return cartesian
+
+    @staticmethod
+    def _vertical_polar_to_interaural_polar(sources):
+        """
+        Convert vertical-polar to interaural-polar coordinates.
 
         Arguments:
             sources (numpy.ndarray): cartesian coordinates (azimuth, elevation, distance)
@@ -393,22 +392,13 @@ class HRTF:
             sources = sources[numpy.newaxis, ...]
         interaural_polar = numpy.zeros(sources.shape)
         azimuths = numpy.deg2rad(sources[:, 0])
-        elevations = numpy.deg2rad(90 - sources[:, 1])
+        elevations = numpy.deg2rad(sources[:, 1])
         interaural_polar[:, 0] = numpy.rad2deg(numpy.arcsin(numpy.cos(elevations) * numpy.sin(azimuths)))
-        interaural_polar[:, 1] = numpy.rad2deg(numpy.tan((1 / numpy.tan(azimuths)) * numpy.cos(elevations)))
+        with numpy.errstate(divide='ignore'):
+            interaural_polar[:, 1] = (numpy.pi / 2) - numpy.arctan(((1 / numpy.tan(elevations)) * numpy.cos(azimuths)))
+        interaural_polar[interaural_polar[:, 1] > numpy.pi / 2, 1] -= numpy.pi
+        interaural_polar[:, 1] = numpy.rad2deg(interaural_polar[:, 1])
         interaural_polar[:, 2] = sources[:, 2]
-        """
-        cc = cartesian
-        plt.figure()
-        ax = plt.subplot(projection='3d')
-        ax.scatter(cc[:, 0], cc[:, 1], cc[:, 2], c='b', marker='.')
-        ax.set_xlabel('X [m]')
-        ax.set_ylabel('Y [m]')
-        ax.set_zlabel('Z [m]')
-        ax.axes.set_xlim3d(cc.min(), cc.max())
-        ax.axes.set_ylim3d(cc.min(), cc.max())
-        plt.show()
-        """
         return interaural_polar
 
     def apply(self, source, sound, allow_resampling=True):
