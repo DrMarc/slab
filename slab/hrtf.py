@@ -739,13 +739,13 @@ class HRTF:
             filt = Filter(data=[filt_l, filt_r])
             itds = list()
             for idx in vertex_list:
-                taps = Binaural(self[idx]) # recast filter taps as Binaural sound
+                taps = Binaural(self[idx])  # recast filter taps as Binaural sound
                 itds.append(taps.itd())  # use Binaural.itd to compute correlation lag between channels
             avg_itd = itds[0] * weights[0] + itds[1] * weights[1] + itds[2] * weights[2]  # average ITD
             filt = filt.delay(avg_itd / self.samplerate)
         data = filt.data[numpy.newaxis, ...]  # get into correct shape (idx, taps, ear)
         source_loc = numpy.array([[azimuth, elevation, r]])
-        out = HRTF(data, sources=source_loc, listener=self.listener, samplerate=self.samplerate)
+        out = HRTF(data, datatype='FIR', samplerate=self.samplerate, sources=source_loc, listener=self.listener, )
         return out
 
     @staticmethod
