@@ -314,7 +314,8 @@ class HRTF:
         else:
             warnings.warn('Unrecognized coordinate system for source positions: ' + coordinate_system)
             return None
-        sources = source_coordinates(cartesian, vertical_polar, interaural_polar)
+        sources = source_coordinates(numpy.squeeze(cartesian), numpy.squeeze(vertical_polar),
+                                     numpy.squeeze(interaural_polar))
         return sources
 
     @staticmethod
