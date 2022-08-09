@@ -682,7 +682,7 @@ class HRTF:
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
         coordinates = self.sources.cartesian
         r = self.sources.vertical_polar[:, 2].mean()
-        target = self._vertical_polar_to_cartesian((azimuth, elevation, r))
+        target = self._vertical_polar_to_cartesian(numpy.array((azimuth, elevation, r)))
         # compute distances from target direction
         distances = numpy.sqrt(((target - coordinates)**2).sum(axis=1))
         if method == 'nearest':
