@@ -1021,7 +1021,7 @@ class HRTF:
         listenerPositionVar = sofa.createVariable('ListenerPosition', 'f8', ('I', 'C'))
         listenerPositionVar.Units = 'metre'
         listenerPositionVar.Type = 'cartesian'
-        listenerPositionVar[:] = self.listener
+        listenerPositionVar[:] = self.listener['pos']
         receiverPositionVar = sofa.createVariable('ReceiverPosition', 'f8', ('R', 'C', 'I'))
         receiverPositionVar.Units = 'metre'
         receiverPositionVar.Type = 'cartesian'
@@ -1029,7 +1029,7 @@ class HRTF:
         sourcePositionVar = sofa.createVariable('SourcePosition', 'f8', ('M', 'C'))
         sourcePositionVar.Units = 'degree, degree, metre'
         sourcePositionVar.Type = 'spherical'
-        sourcePositionVar[:] = self.sources  # array of speaker positions
+        sourcePositionVar[:] = self.sources.vertical_polar  # array of speaker positions
         emitterPositionVar = sofa.createVariable('EmitterPosition', 'f8', ('E', 'C', 'I'))
         emitterPositionVar.Units = 'metre'
         emitterPositionVar.Type = 'cartesian'
@@ -1037,11 +1037,11 @@ class HRTF:
         listenerUpVar = sofa.createVariable('ListenerUp', 'f8', ('I', 'C'))
         listenerUpVar.Units = 'metre'
         listenerUpVar.Type = 'cartesian'
-        listenerUpVar[:] = numpy.asarray([0, 0, 1])
+        listenerUpVar[:] = self.listener['up']
         listenerViewVar = sofa.createVariable('ListenerView', 'f8', ('I', 'C'))
         listenerViewVar.Units = 'metre'
         listenerViewVar.Type = 'cartesian'
-        listenerViewVar[:] = numpy.asarray([1, 0, 0])
+        listenerViewVar[:] = self.listener['view']
         samplingRateVar = sofa.createVariable('Data.SamplingRate', 'f8', ('I'))
         samplingRateVar.Units = 'hertz'
         samplingRateVar[:] = self.samplerate
