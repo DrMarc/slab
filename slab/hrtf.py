@@ -621,7 +621,8 @@ class HRTF:
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources.vertical_polar[:, 1]) == ele)
             cmin = numpy.min(numpy.abs(self.sources.cartesian[subidx, 1]-cone).astype('float16'))
-            if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
+            # if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
+            if cmin < 0.06:  # only include elevation where the closest source is less than 6 cm away
                 idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
                         numpy.abs(self.sources.cartesian[:, 1]-cone).astype('float16') == cmin))  # avoid rounding error
                 out.append(idx[0])
