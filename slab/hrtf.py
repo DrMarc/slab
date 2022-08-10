@@ -53,21 +53,23 @@ class HRTF:
             does not result in a typical HRTF object and is only intended for equalization filter banks). Given a 3D
             array, the first dimension represents the sources, the second the number of taps per filter and the last the
             number of filter channels per filter (should be always 2, for left and right ear).
+        datatype (None | string): type of the HRTF filter bank, can be 'FIR' for finite imoulse response filters or 'TF'
+            for Fourier filters.
         samplerate (None | float): rate at which the data was acquired, only relevant when not loading from .sofa file
         sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
         listener (None | list | dict): position of the listener, only relevant when not loading from .sofa file
-        datatype (None | string):
-        fir (bool): whether the HRTF filter bank are finite impulse filters (True) or a Fourier filters (False)
         verbose (bool): print out items when loading .sofa files, defaults to False
 
     Attributes:
-        .n_sources (int): The number of sources in the HRTF.
-        .sources (array): spherical coordinates (azimuth, elevation, distance) of all sources.
-        .n_elevations (int): The number of elevations in the HRTF.
-        . data (list): The HRTF data. The elements of the list are instances of slab.Filter.
-        .listener (dict): a dictionary containing the position of the listener ("pos"), the point which the listener
-            is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
+        .data (list): The HRTF data. The elements of the list are instances of slab.Filter.
+        .datatype (string): Type of the HRTF filter bank.
         .samplerate (int): sampling rate at which the HRTF data was acquired.
+        .sources (named tuple): Cartesian coordinates (x, y, z), vertical-polar and interaural-polar coordinates
+            (azimuth, elevation, distance) of all sources.
+        .n_sources (int): The number of sources in the HRTF.
+        .n_elevations (int): The number of elevations in the HRTF.
+        .listener (dict): A dictionary containing the position of the listener ("pos"), the point which the listener
+            is fixating ("view"), the point 90° above the listener ("up") and vectors from the listener to those points.
     Example:
         import slab
         hrtf = slab.HRTF.kemar() # use inbuilt KEMAR data
@@ -99,12 +101,11 @@ class HRTF:
             if sources is None:
                 raise ValueError('Must provide spherical source positions when initializing HRTF from a Filter object.')
             self.samplerate = data.samplerate
-            if data.fir:
+            fir = data.fir
+            if fir:
                 self.datatype = 'FIR'
-                fir = True
             else:
                 self.datatype = 'TF'
-                fir = False
             # reshape the filterbank data to fit into HRTF (ind x taps x ear)
             data = data.data.T[..., None]
             self.data = []
@@ -120,17 +121,17 @@ class HRTF:
                 raise ValueError('Must specify samplerate when initialising HRTF from an array.')
             self.samplerate = samplerate
             if datatype is None or type(datatype) is not str:
-                raise ValueError('Must specify datatype (FIR or TF) when initialising HRTF from an array.')
-            if datatype.upper() == 'FIR':
-                self.datatype = 'FIR'
+                raise ValueError('Must specify data type (FIR or TF) when initialising HRTF from an array.')
+            self.datatype = datatype.upper()
+            if self.datatype == 'FIR':
                 fir = True
-            elif datatype.upper() == 'TF':
-                self.datatype = 'TF'
+            elif self.datatype == 'TF':
                 fir = False
-            self.datatype = datatype
+            else:
+                raise ValueError(f'Unsupported data type: {datatype}')
             if sources is None:
-                raise ValueError('Must provide spherical source positions when initializing HRTF from a Filter object.')
-            self.sources = HRTF._convert_coordinates(sources, 'spherical')  # todo provide custom coord type
+                raise ValueError('Must provide vertical-polar source positions when initializing HRTF from an array.')
+            self.sources = HRTF._convert_coordinates(sources, 'spherical')
             self.data = []
             for idx in range(data.shape[0]):
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
@@ -145,9 +146,8 @@ class HRTF:
         return f'{type(self)} (\n{repr(self.data)} \n{repr(self.samplerate)})'
 
     def __str__(self):
-        return f'{type(self)} sources {self.n_sources}, elevations {self.n_elevations}, ' \
-               f'samples {self[0].n_samples}, samplerate {self.samplerate}, ' \
-               f'datatype {self.datatype}'
+        return f'{type(self)}, datatype {self.datatype}, sources {self.n_sources}, ' \
+               f'elevations {self.n_elevations}, samplerate {self.samplerate}, samples {self[0].n_samples}'
 
     def __getitem__(self, key):
         return self.data.__getitem__(key)
@@ -178,15 +178,15 @@ class HRTF:
     @staticmethod
     def _sofa_get_data(f):
         """
-        Read the impulse response or transfer functions from the SOFA data and store them
-        in a Filter object. In case of transfer functions, return their frequencies.
-        Return the datatype and samplerate, and the Filter object in the `data` attribute.
+        Read the impulse response or transfer functions from the SOFA data and store them in a Filter object.
+        In case of transfer functions, return their frequencies. Return the data type and samplerate, and the Filter
+        object in the `data` attribute.
 
         Arguments:
             f (h5netcdf.core.File): data as returned by the `_sofa_load` method.
         Returns:
             data (list): a list of Filter objects containing the HRTF data.
-            datatype (string): the datatype used in the SOFA file
+            datatype (string): the data type used in the SOFA file
             samplerate (float): the sampling rate in Hz.
             frequencies (None | float): the frequencies in Hz.
         """
@@ -223,9 +223,9 @@ class HRTF:
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
         unit = attr['Units']  # extract and decode Units
         if unit in ('hertz', 'Hz'):
-            return int(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
+            return (numpy.array(f.variables['Data.SamplingRate'], dtype='int'))
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
-        return 1000 * int(numpy.array(f.variables['Data.SamplingRate'], dtype='float'))
+        return 1000 * (numpy.array(f.variables['Data.SamplingRate'], dtype='int'))
 
     @staticmethod
     def _sofa_get_frequencies(f):
@@ -241,9 +241,9 @@ class HRTF:
         attr = dict(f.variables['N'].attrs.items())  # get attributes as dict
         unit = attr['Units']  # extract and decode Units
         if unit in ('hertz', 'Hz'):
-            return int(numpy.array(f.variables['N'], dtype='int')[0])
+            return (numpy.array(f.variables['N'], dtype='int')[0])
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
-        return 1000 * int(numpy.array(f.variables['N'], dtype='int')[0])
+        return 1000 * (numpy.array(f.variables['N'], dtype='int')[0])
 
     @staticmethod
     def _sofa_get_sources(f):
@@ -322,7 +322,7 @@ class HRTF:
         Convert vertical-polar to cartesian coordinates.
 
         Arguments:
-            vertical_polar (numpy.ndarray): vertical-polar coordinates (azimuth, elevation, distance)
+            vertical_polar (numpy.ndarray): vertical-polar coordinates (azimuth, elevation, distance).
         Returns:
             (numpy.ndarray): cartesian coordinates.
         """
@@ -343,7 +343,7 @@ class HRTF:
         Convert interaural-polar to cartesian coordinates.
 
         Arguments:
-            interaural_polar (numpy.ndarray): interaural-polar coordinates (azimuth, elevation, distance)
+            interaural_polar (numpy.ndarray): interaural-polar coordinates (azimuth, elevation, distance).
         Returns:
             (numpy.ndarray): cartesian coordinates.
         """
@@ -364,7 +364,7 @@ class HRTF:
         Convert cartesian to vertical-polar coordinates.
 
         Arguments:
-            cartesian (numpy.ndarray): cartesian coordinates (azimuth, elevation, distance)
+            cartesian (numpy.ndarray): cartesian coordinates (azimuth, elevation, distance).
         Returns:
             (numpy.ndarray): vertical-polar coordinates.
         """
@@ -383,7 +383,7 @@ class HRTF:
         Convert vertical-polar to interaural-polar coordinates.
 
         Arguments:
-            vertical_polar (numpy.ndarray): cartesian coordinates (azimuth, elevation, distance)
+            vertical_polar (numpy.ndarray): cartesian coordinates (azimuth, elevation, distance).
         Returns:
             (numpy.ndarray): interaural-polar coordinates.
         """
@@ -414,7 +414,7 @@ class HRTF:
             (slab.Binaural): a spatialized copy of `sound`.
         """
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
-        if self.fir:
+        if self.datatype == 'FIR':
             if (sound.samplerate != self.samplerate) and (not allow_resampling):
                 raise ValueError('Filter and sound must have same sampling rates.')
             original_rate = sound.samplerate
@@ -428,7 +428,7 @@ class HRTF:
             out = copy.deepcopy(sound)
             out.data = convolved_sig.data
             return Binaural(out.resample(original_rate))
-        if not self.fir:  # Filter.apply DTF as Fourier filter
+        if self.datatype == 'TF':  # Filter.apply DTF as Fourier filter
             return self[source].apply(sound)
 
     def elevations(self):
@@ -525,7 +525,7 @@ class HRTF:
                 xi, yi = numpy.meshgrid(freqs, elevations)  # interpolate to smooth surface plot
                 spline = scipy.interpolate.Rbf(xi, yi, img.T, function='thin_plate')  # interpolator instance
                 x, y = numpy.meshgrid(numpy.linspace(freqs.min(), freqs.max(), len(freqs)),
-                      numpy.linspace(elevations.min(), elevations.max(), 100))
+                                      numpy.linspace(elevations.min(), elevations.max(), 100))
                 z = spline(x, y)
                 x[x < xlim[0]] = numpy.nan  # trim edges
                 x[x > xlim[1]] = numpy.nan
@@ -599,8 +599,6 @@ class HRTF:
 
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
-            csystem (str): coordinate system in which polar coordinates are provided. Can be 'polar' for
-                single pole or 'interaural' for double-pole coordinate system.
             full_cone (bool): If True, return all sources that lie on the cone, otherwise, return only sources
                 in front of the listener.
         Returns:
@@ -625,7 +623,7 @@ class HRTF:
             cmin = numpy.min(numpy.abs(self.sources.cartesian[subidx, 1]-cone).astype('float16'))
             if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                 idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
-                    numpy.abs(self.sources.cartesian[:, 1]-cone).astype('float16') == cmin))  # avoid rounding error
+                        numpy.abs(self.sources.cartesian[:, 1]-cone).astype('float16') == cmin))  # avoid rounding error
                 out.append(idx[0])
                 if full_cone and len(idx) > 1:
                     out.append(idx[1])
@@ -643,7 +641,7 @@ class HRTF:
                 list is returned.
         """
         idx = numpy.where((self.sources.vertical_polar[:, 1] == elevation) & (
-            (self.sources.vertical_polar[:, 0] <= 90) | (self.sources.vertical_polar[:, 0] >= 270)))
+                (self.sources.vertical_polar[:, 0] <= 90) | (self.sources.vertical_polar[:, 0] >= 270)))
         return idx[0].tolist()
 
     def tfs_from_sources(self, sources, n_bins=96):
@@ -680,8 +678,6 @@ class HRTF:
                 returns a barycentric interpolation.
             plot_tri (bool): plot the triangulation of source positions used of interpolation. Useful for checking
                 for areas where the interpolation may not be accurate (look for irregular or elongated triangles).
-            csystem (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
-                single pole or 'interaural' for double-pole coordinate system.
         Returns:
             (slab.HRTF): an HRTF object with a single source
         """
@@ -733,9 +729,9 @@ class HRTF:
             gains[gains < -60] = -60  # limit dynamic range to 60 dB
             gains_lin = 10**(gains/20)  # transform attenuations in dB to factors
             filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), length=self[idx].n_samples, fir=True,
-                                        samplerate=self[vertex_list[0]].samplerate)
+                                 samplerate=self[vertex_list[0]].samplerate)
             filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), length=self[idx].n_samples, fir=True,
-                                        samplerate=self[vertex_list[0]].samplerate)
+                                 samplerate=self[vertex_list[0]].samplerate)
             filt = Filter(data=[filt_l, filt_r])
             itds = list()
             for idx in vertex_list:
@@ -745,7 +741,7 @@ class HRTF:
             filt = filt.delay(avg_itd / self.samplerate)
         data = filt.data[numpy.newaxis, ...]  # get into correct shape (idx, taps, ear)
         source_loc = numpy.array([[azimuth, elevation, r]])
-        out = HRTF(data, datatype='FIR', samplerate=self.samplerate, sources=source_loc, listener=self.listener, )
+        out = HRTF(data, datatype='FIR', samplerate=self.samplerate, sources=source_loc, listener=self.listener)
         return out
 
     @staticmethod
@@ -807,7 +803,7 @@ class HRTF:
                 n += 1
         return 1 - sum_corr / n
 
-    def plot_sources(self, idx=None, show=True, label=False, axis=None, csystem='polar'):
+    def plot_sources(self, idx=None, show=True, label=False, axis=None):
         """
         Plot source locations in 3D.
 
@@ -817,8 +813,6 @@ class HRTF:
             label (bool): if True, show the index of each source in self.sources as text label, if idx is also given,
                 then only theses sources are labeled
             axis (mpl_toolkits.mplot3d.axes3d.Axes3D): axis to draw the plot on
-            csystem (str): Coordinate system in which polar coordinates are provided. Can be 'polar' for
-                single pole or 'interaural' for double-pole coordinate system.
         """
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
@@ -988,8 +982,8 @@ class HRTF:
         sofa.createDimension('I', i)
         sofa.createDimension('C', c)
         # ----------Attributes----------#
-        if self.fir:
-            sofa.DataType = 'FIR'
+        sofa.DataType = self.datatype
+        if self.datatype == 'FIR':
             sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '2.0'
             delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
             delay = numpy.zeros((i, r))
@@ -1001,8 +995,7 @@ class HRTF:
             for idx in numpy.asarray(self[:]):
                 IR_data.append(idx.T)
             dataIRVar[:] = numpy.asarray(IR_data)
-        else:
-            sofa.DataType = 'TF'
+        elif self.datatype == 'TF':
             sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '2.0'
             dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
             TF_data = []
