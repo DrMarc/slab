@@ -613,18 +613,18 @@ class HRTF:
         """
         cone = numpy.sin(numpy.deg2rad(cone))
         eles = self.elevations()
+        _cartesian = self.sources.cartesian / 1.4  # get cartesian coordinates on the unit sphere
         out = []
         for ele in eles:  # for each elevation, find the source closest to the reference y
             if full_cone == False:  # get cone sources in front of listener
                 subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele)
-                                      & (self.sources.cartesian[:, 0] >= 0))
+                                      & (_cartesian[:, 0] >= 0))
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources.vertical_polar[:, 1]) == ele)
-            cmin = numpy.min(numpy.abs(self.sources.cartesian[subidx, 1]-cone).astype('float16'))
-            # if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
-            if cmin < 0.06:  # only include elevation where the closest source is less than 6 cm away
+            cmin = numpy.min(numpy.abs(_cartesian[subidx, 1]-cone).astype('float16'))
+            if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                 idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
-                        numpy.abs(self.sources.cartesian[:, 1]-cone).astype('float16') == cmin))  # avoid rounding error
+                        numpy.abs(_cartesian[:, 1]-cone).astype('float16') == cmin))  # avoid rounding error
                 out.append(idx[0])
                 if full_cone and len(idx) > 1:
                     out.append(idx[1])
