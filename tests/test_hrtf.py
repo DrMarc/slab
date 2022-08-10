@@ -63,7 +63,8 @@ def test_cone_sources():  # this is not working properly!
     hrtf = slab.HRTF.kemar()
     sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
     for _ in range(10):
-        cone = numpy.random.uniform(-1000, 1000)
+        cone = numpy.random.uniform(-180, 180)
+    for cone in range(-180, 180):
         idx = hrtf.cone_sources(cone)
         filtered = [hrtf.data[i].apply(sound) for i in idx]
         ilds = [f.ild() for f in filtered]
