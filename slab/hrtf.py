@@ -953,7 +953,8 @@ class HRTF:
         listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
                     'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
                     'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
-        return HRTF(data=numpy.abs(hrtf_data), samplerate=rec_samplerate, sources=sources, fir=False, listener=listener)
+        return HRTF(data=numpy.abs(hrtf_data), datatype='TF', samplerate=rec_samplerate, sources=sources,
+                    listener=listener)
 
     def write_sofa(self, filename):
         """
