@@ -368,7 +368,7 @@ class HRTF:
         interaural_polar[:, 0] = numpy.rad2deg(numpy.arcsin(numpy.cos(elevations) * numpy.sin(azimuths)))
         with numpy.errstate(divide='ignore'):
             interaural_polar[:, 1] = (numpy.pi / 2) - numpy.arctan(((1 / numpy.tan(elevations)) * numpy.cos(azimuths)))
-        interaural_polar[interaural_polar[:, 1] > numpy.pi / 2, 1] -= numpy.pi
+        interaural_polar[elevations < 0, 1] += numpy.pi
         interaural_polar[:, 1] = numpy.rad2deg(interaural_polar[:, 1])
         interaural_polar[:, 2] = vertical_polar[:, 2]
         return interaural_polar
