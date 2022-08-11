@@ -314,7 +314,7 @@ class HRTF:
         cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
         cartesian[:, 1] = r * numpy.sin(azimuths) * numpy.sin(elevations)
         cartesian[:, 2] = r * numpy.cos(elevations)
-        return cartesian
+        return cartesian.astype('float16')
 
     @staticmethod
     def _interaural_polar_to_cartesian(interaural_polar):
@@ -333,7 +333,7 @@ class HRTF:
         cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
         cartesian[:, 1] = r * numpy.sin(azimuths)
         cartesian[:, 2] = r * numpy.cos(elevations) * numpy.cos(azimuths)
-        return cartesian
+        return cartesian.astype('float16')
 
     @staticmethod
     def _cartesian_to_vertical_polar(cartesian):
@@ -657,7 +657,7 @@ class HRTF:
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
         coordinates = self.sources.cartesian
         r = self.sources.vertical_polar[:, 2].mean()
-        target = self._vertical_polar_to_cartesian(numpy.array((azimuth, elevation, r)))
+        target = self._get_coordinates((azimuth, elevation, r), 'spherical').cartesian
         # compute distances from target direction
         distances = numpy.sqrt(((target - coordinates)**2).sum(axis=1))
         if method == 'nearest':
