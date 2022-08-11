@@ -95,7 +95,7 @@ class HRTF:
             f = HRTF._sofa_load(data, verbose)
             self.data, self.datatype, self.samplerate = HRTF._sofa_get_data(f)
             sources, coordinate_system = HRTF._sofa_get_sources(f)
-            self.sources = HRTF._convert_coordinates(sources, coordinate_system)
+            self.sources = HRTF._get_coordinates(sources, coordinate_system)
             self.listener = HRTF._sofa_get_listener(f)
         elif isinstance(data, Filter):
             # This is a hacky shortcut for casting a filterbank as HRTF. Avoid unless you know what you are doing.
@@ -112,7 +112,7 @@ class HRTF:
             self.data = []
             for idx in range(data.shape[0]):
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
-            self.sources = HRTF._convert_coordinates(sources, 'spherical')
+            self.sources = HRTF._get_coordinates(sources, 'spherical')
             if listener is None:
                 self.listener = [0, 0, 0]
             else:
@@ -132,7 +132,7 @@ class HRTF:
                 raise ValueError(f'Unsupported data type: {datatype}')
             if sources is None:
                 raise ValueError('Must provide vertical-polar source positions when initializing HRTF from an array.')
-            self.sources = HRTF._convert_coordinates(sources, 'spherical')
+            self.sources = HRTF._get_coordinates(sources, 'spherical')
             self.data = []
             for idx in range(data.shape[0]):
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
@@ -260,7 +260,7 @@ class HRTF:
         return lis
 
     @staticmethod
-    def _convert_coordinates(sources, coordinate_system):
+    def _get_coordinates(sources, coordinate_system):
         """
         Returns the sound source positions in three different coordinate systems:
         cartesian, vertical-polar and interaural-polar.
@@ -308,7 +308,7 @@ class HRTF:
             (numpy.ndarray): cartesian coordinates.
         """
         cartesian = numpy.zeros_like(vertical_polar)
-        azimuths = numpy.deg2rad(- vertical_polar[:, 0])
+        azimuths = numpy.deg2rad(vertical_polar[:, 0])
         elevations = numpy.deg2rad(90 - vertical_polar[:, 1])
         r = vertical_polar[:, 2].mean()  # get radii of sound sources
         cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
@@ -831,7 +831,7 @@ class HRTF:
         if _kemar is None:
             kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
-            _kemar.sources = HRTF._convert_coordinates(_kemar.sources, 'spherical')
+            _kemar.sources = HRTF._get_coordinates(_kemar.sources, 'spherical')
         return _kemar
 
     @staticmethod
