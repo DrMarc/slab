@@ -37,6 +37,7 @@ except ImportError:
     scipy = False
 from slab.signal import Signal
 from slab.filter import Filter
+from slab.sound import Sound
 from collections import namedtuple
 
 _kemar = None
@@ -92,7 +93,7 @@ class HRTF:
             if pathlib.Path(data).suffix != '.sofa':
                 raise NotImplementedError('Only .sofa files can be read.')
             f = HRTF._sofa_load(data, verbose)
-            self.data, self.datatype, self.samplerate, self.frequencies = HRTF._sofa_get_data(f)
+            self.data, self.datatype, self.samplerate = HRTF._sofa_get_data(f)
             sources, coordinate_system = HRTF._sofa_get_sources(f)
             self.sources = HRTF._convert_coordinates(sources, coordinate_system)
             self.listener = HRTF._sofa_get_listener(f)
@@ -179,8 +180,7 @@ class HRTF:
     def _sofa_get_data(f):
         """
         Read the impulse response or transfer functions from the SOFA data and store them in a Filter object.
-        In case of transfer functions, return their frequencies. Return the data type and samplerate, and the Filter
-        object in the `data` attribute.
+        Return the Filter object in the `data` attribute, the data type and samplerate.
 
         Arguments:
             f (h5netcdf.core.File): data as returned by the `_sofa_load` method.
@@ -188,18 +188,15 @@ class HRTF:
             data (list): a list of Filter objects containing the HRTF data.
             datatype (string): the data type used in the SOFA file
             samplerate (float): the sampling rate in Hz.
-            frequencies (None | float): the frequencies in Hz.
         """
         samplerate = HRTF._sofa_get_samplerate(f)
         datatype = f.attrs['DataType']
         data = []
         if datatype == 'FIR':
-            frequencies = None
             ir_data = numpy.array(f.variables['Data.IR'], dtype='float')
             for idx in range(ir_data.shape[0]):
                 data.append(Filter(ir_data[idx, :, :].T, samplerate))  # n_taps x 2 (left, right) filter
         elif datatype == 'TF':
-            frequencies = HRTF._sofa_get_frequencies(f)
             data_real = numpy.array(f.variables['Data.Real'], dtype='float')
             data_imag = numpy.array(f.variables['Data.Imag'], dtype='float')
             tf_data = numpy.abs(numpy.vectorize(complex)(data_real, data_imag))
@@ -207,7 +204,7 @@ class HRTF:
                 data.append(Filter(tf_data[idx, :, :].T, samplerate, fir=False))
         else:
             raise NotImplementedError('Unsuppored datatype: {self.datatype}')
-        return data, datatype, samplerate, frequencies
+        return data, datatype, samplerate
 
     @staticmethod
     def _sofa_get_samplerate(f):
@@ -226,24 +223,6 @@ class HRTF:
             return (numpy.array(f.variables['Data.SamplingRate'], dtype='int'))
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
         return 1000 * (numpy.array(f.variables['Data.SamplingRate'], dtype='int'))
-
-    @staticmethod
-    def _sofa_get_frequencies(f):
-        """
-        Returns the frequencies of the transfer functions. If the spectrum is not given in Hz, the function assumes
-        it is given in kHz and multiplies by 1000 to convert to Hz.
-
-        Arguments:
-            f (h5netcdf.core.File): data as returned by the `_sofa_load` method.
-        Returns:
-            (float): the frequencies in Hz.
-        """
-        attr = dict(f.variables['N'].attrs.items())  # get attributes as dict
-        unit = attr['Units']  # extract and decode Units
-        if unit in ('hertz', 'Hz'):
-            return (numpy.array(f.variables['N'], dtype='int')[0])
-        warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
-        return 1000 * (numpy.array(f.variables['N'], dtype='int')[0])
 
     @staticmethod
     def _sofa_get_sources(f):
@@ -296,6 +275,9 @@ class HRTF:
         """
         if isinstance(sources, (list, tuple)):
             sources = numpy.array(sources)
+        if len(sources.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+            sources = sources[numpy.newaxis, ...]
+        sources = sources.astype('float16')
         source_coordinates = namedtuple('sources', 'cartesian vertical_polar interaural_polar')
         if coordinate_system == 'spherical':
             vertical_polar = sources
@@ -312,8 +294,7 @@ class HRTF:
         else:
             warnings.warn('Unrecognized coordinate system for source positions: ' + coordinate_system)
             return None
-        sources = source_coordinates(numpy.squeeze(cartesian), numpy.squeeze(vertical_polar),
-                                     numpy.squeeze(interaural_polar))
+        sources = source_coordinates(cartesian, vertical_polar, interaural_polar)
         return sources
 
     @staticmethod
@@ -326,10 +307,8 @@ class HRTF:
         Returns:
             (numpy.ndarray): cartesian coordinates.
         """
-        if len(vertical_polar.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
-            vertical_polar = vertical_polar[numpy.newaxis, ...]
         cartesian = numpy.zeros_like(vertical_polar)
-        azimuths = numpy.deg2rad(vertical_polar[:, 0])
+        azimuths = numpy.deg2rad(- vertical_polar[:, 0])
         elevations = numpy.deg2rad(90 - vertical_polar[:, 1])
         r = vertical_polar[:, 2].mean()  # get radii of sound sources
         cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
@@ -347,8 +326,6 @@ class HRTF:
         Returns:
             (numpy.ndarray): cartesian coordinates.
         """
-        if len(interaural_polar.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
-            interaural_polar = interaural_polar[numpy.newaxis, ...]
         cartesian = numpy.zeros_like(interaural_polar)
         azimuths = numpy.deg2rad(interaural_polar[:, 0])
         elevations = numpy.deg2rad(90 - interaural_polar[:, 1])
@@ -368,8 +345,6 @@ class HRTF:
         Returns:
             (numpy.ndarray): vertical-polar coordinates.
         """
-        if len(cartesian.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
-            cartesian = cartesian[numpy.newaxis, ...]
         vertical_polar = numpy.zeros_like(cartesian)
         xy = cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2
         vertical_polar[:, 0] = numpy.rad2deg(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]))
@@ -387,8 +362,6 @@ class HRTF:
         Returns:
             (numpy.ndarray): interaural-polar coordinates.
         """
-        if len(vertical_polar.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
-            vertical_polar = vertical_polar[numpy.newaxis, ...]
         interaural_polar = numpy.zeros_like(vertical_polar)
         azimuths = numpy.deg2rad(vertical_polar[:, 0])
         elevations = numpy.deg2rad(vertical_polar[:, 1])
@@ -616,15 +589,14 @@ class HRTF:
         _cartesian = self.sources.cartesian / 1.4  # get cartesian coordinates on the unit sphere
         out = []
         for ele in eles:  # for each elevation, find the source closest to the reference y
-            if full_cone == False:  # get cone sources in front of listener
-                subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele)
-                                      & (_cartesian[:, 0] >= 0))
+            if full_cone == False:  # only return cone sources in front of listener
+                subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (_cartesian[:, 0] >= 0))
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources.vertical_polar[:, 1]) == ele)
-            cmin = numpy.min(numpy.abs(_cartesian[subidx, 1]-cone).astype('float16'))
+            cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
             if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                 idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
-                        numpy.abs(_cartesian[:, 1]-cone).astype('float16') == cmin))  # avoid rounding error
+                        numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
                 out.append(idx[0])
                 if full_cone and len(idx) > 1:
                     out.append(idx[1])
@@ -772,7 +744,6 @@ class HRTF:
         tot = numpy.sqrt(p * (p-d12) * (p-d13) * (p-d23))
         return a.sum() - tot, a / a.sum()  # normalize by total area = barycentric weights of sources in idx_triangle
 
-
     def vsi(self, sources=None, equalize=True):
         """
         Compute  the "vertical spectral information" which is a measure of the dissimilarity of spectral profiles
@@ -863,53 +834,10 @@ class HRTF:
             _kemar.sources = HRTF._convert_coordinates(_kemar.sources, 'spherical')
         return _kemar
 
-    def equalize_frequencies(self):
-        """
-        Description
-        Arguments:
-        Returns:
-        Examples:
-        """
-        # use cosine filter bank
-        fbank = Filter.cos_filterbank(length=(self.frequencies * 2) - 1, bandwidth=1 / 10,
-                                      samplerate=self.samplerate, pass_bands=True)
-
-        # triangular filter bank
-        freq_bins = numpy.fft.rfftfreq((self.frequencies * 2) - 1, d=1 / self.samplerate)
-        n_freqs = len(freq_bins)
-        center_freqs, bandwidth, erb_spacing = Filter._center_freqs(
-            low_cutoff=0, high_cutoff=self.samplerate/2, bandwidth=1/20, pass_bands=True)
-        n_filters = len(center_freqs)
-        filts = numpy.zeros((n_freqs, n_filters))
-        freqs_erb = Filter._freq2erb(freq_bins)
-        for i in range(n_filters):
-            l = center_freqs[i] - erb_spacing
-            h = center_freqs[i] + erb_spacing
-            avg = center_freqs[i]  # center of filter
-            # width = erb_spacing * 2  # width of filter
-            filts[(freqs_erb > l) & (freqs_erb < avg), i] = numpy.interp(freqs_erb[(freqs_erb > l) & (freqs_erb < avg)],
-                                                                         numpy.array((l, avg)), numpy.array((0, 1)))
-            filts[(freqs_erb > avg) & (freqs_erb < h), i] = numpy.interp(freqs_erb[(freqs_erb > avg) & (freqs_erb < h)],
-                                                                         numpy.array((avg, h)), numpy.array((1, 0)))
-        fbank = Filter(data=filts, samplerate=self.samplerate, fir=False)
-
-        out = copy.deepcopy(self)
-        for src_idx, dtf in enumerate(self.data):
-            subbands = numpy.empty((dtf.n_samples, fbank.n_filters, 2))
-            band_rms = numpy.empty((fbank.n_filters, 2))
-            for filt in range(fbank.n_filters):
-                subbands[ :, filt, 0] = dtf[:, 0] * fbank[:, filt]
-                subbands[ :, filt, 1] = dtf[:, 1] * fbank[:, filt]
-                band_rms[filt, 0] = numpy.sqrt(numpy.mean(numpy.square(subbands[ :, filt, 0]), axis=0))
-                band_rms[filt, 1] = numpy.sqrt(numpy.mean(numpy.square(subbands[ :, filt, 1]), axis=0))
-            out.data[src_idx].data = subbands.sum(axis=1)
-        center_freqs = Filter._erb2freq(center_freqs)
-        return out
-
     @staticmethod
-    def estimate_hrtf(recordings, signal, sources, equalize_frequencies=True):
+    def estimate_hrtf(recordings, signal, sources, listener=None):
         """
-        Compute a set of transfer functions from binaural recordings and an input signal.
+        Compute a set of transfer functions from binaural recordings and an input (reference) signal.
         For each sound source, compute the DFT of left- and right-ear recordings
         and divide by the Fourier transform of the input signal to obtain the head related transfer function.
 
@@ -922,8 +850,12 @@ class HRTF:
         Returns:
             (slab.HRTF): an HRTF object with the dimensions specified by the recordings and the source file.
         """
-        if not isinstance(recordings, list):
+        if not isinstance(recordings, list) or not isinstance(recordings[0], Sound):
             raise ValueError('Recordings must be provided as a list of slab.Sound objects.')
+        if isinstance(sources, (list, tuple)):
+            sources = numpy.array(sources)
+        if len(sources.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+            sources = sources[numpy.newaxis, ...]
         if len(sources) != len(recordings):
             raise ValueError('Number of sound sources must be equal to number of recordings.')
         rec_samplerate = recordings[0].samplerate
@@ -945,14 +877,12 @@ class HRTF:
             sig_fft = numpy.interp(rec_freq_bins, sig_freq_bins, numpy.fft.rfft(signal.data[:, 0]))
         else:
             sig_fft = numpy.fft.rfft(signal.data[:, 0])
-        # remove common component and store DTFs [measurements, receivers, N data points]
-        # r_avg = numpy.mean(numpy.fft.rfft(rec_data),axis=0)  # avg magnitude of recordings (direction-independent)
-        # comm = r_avg / sig_fft  # R ( f, az,el,x) = S( f ) X D( f, az,el) X comm(f,x); Middlebrooks (1990)
-        # hrtf_data = numpy.fft.rfft(rec_data) / (sig_fft * comm)  # HRTFs with common component removed
-        hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
-        listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
-                    'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
-                    'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
+        with numpy.errstate(divide='ignore'):
+            hrtf_data = numpy.fft.rfft(rec_data) / sig_fft
+        if not listener:
+            listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
+                        'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
+                        'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
         return HRTF(data=numpy.abs(hrtf_data), datatype='TF', samplerate=rec_samplerate, sources=sources,
                     listener=listener)
 
