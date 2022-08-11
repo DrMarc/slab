@@ -312,9 +312,9 @@ class HRTF:
         elevations = numpy.deg2rad(90 - vertical_polar[:, 1])
         r = vertical_polar[:, 2].mean()  # get radii of sound sources
         cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
-        cartesian[:, 1] = r * numpy.sin(azimuths) * numpy.sin(elevations)
+        cartesian[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
         cartesian[:, 2] = r * numpy.cos(elevations)
-        return cartesian.astype('float16')
+        return cartesian
 
     @staticmethod
     def _interaural_polar_to_cartesian(interaural_polar):
@@ -333,7 +333,7 @@ class HRTF:
         cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
         cartesian[:, 1] = r * numpy.sin(azimuths)
         cartesian[:, 2] = r * numpy.cos(elevations) * numpy.cos(azimuths)
-        return cartesian.astype('float16')
+        return cartesian
 
     @staticmethod
     def _cartesian_to_vertical_polar(cartesian):
@@ -348,6 +348,7 @@ class HRTF:
         vertical_polar = numpy.zeros_like(cartesian)
         xy = cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2
         vertical_polar[:, 0] = numpy.rad2deg(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]))
+        vertical_polar[vertical_polar[:, 0] < 0, 0] += 360
         vertical_polar[:, 1] = 90 - numpy.rad2deg(numpy.arctan2(numpy.sqrt(xy), cartesian[:, 2]))
         vertical_polar[:, 2] = numpy.sqrt(xy + cartesian[:, 2] ** 2)
         return vertical_polar
