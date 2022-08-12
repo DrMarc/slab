@@ -128,10 +128,13 @@ def test_interpolate():
 
 def test_convert_coordinates():
     hrtf = slab.HRTF.kemar()
-    sources = hrtf.sources.vertical_polar
-    cartesian = slab.HRTF._vertical_polar_to_cartesian(sources)
-    interaural_polar = slab.HRTF._vertical_polar_to_interaural_polar(sources)
-    assert(all(numpy.round(slab.HRTF._interaural_polar_to_cartesian(interaural_polar), 2) == numpy.round(cartesian, 2)))
+    vertical_polar = hrtf.sources.vertical_polar
+    cartesian_from_vertical = slab.HRTF._vertical_polar_to_cartesian(vertical_polar)
+    interaural_from_vertical = slab.HRTF._vertical_polar_to_interaural_polar(vertical_polar)
+    cartesian_from_interaural = slab.HRTF._interaural_polar_to_cartesian(interaural_from_vertical)
+    numpy.testing.assert_almost_equal(cartesian_from_interaural, cartesian_from_vertical, decimal=2)
+    vertical_from_cartesian = slab.HRTF._cartesian_to_vertical_polar(cartesian_from_vertical)
+    numpy.testing.assert_almost_equal(vertical_from_cartesian, vertical_polar, decimal=0)  # todo fix rounding error
 
 
 def test_estimate_hrtf():
@@ -155,4 +158,4 @@ def test_estimate_hrtf():
     signal2 = slab.Sound.whitenoise(duration=duration-0.1, samplerate=fs-800)
     hrtf2 = slab.HRTF.estimate_hrtf(recordings, signal2, sources)
     assert hrtf1.samplerate == hrtf2.samplerate
-    assert hrtf1.n_samples == hrtf2.n_samples
+    assert hrtf1[0].n_samples == hrtf2[0].n_samples
