@@ -128,7 +128,7 @@ def test_interpolate():
 
 def test_convert_coordinates():
     hrtf = slab.HRTF.kemar()
-    vertical_polar = hrtf.sources.vertical_polar
+    vertical_polar = hrtf.sources.vertical_polar.astype('float64')
     cartesian_from_vertical = slab.HRTF._vertical_polar_to_cartesian(vertical_polar)
     interaural_from_vertical = slab.HRTF._vertical_polar_to_interaural_polar(vertical_polar)
     cartesian_from_interaural = slab.HRTF._interaural_polar_to_cartesian(interaural_from_vertical)
