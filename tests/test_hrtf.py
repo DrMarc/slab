@@ -132,15 +132,15 @@ def test_convert_coordinates():
     cartesian_from_vertical = slab.HRTF._vertical_polar_to_cartesian(vertical_polar)
     interaural_from_vertical = slab.HRTF._vertical_polar_to_interaural_polar(vertical_polar)
     cartesian_from_interaural = slab.HRTF._interaural_polar_to_cartesian(interaural_from_vertical)
-    numpy.testing.assert_almost_equal(cartesian_from_interaural, cartesian_from_vertical, decimal=2)
+    numpy.testing.assert_almost_equal(cartesian_from_interaural, cartesian_from_vertical, decimal=3)
     vertical_from_cartesian = slab.HRTF._cartesian_to_vertical_polar(cartesian_from_vertical)
-    numpy.testing.assert_almost_equal(vertical_from_cartesian, vertical_polar, decimal=0)  # todo fix rounding error
+    numpy.testing.assert_almost_equal(vertical_from_cartesian, vertical_polar, decimal=3)
 
 
 def test_estimate_hrtf():
     fs = 44800
     duration = 1.0
-    signal1 = slab.Sound.whitenoise(duration=duration, samplerate=fs-4800)
+    signal1 = slab.Sound.whitenoise(duration=duration, samplerate=fs)
     n_sources = numpy.random.randint(360)
     azimuths = numpy.random.choice(range(0, 360), size=n_sources, replace=False)
     elevations = numpy.random.choice(range(-180, 180), size=n_sources, replace=False)

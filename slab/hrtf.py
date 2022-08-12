@@ -277,7 +277,7 @@ class HRTF:
             sources = numpy.array(sources)
         if len(sources.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
             sources = sources[numpy.newaxis, ...]
-        sources = sources.astype('float16')
+        sources = sources.astype('float64')
         source_coordinates = namedtuple('sources', 'cartesian vertical_polar interaural_polar')
         if coordinate_system == 'spherical':
             vertical_polar = sources
@@ -294,8 +294,8 @@ class HRTF:
         else:
             warnings.warn('Unrecognized coordinate system for source positions: ' + coordinate_system)
             return None
-        sources = source_coordinates(cartesian, vertical_polar, interaural_polar)
-        return sources
+        return source_coordinates(cartesian.astype('float16'), vertical_polar.astype('float16'),
+                                  interaural_polar.astype('float16'))
 
     @staticmethod
     def _vertical_polar_to_cartesian(vertical_polar):
