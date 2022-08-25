@@ -244,7 +244,7 @@ class TrialPresentationOptionsMixin:
         stimulus.play()
         with slab.key() as k:
             response = k.getch()
-        response = response in [key_codes[i] for i in correct_key_idx]
+        response = response == key_codes[correct_key_idx] 
         self.add_response(response)
         if print_info:
             self.print_trial_info()
@@ -965,11 +965,12 @@ class ResultsFile:
 
     name = property(fget=lambda self: self.path.name, doc='The name of the results file.')
 
-    def __init__(self, subject='test', folder=None):
+    def __init__(self, subject='test', folder=None, filename=None):
         self.subject = subject
         if folder is None:
             folder = results_folder
-        self.path = pathlib.Path(folder / pathlib.Path(subject) / pathlib.Path(subject +
+        filename = '_'.join(filter(None, (subject, filename)))
+        self.path = pathlib.Path(folder / pathlib.Path(subject) / pathlib.Path(filename +
                                  datetime.datetime.now().strftime("_%Y-%m-%d-%H-%M-%S") + '.txt'))
         # make the Results folder and subject subfolder
         self.path.parent.mkdir(parents=True, exist_ok=True)
