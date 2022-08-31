@@ -6,7 +6,6 @@ import platform
 import subprocess
 import hashlib
 import numpy
-import copy
 
 try:
     import soundfile
@@ -1032,7 +1031,7 @@ class Sound(Signal):
             x = self.data.flatten()
         # convert window & step durations from seconds to numbers of samples
         window_n_samples = Sound.in_samples(window_dur, self.samplerate) * 2
-        step_n_samples = window_dur / numpy.sqrt(numpy.pi) / 8  # optimal step duration for Gaussian windows.
+        step_n_samples = window_n_samples / numpy.sqrt(numpy.pi) / 8  # optimal step duration for Gaussian windows.
         # make the window. A Gaussian filter needs a minimum of 6σ - 1 samples, so working
         # backward from window_n_samples we can calculate σ.
         window_sigma = (window_n_samples + 1) / 6
