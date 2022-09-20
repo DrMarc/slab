@@ -474,7 +474,7 @@ class HRTF:
             # plot every third elevation label, omit comma to save space
             labels = labels[::2].astype(int)
             axis.set(yticks=ticks, yticklabels=labels)
-            axis.grid(b=True, axis='y', which='both', linewidth=0.25)
+            axis.grid(visible=True, axis='y', which='both', linewidth=0.25)
             axis.plot([xlim[0]+500, xlim[0]+500], [vlines[-1]+10, vlines[-1] +
                       10+linesep], linewidth=1, color='0.0', alpha=0.9)
             axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
