@@ -833,6 +833,7 @@ class HRTF:
             kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
             _kemar.sources = HRTF._get_coordinates(_kemar.sources, 'spherical')
+            _kemar.datatype = 'FIR'
         return _kemar
 
     @staticmethod
