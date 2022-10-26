@@ -79,7 +79,8 @@ def test_ild_ramp():
 
 def test_externalize():
     for _ in range(10):
-        idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[0][0]
+        idx_frontal = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) &
+                                  (hrtf.sources.vertical_polar[:, 0] == 0))[0][0]
         sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
         filtered = hrtf.data[idx_frontal].apply(sound)
         external = sound.externalize()

@@ -291,7 +291,8 @@ class Binaural(Sound):
         if hrtf is None:
             hrtf = HRTF.kemar()  # load KEMAR as default
         # get HRTF for [0,0] direction:
-        idx_frontal = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) & (hrtf.sources.vertical_polar[:, 0] == 0))[0][0]
+        idx_frontal = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) &
+                                  (hrtf.sources.vertical_polar[:, 0] == 0))[0][0]
         if not idx_frontal.size: # idx_frontal is empty
             raise ValueError('No frontal direction [0,0] found in HRTF.')
         _, h = hrtf.data[idx_frontal].tf(channels=0, n_bins=12, show=False)  # get low-res version of HRTF spectrum
