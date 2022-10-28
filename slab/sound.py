@@ -1094,9 +1094,9 @@ class Sound(Signal):
             if axis is None:
                 _, axis = plt.subplots()
             axis.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
-            labels = list(freqs.astype(int))
-            axis.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
-                labels))  # centre frequencies as ticks
+            #labels = list(freqs.astype(int))
+            #axis.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
+            #    labels))  # centre frequencies as ticks -> commented because IndexFomatter deprecated in matplotlib 3.3
             axis.set_xlim([0, self.duration])
             axis.set(title='Cochleagram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
             if show:
