@@ -152,19 +152,23 @@ class Filter(Signal):
         if self.fir:
             if scipy is False:
                 raise ImportError('Applying FIR filters requires Scipy.')
+            if out.n_samples < self.n_samples * 3:
+                padlen = out.n_samples - 1
+            else:
+                padlen = None
             if self.n_filters == sig.n_channels:  # filter each channel with corresponding filter
                 for i in range(self.n_filters):
                     out.data[:, i] = scipy.signal.filtfilt(
-                        self.data[:, i], [1], out.data[:, i], axis=0)
+                        self.data[:, i], [1], out.data[:, i], axis=0, padlen=padlen)
             elif (self.n_filters == 1) and (sig.n_channels > 1):  # filter each channel
                 for i in range(sig.n_channels):
                     out.data[:, i] = scipy.signal.filtfilt(
-                        self.data.flatten(), [1], out.data[:, i], axis=0)
+                        self.data.flatten(), [1], out.data[:, i], axis=0,  padlen=padlen)
             elif (self.n_filters > 1) and (sig.n_channels == 1):  # apply all filters in bank to sound
                 out.data = numpy.empty((sig.n_samples, self.n_filters))
                 for filt in range(self.n_filters):
                     out.data[:, filt] = scipy.signal.filtfilt(
-                        self[:, filt], [1], sig.data, axis=0).flatten()
+                        self[:, filt], [1], sig.data, axis=0,  padlen=padlen).flatten()
             else:
                 raise ValueError(
                     'Number of filters must equal number of sound channels, or either one of them must be equal to 1.')
@@ -422,7 +426,7 @@ class Filter(Signal):
             filtered = filt.apply(sound)
             # make an equalizing filter and apply it to the filtered signal. The result looks more like the original
             fbank = slab.Filter.equalizing_filterbank(sound, filtered, low_cutoff=200, high_cutoff=16000)
-            equalized = fbank.apply(sound)
+            equalized = fbank.apply(filtered)
         """
         if scipy is False:
             raise ImportError('Generating equalizing filter banks requires Scipy.')

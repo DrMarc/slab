@@ -291,7 +291,8 @@ class Binaural(Sound):
         if hrtf is None:
             hrtf = HRTF.kemar()  # load KEMAR as default
         # get HRTF for [0,0] direction:
-        idx_frontal = numpy.where((hrtf.sources[:, 1] == 0) & (hrtf.sources[:, 0] == 0))[0][0]
+        idx_frontal = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) &
+                                  (hrtf.sources.vertical_polar[:, 0] == 0))[0][0]
         if not idx_frontal.size: # idx_frontal is empty
             raise ValueError('No frontal direction [0,0] found in HRTF.')
         _, h = hrtf.data[idx_frontal].tf(channels=0, n_bins=12, show=False)  # get low-res version of HRTF spectrum
@@ -334,11 +335,11 @@ class Binaural(Sound):
         if not hrtf:
             hrtf = HRTF.kemar()  # load KEMAR by default
         # get the filters for the frontal horizontal arc
-        idx = numpy.where((hrtf.sources[:, 1] == 0) & (
-            (hrtf.sources[:, 0] <= 90) | (hrtf.sources[:, 0] >= 270)))[0]
+        idx = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) & (
+            (hrtf.sources.vertical_polar[:, 0] <= 90) | (hrtf.sources.vertical_polar[:, 0] >= 270)))[0]
         # at this point, we could just get the transfer function of each filter with hrtf.data[idx[i]].tf(),
         # but it may be better to get the spectral left/right differences with ERB-spaced frequency resolution:
-        azi = hrtf.sources[idx, 0]
+        azi = hrtf.sources.vertical_polar[idx, 0]
         # 270<azi<360 -> azi-360 to get negative angles on the left
         azi[azi >= 270] = azi[azi >= 270]-360
         sort = numpy.argsort(azi)
