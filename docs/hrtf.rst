@@ -12,21 +12,24 @@ Reading HRTF data
 -----------------
 Typically the :class:`HRTF` class is instantiated by loading a file. The canonical format for HRTF-data is called
 sofa (Spatially Oriented Format for Acoustics). To read sofa files, you need to install the h5netcdf module:
-`pip install h5netcdf`. The module includes a set of standard HRTF recordings from the KEMAR (a mannequin for acoustic
-recordings). You can get the path to the folder containing the recordings with the :func:`data_path` function. The
-first time you call this function, the recordings will be downloaded from the sofa website. You can read them by
-calling the :class:`HRTF` class with the name of the file as an argument. Print the resulting object to obtain
-information about the structure of the HRTF data ::
+`pip install h5netcdf`. The slab includes a set of standard HRTF recordings from KEMAR (a mannequin for acoustic
+recordings) in the folder indicated by the :func:`data_path` function. For convenience, you can load this dataset
+by calling :func:`slab.HRTF.kemar()`. Print the resulting object to obtain information about the structure of the
+HRTF data ::
 
     hrtf = slab.HRTF.kemar()
     print(hrtf)
     # <class 'hrtf.HRTF'> sources 710, elevations 14, samples 710, samplerate 44100.0
 
 Libraries of many other recordings can be found on the `website of the sofa file format <https://www.sofaconventions.org/>`_.
+You can read any sofa file downloaded from these repositories by calling the :class:`HRTF` class with the name of
+the sofa file as an argument.
 
 .. note:: The class is at the moment geared towards plotting and analysis of HRTF files in the `sofa format <https://www.sofaconventions.org/>`_, because we needed that functionality for grant applications. The functionality will grow as we start to record and manipulate HRTFs more often.
 
-.. note:: When we started to writing this code, there was no python module for reading and writing sofa files. Now that `pysofaconventions <https://github.com/andresperezlopez/pysofaconventions>`_ is available, we will at some point switch internally to using that module as backend for reading sofa files, instead of our own limited implementation.
+.. note:: When we started to writing this code, there was no python module for reading and writing sofa files.
+Now that `pysofaconventions <https://github.com/andresperezlopez/pysofaconventions>`_ is available, we will at some
+point switch internally to using that module as backend for reading sofa files, instead of our own limited implementation.
 
 Plotting sources
 --------------------
@@ -61,7 +64,7 @@ source, print it's coordinates and plot the corresponding transfer function.
 
 .. plot::
     :include-source:
-    :context: close-figs
+    :context:
 
     from matplotlib import pyplot as plt
     hrtf = slab.HRTF.kemar()
@@ -85,8 +88,6 @@ components of the HRTF, which makes the features of the HRTF that change with di
     :include-source:
     :context: close-figs
 
-    from slab import data_path
-    from matplotlib import pyplot as plt
     hrtf = slab.HRTF.kemar()
     fig, ax = plt.subplots(2)
     dtf = hrtf.diffuse_field_equalization()
@@ -129,28 +130,22 @@ to avoid recalculation of the diffuse-field equalization in each iteration)::
         # 40˚: 0.76
         # 50˚: 0.73
 
-The effect seems to be weak for KEMAR, (VSI falls off for directions slightly off the midline and then increases again at around 30-40˚).
+The effect seems to be weak for KEMAR, (VSI falls off for directions slightly off the midline and then increases again
+at around 30-40˚).
 
 
-Virtually displaying 3D sound
------------------------------
+Applying an HRTF to a monaural sound
+------------------------------------
 The HRTF describes the directional filtering of incoming sounds by the listeners ears, head and torso. Since this is the
 basis for localizing sounds in three dimensions, we can apply the HRTF to a sound to evoke the impression of it coming
-from a certain direction in space when played through headphones. The :meth:`HRTF.apply` method returns an instance of
-the :class:`slab.Binaural`. It is important to use the :meth:`~HRTF.apply` method of the :class:`HRTF` class instead of
-the :meth:`~Filter.apply` method of the individual :class:`Filter` class objects in the HRTF, because only the
-meth:`HRTF.apply` method conserves ITDs. The :meth:`Filter.apply` method does not do that, because when applying a
-generic filter, you normally do not want to introduce delays.
-
-In the example below we apply the transfer functions corresponding to three sound sources at
-different elevations along the vertical midline to white noise.
+from a certain direction in space when listening through headphones. The :meth:`HRTF.apply` method returns an instance of
+the :class:`slab.Binaural`. This method differs from :meth:`~Filter.apply` and conserves ITDs. In the example below we
+apply the transfer functions corresponding to three sound sources at different elevations along the vertical midline to white noise.
 
 .. plot::
     :include-source:
     :context: close-figs
 
-    from slab import data_path, Sound
-    from matplotlib import pyplot as plt
     hrtf = slab.HRTF.kemar()
     sound = slab.Sound.pinknoise(samplerate=hrtf.samplerate)  # the sound to be spatialized
     fig, ax = plt.subplots(3)
@@ -158,7 +153,6 @@ different elevations along the vertical midline to white noise.
     spatial_sounds = []
     for i, index in enumerate(sourceidx):
         spatial_sounds.append(hrtf.apply(index, sound))
-        # only plot frequencies above 5kHz because low frequencies are unaffected by the HRTF
         spatial_sounds[i].spectrum(axis=ax[i], low_cutoff=5000, show=False)
     plt.show()
 
