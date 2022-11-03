@@ -64,7 +64,7 @@ source, print it's coordinates and plot the corresponding transfer function.
 
 .. plot::
     :include-source:
-    :context:
+    :context: close-figs
 
     from matplotlib import pyplot as plt
     hrtf = slab.HRTF.kemar()
@@ -72,7 +72,6 @@ source, print it's coordinates and plot the corresponding transfer function.
     idx = 10
     source = hrtf.sources.cartesian[idx]  # the source's azimuth, elevation and distance
     filt = hrtf.data[idx] # the corresponding filter
-    fig.suptitle(f"source at azimuth {source[0].round(2)} and elevation {source[1]}")
     filt.channel(0).tf(axis=ax, show=False)
     filt.channel(1).tf(axis=ax, show=False)
     plt.legend()
