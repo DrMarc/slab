@@ -70,7 +70,7 @@ source, print it's coordinates and plot the corresponding transfer function.
     hrtf = slab.HRTF.kemar()
     fig, ax = plt.subplots(1)
     idx = 10
-    source = hrtf.sources[idx]  # the source's azimuth, elevation and distance
+    source = hrtf.sources.cartesian[idx]  # the source's azimuth, elevation and distance
     filt = hrtf.data[idx] # the corresponding filter
     fig.suptitle(f"source at azimuth {source[0].round(2)} and elevation {source[1]}")
     filt.channel(0).tf(axis=ax, show=False)
