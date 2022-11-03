@@ -74,7 +74,7 @@ source, print it's coordinates and plot the corresponding transfer function.
     filt = hrtf.data[idx] # the corresponding filter
     fig.suptitle(f"source at azimuth {source[0].round(2)} and elevation {source[1]}")
     filt.channel(0).tf(axis=ax, show=False)
-    filt.channel(1).tf(axis=ax, show=Fals)
+    filt.channel(1).tf(axis=ax, show=False)
     plt.legend()
     plt.show()
 
