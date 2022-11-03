@@ -59,8 +59,8 @@ Plotting transfer functions
 ---------------------------
 As mentioned before, a HRTF is collection of transfer functions. Each single transfer function is an instance of the
 :class:`slab.Filter` with two channels - one for each ear. The transfer functions are located in the :attr:`data`
-list and the coordinates of the corresponding sources in the :attr:`sources` list. In the example below, we select a
-source, print it's coordinates and plot the corresponding transfer function.
+list and the coordinates of the corresponding sources can be found in the :attr:`sources.cartesian` list of the hrtf
+object. In the example below, we select a source, print it's coordinates and plot the corresponding transfer function.
 
 .. plot::
     :include-source:
@@ -68,14 +68,10 @@ source, print it's coordinates and plot the corresponding transfer function.
 
     from matplotlib import pyplot as plt
     hrtf = slab.HRTF.kemar()
-    fig, ax = plt.subplots(1)
-    idx = 10
-    source = hrtf.sources.cartesian[idx]  # the source's azimuth, elevation and distance
-    filt = hrtf.data[idx] # the corresponding filter
-    filt.channel(0).tf(axis=ax, show=False)
-    filt.channel(1).tf(axis=ax, show=False)
-    plt.legend()
-    plt.show()
+    filt = hrtf.data[10] # choose a filter
+    source = hrtf.sources.vertical_polar[idx]
+    print(f'azimuth: {round(source[0])}, elevation: {source[1]}')
+    filt.tf()
 
 The :class:`HRTF` class also has a :meth:`.plot_tf` method to plot transfer functions as either `waterfall`
 (as is Wightman and Kistler, 1989), `image` plot (as in Hofman 1998). The function takes a list of source indices as an
