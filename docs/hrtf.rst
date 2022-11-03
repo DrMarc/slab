@@ -69,7 +69,7 @@ object. In the example below, we select a source, print it's coordinates and plo
     from matplotlib import pyplot as plt
     hrtf = slab.HRTF.kemar()
     filt = hrtf.data[10] # choose a filter
-    source = hrtf.sources.vertical_polar[idx]
+    source = hrtf.sources.vertical_polar[10]
     print(f'azimuth: {round(source[0])}, elevation: {source[1]}')
     filt.tf()
 
