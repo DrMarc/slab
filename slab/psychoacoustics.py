@@ -377,7 +377,7 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
                         self.conditions):  # encode conditions as integers 1 to n_conditions in trials
                     for t, trial in enumerate(trials):
                         if trial == condition:
-                            trials[t] = i + 1
+                            self.conditions[i] = i + 1
                 self.trials = trials
                 self.n_conditions = len(self.conditions)
             if isinstance(self.trials, numpy.ndarray):
