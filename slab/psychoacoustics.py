@@ -47,7 +47,7 @@ class _FigChar:
     already present. If used together with the plot method of the Staircase class, input is acquired through the stairs
     plot. Depending on the operating system, you may have to click once into the figure to give it focus.
     """
-    warnings.filterwarnings("ignore", category=matplotlib.cbook.MatplotlibDeprecationWarning)
+    warnings.filterwarnings("ignore", category=matplotlib.MatplotlibDeprecationWarning)
 
     @staticmethod
     def getch():
@@ -244,7 +244,7 @@ class TrialPresentationOptionsMixin:
         stimulus.play()
         with slab.key() as k:
             response = k.getch()
-        response = response == key_codes[correct_key_idx] 
+        response = response == key_codes[correct_key_idx]
         self.add_response(response)
         if print_info:
             self.print_trial_info()
