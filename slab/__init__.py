@@ -1,7 +1,7 @@
 import sys
 import pathlib
 
-__version__ = '1.0.3'
+__version__ = '1.1.0'
 
 sys.path.append('..\\')
 

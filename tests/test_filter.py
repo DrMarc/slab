@@ -120,7 +120,7 @@ def test_equalization():
         # The spectral difference between original and equalized should be minimum
         # TODO: now only check the average. might make sense to also check the maximum
         # TODO: the edge effect is annoying. should think of a way to deal with it
-        assert numpy.abs(Z_sound-Z_equalized)[100:-1000].mean() < 0.5
+        assert numpy.abs(Z_sound-Z_equalized)[100:-1000].mean() < 1
 
 
 def test_load_save():
@@ -139,5 +139,3 @@ def test_load_save():
             assert filt.fir == loaded.fir
             assert filt.n_frequencies == loaded.n_frequencies
             assert filt.n_taps == loaded.n_taps
-
-
