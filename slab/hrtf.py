@@ -618,7 +618,7 @@ class HRTF:
                 (self.sources.vertical_polar[:, 0] <= 90) | (self.sources.vertical_polar[:, 0] >= 270)))
         return idx[0].tolist()
 
-    def tfs_from_sources(self, sources, n_bins=96):
+    def tfs_from_sources(self, sources, n_bins=96, ear='left'):
         """
         Get the transfer function from sources in the hrtf.
 
@@ -626,14 +626,21 @@ class HRTF:
             sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method),
                 for which the transfer function is extracted.
             n_bins (int): The number of frequency bins for each transfer function.
+            ear (str): The ear to retrieve the
         Returns:
             (numpy.ndarray): 2-dimensional array where the first dimension represents the frequency bins and the
                 second dimension represents the sources.
         """
         n_sources = len(sources)
         tfs = numpy.zeros((n_bins, n_sources))
+        if ear == 'left':
+            chan = 0
+        elif ear == 'right':
+            chan = 1
+        # elif ear == 'both':
+        #     chan = 'all'
         for idx, source in enumerate(sources):
-            _, jwd = self[source].tf(channels=0, n_bins=n_bins, show=False)
+            _, jwd = self[source].tf(channels=chan, n_bins=n_bins, show=False)
             tfs[:, idx] = jwd.flatten()
         return tfs
 
