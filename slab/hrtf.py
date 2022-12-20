@@ -491,7 +491,8 @@ class HRTF:
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
             if kind == 'image':
-                contour = axis.contourf(freqs[freqs <= xlim[1]], elevations, img.T[:, freqs <= xlim[1]], cmap='hot', origin='upper', levels=20)
+                contour = axis.contourf(freqs[freqs <= xlim[1]], elevations, img.T[:, freqs <= xlim[1]],
+                                        cmap='hot', origin='upper', levels=20)
                 divider = make_axes_locatable(axis)
                 cax = divider.append_axes('right', size='5%', pad=0.05)
                 fig.colorbar(contour, cax, orientation="vertical")
@@ -618,23 +619,33 @@ class HRTF:
                 (self.sources.vertical_polar[:, 0] <= 90) | (self.sources.vertical_polar[:, 0] >= 270)))
         return idx[0].tolist()
 
-    def tfs_from_sources(self, sources, n_bins=96):
+    def tfs_from_sources(self, sources, n_bins=96, ear='left'):
         """
         Get the transfer function from sources in the hrtf.
 
         Arguments:
+            ear (str): the ear for which transfer functions are retrieved. Can be 'left', 'right', or 'both'.
             sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method),
                 for which the transfer function is extracted.
             n_bins (int): The number of frequency bins for each transfer function.
         Returns:
-            (numpy.ndarray): 2-dimensional array where the first dimension represents the frequency bins and the
-                second dimension represents the sources.
+            (numpy.ndarray): 3-dimensional array where the first dimension represents the sources, the second dimension
+            represents the frequency bins and the third dimension represents the channels.
         """
         n_sources = len(sources)
-        tfs = numpy.zeros((n_bins, n_sources))
+        if ear == 'left':
+            chan = 0
+        elif ear == 'right':
+            chan = 1
+            tfs = numpy.zeros((n_sources, n_bins, 1))
+        elif ear == 'both':
+            chan = 'all'
+            tfs = numpy.zeros((n_sources, n_bins, 2))
+        else:
+            raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
         for idx, source in enumerate(sources):
-            _, jwd = self[source].tf(channels=0, n_bins=n_bins, show=False)
-            tfs[:, idx] = jwd.flatten()
+            _, jwd = self[source].tf(channels=chan, n_bins=n_bins, show=False)
+            tfs[idx] = jwd
         return tfs
 
     def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
@@ -772,7 +783,7 @@ class HRTF:
         n = 0
         for i in range(len(sources)):
             for j in range(i+1, len(sources)):
-                sum_corr += numpy.corrcoef(tfs[:, i], tfs[:, j])[1, 0]
+                sum_corr += numpy.corrcoef(tfs[i, :], tfs[j, :])[1, 0]
                 n += 1
         return 1 - sum_corr / n
 
