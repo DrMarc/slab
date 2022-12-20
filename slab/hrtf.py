@@ -504,8 +504,9 @@ class HRTF:
                 z = spline(x, y)
                 x[x < xlim[0]] = numpy.nan  # trim edges
                 x[x > xlim[1]] = numpy.nan
-                axis.axis('off')
-                axis = plt.axes(projection='3d')
+                if axis.name != '3d':
+                    axis.axis('off')
+                    axis = plt.axes(projection='3d')
                 contour = axis.plot_surface(x, y, z, rcount=200, ccount=200, cmap='cool')
                 axis.set_zlim(z.min()*1.5, z.max()*2)
                 fig.colorbar(contour, fraction=0.046, pad=0.04, orientation="horizontal")
