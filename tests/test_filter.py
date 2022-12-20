@@ -104,17 +104,23 @@ def test_equalization():
         length = numpy.random.randint(1000, 5000)
         low_cutoff = numpy.random.randint(20, 2000)
         high_cutoff = numpy.random.randint(10000, 20000)
-        sound = slab.Sound.pinknoise(samplerate=44100)
-        filt = slab.Filter.band(frequency=[100., 800., 2000., 4300., 8000., 14500., 18000.],
-                                gain=[0., 1., 0., 1., 0., 1., 0.], samplerate=sound.samplerate)
+        sound = slab.Sound.pinknoise(samplerate=44100, duration=length/1000)
+        # bandpass to reduce the difference at low and high frequencies
+        sound = sound.filter([20, 18000], 'bp')
+        freqs = numpy.logspace(numpy.log2(50), numpy.log2(18000), 10, base=2)
+        gains = 2 ** numpy.random.uniform(-2, 2, freqs.shape)
+        filt = slab.Filter.band(frequency=freqs.tolist(),
+                                gain=gains.tolist(), samplerate=sound.samplerate)
         filtered = filt.apply(sound)
-        fbank = slab.Filter.equalizing_filterbank(sound, filtered, low_cutoff=200, high_cutoff=16000)
-        equalized = fbank.apply(sound)
-        Z_equalized, _ = equalized.spectrum(show=False)
-        Z_sound, _ = sound.spectrum(show=False)
-        Z_filtered, _ = filtered.spectrum(show=False)
-        # The difference between spectra should be smaller after equalization
-        assert numpy.abs(Z_sound-Z_filtered).sum() / numpy.abs(Z_sound-Z_equalized).sum() > 2
+        fbank = slab.Filter.equalizing_filterbank(sound, filtered, low_cutoff=low_cutoff, high_cutoff=high_cutoff)
+        equalized = fbank.apply(filtered)
+        Z_equalized, _ = equalized.spectrum(low_cutoff, high_cutoff, show=False)
+        Z_sound, _ = sound.spectrum(low_cutoff, high_cutoff, show=False)
+        Z_filtered, _ = filtered.spectrum(low_cutoff, high_cutoff, show=False)
+        # The spectral difference between original and equalized should be minimum
+        # TODO: now only check the average. might make sense to also check the maximum
+        # TODO: the edge effect is annoying. should think of a way to deal with it
+        assert numpy.abs(Z_sound-Z_equalized)[100:-1000].mean() < 1
 
 
 def test_load_save():
@@ -133,5 +139,3 @@ def test_load_save():
             assert filt.fir == loaded.fir
             assert filt.n_frequencies == loaded.n_frequencies
             assert filt.n_taps == loaded.n_taps
-
-

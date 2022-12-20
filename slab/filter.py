@@ -152,19 +152,23 @@ class Filter(Signal):
         if self.fir:
             if scipy is False:
                 raise ImportError('Applying FIR filters requires Scipy.')
+            if out.n_samples < self.n_samples * 3:
+                padlen = out.n_samples - 1
+            else:
+                padlen = None
             if self.n_filters == sig.n_channels:  # filter each channel with corresponding filter
                 for i in range(self.n_filters):
                     out.data[:, i] = scipy.signal.filtfilt(
-                        self.data[:, i], [1], out.data[:, i], axis=0)
+                        self.data[:, i], [1], out.data[:, i], axis=0, padlen=padlen)
             elif (self.n_filters == 1) and (sig.n_channels > 1):  # filter each channel
                 for i in range(sig.n_channels):
                     out.data[:, i] = scipy.signal.filtfilt(
-                        self.data.flatten(), [1], out.data[:, i], axis=0)
+                        self.data.flatten(), [1], out.data[:, i], axis=0,  padlen=padlen)
             elif (self.n_filters > 1) and (sig.n_channels == 1):  # apply all filters in bank to sound
                 out.data = numpy.empty((sig.n_samples, self.n_filters))
                 for filt in range(self.n_filters):
                     out.data[:, filt] = scipy.signal.filtfilt(
-                        self[:, filt], [1], sig.data, axis=0).flatten()
+                        self[:, filt], [1], sig.data, axis=0,  padlen=padlen).flatten()
             else:
                 raise ValueError(
                     'Number of filters must equal number of sound channels, or either one of them must be equal to 1.')
@@ -387,7 +391,7 @@ class Filter(Signal):
 
     @staticmethod
     def equalizing_filterbank(reference, sound, length=1000, bandwidth=1/8, low_cutoff=200, high_cutoff=None,
-                              alpha=1.0):
+                              alpha=1.0, filt_meth='filtfilt'):
         """
         Generate an equalizing filter from the spectral difference between a `sound` and a `reference`. Both are
         divided into sub-bands using the `cos_filterbank` and the level difference per sub-band is calculated. The
@@ -406,6 +410,10 @@ class Filter(Signal):
             high_cutoff (int | float): The upper limit of frequency range in Hz. If None, use the Nyquist frequency.
             alpha (float): Filter regularization parameter. Values below 1.0 reduce the filter's effect, values above
                 amplify it. WARNING: large filter gains may result in temporal distortions of the sound
+            filt_meth (str): filtering method, must be in ('filtfilt', 'fft', 'slab', 'causal'). 'filtfilt' and 'slab'
+                applies the filter twice (forward and backward) so the filtered signal is not time-shifted, but in this
+                case we need a filter with half of the desired amplitude so the end result has the correct modification.
+                For 'fft' and 'causal', the filter with desired amplitude is returned
         Returns:
             (slab.Filter): An equalizing filter bank with a number of filters equal to the number of channels in the
                 equalized `sound`.
@@ -422,6 +430,8 @@ class Filter(Signal):
         """
         if scipy is False:
             raise ImportError('Generating equalizing filter banks requires Scipy.')
+        if filt_meth not in ('filtfilt', 'fft', 'slab', 'causal'):
+            raise ValueError("filt_meth must be one of {'filtfilt', 'fft', 'slab', 'causal'}")
         if reference.n_channels > 1:
             raise ValueError("The reference sound must have only one channel!")
         if bool(reference.n_samples % 2):  # number of samples must be even:
@@ -434,6 +444,14 @@ class Filter(Signal):
             sound = sound.resample(reference.samplerate)
         if high_cutoff is None:
             high_cutoff = reference.samplerate / 2
+        # different conditions on filtering method
+        is_fir = True
+        filt_scaling = 1
+        if filt_meth == 'fft':
+            is_fir = False
+        elif filt_meth in ('slab', 'filtfilt'):
+            filt_scaling = 0.5
+
         fbank = Filter.cos_filterbank(length=length, bandwidth=bandwidth,
                                       low_cutoff=low_cutoff, high_cutoff=high_cutoff, samplerate=reference.samplerate)
         center_freqs, _, _ = Filter._center_freqs(low_cutoff, high_cutoff, bandwidth)
@@ -447,19 +465,19 @@ class Filter(Signal):
         levels_signal = numpy.ones((len(center_freqs), sound.n_channels))
         for idx in range(sound.n_channels):
             levels_signal[:, idx] = fbank.apply(sound.channel(idx)).level
-        amp_diffs = levels_target - levels_signal
-        max_diffs = numpy.max(numpy.abs(amp_diffs), axis=0)
-        max_diffs[max_diffs == 0] = 1
-        amp_diffs = amp_diffs/max_diffs
-        amp_diffs *= alpha  # apply factor for filter regulation
-        amp_diffs += 1  # add 1 because gain = 1 means "do nothing"
+        amp_diffs_dB = levels_target - levels_signal
+        # if we want to keep the scaling
+        amp_diffs_dB = filt_scaling * amp_diffs_dB * alpha
+        # convert differences from dB to ratio
+        amp_diffs = 10 ** (amp_diffs_dB / 20.)
         center_freqs = [0] + center_freqs
         filts = numpy.zeros((length, sound.n_channels))
         for chan in range(sound.n_channels):
             gain = [1] + list(amp_diffs[:, chan])
-            filt = Filter.band(frequency=list(center_freqs), gain=gain, samplerate=reference.samplerate, fir=True, length=length)
+            filt = Filter.band(frequency=list(center_freqs), gain=gain, samplerate=reference.samplerate, fir=is_fir,
+                               length=length)
             filts[:, chan] = filt.data.flatten()
-        return Filter(data=filts, samplerate=reference.samplerate, fir=True)
+        return Filter(data=filts, samplerate=reference.samplerate, fir=is_fir)
 
     def save(self, filename):
         """

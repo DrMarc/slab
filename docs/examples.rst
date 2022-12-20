@@ -36,7 +36,7 @@ Run a pure tone audiogram at the standard frequencies 125, 250, 500, 1000, 2000,
             stimulus.level = level
             stairs.present_tone_trial(stimulus)
             stairs.print_trial_info()
-        threshs.append({stairs.threshold())
+        threshs.append(stairs.threshold())
         print(f'Threshold at {frequency} Hz: {stairs.threshold()} dB')
     plt.plot(freqs, threshs) # plot the audiogram
 

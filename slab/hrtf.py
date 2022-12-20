@@ -474,7 +474,7 @@ class HRTF:
             # plot every third elevation label, omit comma to save space
             labels = labels[::2].astype(int)
             axis.set(yticks=ticks, yticklabels=labels)
-            axis.grid(b=True, axis='y', which='both', linewidth=0.25)
+            axis.grid(visible=True, axis='y', which='both', linewidth=0.25)
             axis.plot([xlim[0]+500, xlim[0]+500], [vlines[-1]+10, vlines[-1] +
                       10+linesep], linewidth=1, color='0.0', alpha=0.9)
             axis.text(x=xlim[0]+600, y=vlines[-1]+10+linesep/2,
@@ -628,6 +628,7 @@ class HRTF:
             sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method),
                 for which the transfer function is extracted.
             n_bins (int): The number of frequency bins for each transfer function.
+            ear (str): The ear to retrieve the
         Returns:
             (numpy.ndarray): 3-dimensional array where the first dimension represents the sources, the second dimension
             represents the frequency bins and the third dimension represents the channels.
@@ -635,6 +636,7 @@ class HRTF:
         n_sources = len(sources)
         if ear == 'left':
             chan = 0
+            tfs = numpy.zeros((n_sources, n_bins, 1))
         elif ear == 'right':
             chan = 1
             tfs = numpy.zeros((n_sources, n_bins, 1))
@@ -646,6 +648,9 @@ class HRTF:
         for idx, source in enumerate(sources):
             _, jwd = self[source].tf(channels=chan, n_bins=n_bins, show=False)
             tfs[idx] = jwd
+        for idx, source in enumerate(sources):
+            _, jwd = self[source].tf(channels=chan, n_bins=n_bins, show=False)
+            tfs[:, idx] = jwd.flatten()
         return tfs
 
     def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
@@ -844,6 +849,7 @@ class HRTF:
             kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
             _kemar.sources = HRTF._get_coordinates(_kemar.sources, 'spherical')
+            _kemar.datatype = 'FIR'
         return _kemar
 
     @staticmethod
