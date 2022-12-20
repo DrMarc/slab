@@ -491,7 +491,8 @@ class HRTF:
                 img[:, idx] = h.flatten()
             img[img < -25] = -25  # clip at -40 dB transfer
             if kind == 'image':
-                contour = axis.contourf(freqs[freqs <= xlim[1]], elevations, img.T[:, freqs <= xlim[1]], cmap='hot', origin='upper', levels=20)
+                contour = axis.contourf(freqs[freqs <= xlim[1]], elevations, img.T[:, freqs <= xlim[1]],
+                                        cmap='hot', origin='upper', levels=20)
                 divider = make_axes_locatable(axis)
                 cax = divider.append_axes('right', size='5%', pad=0.05)
                 fig.colorbar(contour, cax, orientation="vertical")
@@ -623,7 +624,6 @@ class HRTF:
         Get the transfer function from sources in the hrtf.
 
         Arguments:
-            ear (str): the ear for which transfer functions are retrieved. Can be 'left', 'right', or 'both'.
             sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method),
                 for which the transfer function is extracted.
             n_bins (int): The number of frequency bins for each transfer function.
@@ -633,8 +633,10 @@ class HRTF:
             represents the frequency bins and the third dimension represents the channels.
         """
         n_sources = len(sources)
+        tfs = numpy.zeros((n_bins, n_sources))
         if ear == 'left':
             chan = 0
+            tfs = numpy.zeros((n_sources, n_bins, 1))
         elif ear == 'right':
             chan = 1
             tfs = numpy.zeros((n_sources, n_bins, 1))
