@@ -623,25 +623,29 @@ class HRTF:
         Get the transfer function from sources in the hrtf.
 
         Arguments:
+            ear (str): the ear for which transfer functions are retrieved. Can be 'left', 'right', or 'both'.
             sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method),
                 for which the transfer function is extracted.
             n_bins (int): The number of frequency bins for each transfer function.
             ear (str): The ear to retrieve the
         Returns:
-            (numpy.ndarray): 2-dimensional array where the first dimension represents the frequency bins and the
-                second dimension represents the sources.
+            (numpy.ndarray): 3-dimensional array where the first dimension represents the sources, the second dimension
+            represents the frequency bins and the third dimension represents the channels.
         """
         n_sources = len(sources)
-        tfs = numpy.zeros((n_bins, n_sources))
         if ear == 'left':
             chan = 0
         elif ear == 'right':
             chan = 1
-        # elif ear == 'both':
-        #     chan = 'all'
+            tfs = numpy.zeros((n_sources, n_bins, 1))
+        elif ear == 'both':
+            chan = 'all'
+            tfs = numpy.zeros((n_sources, n_bins, 2))
+        else:
+            raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
         for idx, source in enumerate(sources):
             _, jwd = self[source].tf(channels=chan, n_bins=n_bins, show=False)
-            tfs[:, idx] = jwd.flatten()
+            tfs[idx] = jwd
         return tfs
 
     def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
@@ -779,7 +783,7 @@ class HRTF:
         n = 0
         for i in range(len(sources)):
             for j in range(i+1, len(sources)):
-                sum_corr += numpy.corrcoef(tfs[:, i], tfs[:, j])[1, 0]
+                sum_corr += numpy.corrcoef(tfs[i], tfs[j])[1, 0]
                 n += 1
         return 1 - sum_corr / n
 
