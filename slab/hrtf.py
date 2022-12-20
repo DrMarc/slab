@@ -489,7 +489,7 @@ class HRTF:
                 filt = self[source]
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 img[:, idx] = h.flatten()
-            img[img < -25] = -25  # clip at -40 dB transfer
+            img[img < -25] = -25  # clip at -25 dB transfer
             if kind == 'image':
                 contour = axis.contourf(freqs[freqs <= xlim[1]], elevations, img.T[:, freqs <= xlim[1]],
                                         cmap='hot', origin='upper', levels=20)
@@ -508,6 +508,7 @@ class HRTF:
                 axis.axis('off')
                 axis = plt.axes(projection='3d')
                 contour = axis.plot_surface(x, y, z, rcount=200, ccount=200, cmap='cool')
+                axis.set_zlim(z.min()*2, z.max()*2)
                 fig.colorbar(contour, fraction=0.046, pad=0.04, orientation="horizontal")
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
@@ -785,7 +786,7 @@ class HRTF:
         n = 0
         for i in range(len(sources)):
             for j in range(i+1, len(sources)):
-                sum_corr += numpy.corrcoef(tfs[i], tfs[j])[1, 0]
+                sum_corr += numpy.corrcoef(tfs[i].flatten(), tfs[j].flatten())[1, 0]
                 n += 1
         return 1 - sum_corr / n
 
