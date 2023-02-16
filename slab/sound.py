@@ -33,11 +33,12 @@ _system = platform.system()
 if _system == 'Windows':
     import winsound
 
+import slab.signal
+from slab.signal import Signal
+from slab.filter import Filter
 from slab import in_notebook
 if in_notebook:
     from IPython.display import Audio, display
-from slab.signal import Signal
-from slab.filter import Filter
 
 _tmpdir = pathlib.Path(tempfile.gettempdir())  # get a temporary directory for writing intermediate files
 _calibration_intensity = 0  # difference between rms intensity and measured output intensity in dB
