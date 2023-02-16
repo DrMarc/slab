@@ -66,6 +66,7 @@ right_lateralized = sig.itd(duration=600e-6) # add an interaural time difference
 # apply a linearly increasing or decreasing interaural time difference.
 # This is achieved by sinc interpolation of one channel with a dynamic delay:
 moving = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
+hrtf = slab.HRTF.kemar() # using the default head-related transfer function
 level_spectrum = slab.Binaural.make_interaural_level_spectrum(hrtf) # compute frequency-band-specific ILDs from KEMAR
 lateralized = sig.at_azimuth(azimuth=-45, ils=level_spectrum) # add frequency-dependent ITD and ILD corresponding to a sound at 45 deg
 external = lateralized.externalize() # add an under-sampled HRTF filter that results in the percept of an external source
