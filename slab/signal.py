@@ -17,6 +17,9 @@ def set_default_samplerate(samplerate):
     global _default_samplerate
     _default_samplerate = samplerate
 
+def get_default_samplerate():
+    global _default_samplerate
+    return _default_samplerate
 
 class Signal:
     """
