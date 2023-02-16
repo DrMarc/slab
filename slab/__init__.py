@@ -1,7 +1,13 @@
 import sys
+import os
 import pathlib
 
 __version__ = '1.1.1'
+
+if "JPY_PARENT_PID" in os.environ:
+    in_notebook = True
+else:
+    in_notebook = False
 
 sys.path.append('..\\')
 

@@ -33,7 +33,9 @@ _system = platform.system()
 if _system == 'Windows':
     import winsound
 
-import slab.signal
+from slab import in_notebook
+if in_notebook:
+    from IPython.display import Audio, display
 from slab.signal import Signal
 from slab.filter import Filter
 
@@ -940,7 +942,9 @@ class Sound(Signal):
         to play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via the
         `play_file` method.
         """
-        if soundcard is not False:
+        if in_notebook:
+            display(Audio(self.data.T, rate=self.samplerate, autoplay=True))
+        elif soundcard is not False:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
             filename = hashlib.sha256(self.data).hexdigest() + '.wav'  # make unique name
@@ -959,7 +963,9 @@ class Sound(Signal):
         """
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
-        if _system == 'Windows':
+        if in_notebook:
+            display(Audio(filename, autoplay=True))
+        elif _system == 'Windows':
             winsound.PlaySound(filename, winsound.SND_FILENAME)
         elif _system == 'Darwin':  # MacOS
             subprocess.call(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
