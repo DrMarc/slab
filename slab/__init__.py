@@ -2,7 +2,7 @@ import sys
 import os
 import pathlib
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 if "JPY_PARENT_PID" in os.environ:
     in_notebook = True
