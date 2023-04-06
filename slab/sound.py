@@ -962,7 +962,8 @@ class Sound(Signal):
         """
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
-        if in_notebook:
+        if _in_notebook:
+            from IPython.display import Audio, display
             display(Audio(filename, autoplay=True))
         elif _system == 'Windows':
             winsound.PlaySound(filename, winsound.SND_FILENAME)
