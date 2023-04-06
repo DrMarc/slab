@@ -36,13 +36,11 @@ if _system == 'Windows':
 import slab.signal
 from slab.signal import Signal
 from slab.filter import Filter
-from slab import in_notebook
-if in_notebook:
-    from IPython.display import Audio, display
 
 _tmpdir = pathlib.Path(tempfile.gettempdir())  # get a temporary directory for writing intermediate files
 _calibration_intensity = 0  # difference between rms intensity and measured output intensity in dB
 _default_level = 70  # the default level for generated Sounds in dB
+_in_notebook = False # are we in a Jupiter notebook (then use IPython object to play audio)
 
 def set_default_level(level):
     global _default_level
@@ -51,7 +49,6 @@ def set_default_level(level):
 def set_calibration_intensity(intensity):
     global _calibration_intensity
     _calibration_intensity = intensity
-
 
 def get_calibration_intensity():
     global _calibration_intensity
@@ -943,7 +940,8 @@ class Sound(Signal):
         to play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via the
         `play_file` method.
         """
-        if in_notebook:
+        if _in_notebook:
+            from IPython.display import Audio, display
             display(Audio(self.data.T, rate=self.samplerate, autoplay=True))
         elif soundcard is not False:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
