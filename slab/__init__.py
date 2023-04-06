@@ -4,10 +4,32 @@ import pathlib
 
 __version__ = '1.1.2'
 
+spyder_env = set(['SPYDER_ARGS',
+                  'SPY_EXTERNAL_INTERPRETER',
+                  'SPY_UMR_ENABLED',
+                  'SPY_UMR_VERBOSE',
+                  'SPY_UMR_NAMELIST',
+                  'SPY_RUN_LINES_O',
+                  'SPY_PYLAB_O',
+                  'SPY_BACKEND_O',
+                  'SPY_AUTOLOAD_PYLAB_O',
+                  'SPY_FORMAT_O',
+                  'SPY_RESOLUTION_O',
+                  'SPY_WIDTH_O',
+                  'SPY_HEIGHT_O',
+                  'SPY_USE_FILE_O',
+                  'SPY_RUN_FILE_O',
+                  'SPY_AUTOCALL_O',
+                  'SPY_GREEDY_O',
+                  'SPY_SYMPY_O',
+                  'SPY_RUN_CYTHON',
+                  'SPYDER_PARENT_DIR'])
 if "JPY_PARENT_PID" in os.environ:
-    in_notebook = True
-else:
-    in_notebook = False
+    overlap = spyder_env & set(os.environ.keys())
+    if spyder_env.intersection(set(os.environ.keys())):
+        in_notebook = True
+    else:
+        in_notebook = False
 
 sys.path.append('..\\')
 
