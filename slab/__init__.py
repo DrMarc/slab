@@ -28,8 +28,6 @@ if "JPY_PARENT_PID" in os.environ:
     overlap = spyder_env & set(os.environ.keys())
     if spyder_env.intersection(set(os.environ.keys())):
         in_notebook = True
-    else:
-        in_notebook = False
 
 sys.path.append('..\\')
 
