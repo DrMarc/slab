@@ -2,7 +2,7 @@ import sys
 import os
 import pathlib
 
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 
 spyder_env = set(['SPYDER_ARGS',
                   'SPY_EXTERNAL_INTERPRETER',
