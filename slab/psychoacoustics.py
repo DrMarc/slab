@@ -426,9 +426,9 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
             self.this_trial = self.conditions[self.trials[self.this_n]-1]  # fetch the trial info
         return self.this_trial
 
-    def add_response(self, response):
+    def add_response(self, *response):
         """
-        Append response to the list in the `data` attribute belonging to the current trial (see Trialsequence doc).
+        Append response(s) to the list in the `data` attribute belonging to the current trial (see Trialsequence doc).
 
         Attributes:
              response (any): data to append to the list. Can be anything but save_json method won't be available if
@@ -437,7 +437,8 @@ class Trialsequence(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOp
         if self.this_n < 0:
             print("Can't add response because trial hasn't started yet!")
         else:
-            self.data[self.this_n].append(response)
+            for r in response:
+                self.data[self.this_n].append(r)
 
     def print_trial_info(self):
         """ Convenience method for printing current trial information. """
