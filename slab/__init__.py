@@ -2,7 +2,18 @@ import sys
 import os
 import pathlib
 
-__version__ = '1.1.3'
+__version__ = '1.1.4'
+
+# The variable _in_notebook is used to enable audio playing in Jupiter notebooks
+# and on Google colab (see slab.sound.play())
+try:
+    shell = get_ipython().__class__.__module__
+    if 'terminal' in shell:
+        _in_notebook = False
+    else:
+        _in_notebook = True  # probably in a notebook
+except NameError:
+    _in_notebook = False  # probably standard Python interpreter
 
 sys.path.append('..\\')
 
