@@ -24,21 +24,20 @@ except ImportError:
 import slab
 
 results_folder = 'Results'
-input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard 'or 'buttonbox'
+input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard', 'buttonbox', or 'prompt'
 
 
 class _Buttonbox:
     """
-    Adapter class to allow easy switching between input from the keyboard via curses and from the custom buttonbox
-    adapter (custom arduino device that sends a keystroke followed by a return keystroke when pressing a button on
-    the arduino).
+    Adapter class to allow easy switching between input from the keyboard via curses (no ENTER keypress needed after
+    single button press) to the Python input prompt, which can be used with an external button box (custom arduino device
+    that sends keystrokes) or when running from a Jupiter or Colab notebook.
     """
     @staticmethod
     def getch():
-        input_key = input()  # buttonbox adapter has to return the keycode of intended keys!
+        input_key = input()  # buttonbox has to return the key followed by ENTER!
         if input_key:
-            return int(input_key)
-
+            return ord(input_key)
 
 class _FigChar:
     """
@@ -67,9 +66,10 @@ class _FigChar:
 def key(mesg=None):
     """
     Wrapper for curses module to simplify getting a single keypress from the terminal (default), a buttonbox, or a
-    figure. Set slab.psychoacoustics.input_method = 'buttonbox' to use a custom USB buttonbox or to 'figure' to open
-    a figure called 'stairs' (if not already opened by the `slab.Staricase.plot` method). Optianally takes a string
-    argument which is printed in the terminal for conveying instructions to the participant.
+    figure. Set slab.psychoacoustics.input_method = 'buttonbox' to use a custom USB buttonbox, to 'figure' to open
+    a figure called 'stairs' (if not already opened by the `slab.Staricase.plot` method), or to 'prompt' for a
+    simple Python prompt (requires pressing Enter/Return after the response). Optionally takes a string argument
+    which is printed in the terminal for conveying instructions to the participant.
 
     Example::
 
@@ -93,7 +93,7 @@ def key(mesg=None):
         curses.nocbreak()
         curses.echo()
         curses.endwin()
-    elif input_method == 'buttonbox':
+    elif input_method == 'buttonbox' or input_method == 'prompt':
         if mesg is not None:
             print(mesg)
         yield _Buttonbox
