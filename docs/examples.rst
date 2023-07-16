@@ -52,7 +52,7 @@ Measure temporal modulation transfer functions via detection thresholds for ampl
     base_stimulus.level = 77
     for frequency in mod_freqs:
     stairs = slab.Staircase(start_val=0.8, n_reversals=16, step_type='db',
-                step_sizes=[4,2], min_val=0, max_val=1, nup=1, ndown=2)
+                step_sizes=[4,2], min_val=0, max_val=1, n_up=1, n_down=2)
         print(f'Starting staircase with {frequency} Hz:')
         for depth in stairs:
             stimulus = base_stimulus.am(frequency=frequency, depth=depth)
