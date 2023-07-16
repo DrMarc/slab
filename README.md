@@ -1,6 +1,7 @@
 ![Package](https://github.com/DrMarc/slab/workflows/Python%20package/badge.svg)
 [![PyPI](https://github.com/DrMarc/slab/workflows/PyPi/badge.svg)](https://pypi.org/project/slab/)
 [![Documentation Status](https://readthedocs.org/projects/slab/badge/?version=latest)](https://slab.readthedocs.io/en/latest/?badge=latest)
+[![Tutorial](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/DrMarc/slab/blob/master/slab_tutorial.ipynb)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/slab/graphs/commit-activity)
 ![PyPI pyversions](https://img.shields.io/badge/python-%3E%3D3.6-blue)
 ![PyPI license](https://img.shields.io/badge/license-MIT-brightgreen)
@@ -180,6 +181,8 @@ Documentation
 -------------
 
 Read the tutorial-style documentation on [ReadTheDocs](https://slab.readthedocs.io/).
+For an interactive tutorial without installing anything, try the Colab notebook:
+[![Open tutorial in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/DrMarc/slab/blob/master/slab_tutorial.ipynb)
 
 Citing slab
 -----------
