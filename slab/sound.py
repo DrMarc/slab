@@ -36,6 +36,10 @@ if _system == 'Windows':
 import slab.signal
 from slab.signal import Signal
 from slab.filter import Filter
+from slab import _in_notebook
+
+if _in_notebook:
+    from IPython.display import Audio, display
 
 _tmpdir = pathlib.Path(tempfile.gettempdir())  # get a temporary directory for writing intermediate files
 _calibration_intensity = 0  # difference between rms intensity and measured output intensity in dB
@@ -941,8 +945,8 @@ class Sound(Signal):
         `play_file` method.
         """
         if _in_notebook:
-            from IPython.display import Audio, display
             display(Audio(self.data.T, rate=self.samplerate, autoplay=True))
+            time.sleep(self.duration)  # playing in Jupiter/Colab notebook is non_blocking, thus busy-wait for stim duration
         elif soundcard is not False:
             soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
         else:
@@ -963,7 +967,6 @@ class Sound(Signal):
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
         if _in_notebook:
-            from IPython.display import Audio, display
             display(Audio(filename, autoplay=True))
         elif _system == 'Windows':
             winsound.PlaySound(filename, winsound.SND_FILENAME)
