@@ -176,6 +176,26 @@ class Signal:
     def __len__(self):
         return self.n_samples
 
+    def __eq__(self, other: "Signal") -> bool:
+        """Sensible equality check for Signal objects.
+
+        Signals are considered equal if they have the same data and samplerate.
+
+        Args:
+            other (Signal): the other Signal object to compare to.
+
+        Returns:
+            bool: True if the Signals are equal, False otherwise.
+
+        """
+        if not isinstance(other, type(self)):
+            return False
+        if self.samplerate != other.samplerate:
+            return False
+        if not numpy.array_equal(self.data, other.data):
+            return False
+        return True
+
     # static methods (belong to the class, but can be called without creating an instance)
     @staticmethod
     def in_samples(ctime, samplerate):

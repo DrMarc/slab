@@ -119,3 +119,24 @@ def test_delay():
             delayed_channel = delayed.channel(channel)
             numpy.testing.assert_almost_equal(delayed_channel[:delay_n_samples].flatten(),
                                               numpy.zeros(delay_n_samples), decimal=7)
+
+
+def test_signal_equals():
+    """Test that two signals are equal if they have the same data and samplerate."""
+    n_samples = numpy.random.randint(100, 10000)
+    samplerate = numpy.random.randint(10, 1000)
+    samples = numpy.random.randn(n_samples)
+    sig = slab.Signal(samples, samplerate=samplerate)
+    sig2 = slab.Signal(samples, samplerate=samplerate)  # same data, samplerate
+    sig3 = slab.Signal(numpy.random.randn(n_samples), samplerate=samplerate) # different data, same samplerate
+    sig4 = slab.Signal(samples, samplerate=samplerate+1)  # same data, different samplerate
+    assert numpy.array_equal(sig.data, sig2.data)
+    assert sig.samplerate == sig2.samplerate
+    assert sig == sig2
+    assert numpy.array_equal(sig.data, sig3.data) is False
+    assert sig.samplerate == sig3.samplerate
+    assert sig != sig3
+    assert numpy.array_equal(sig.data, sig4.data)
+    assert sig.samplerate != sig4.samplerate
+    assert sig != sig4
+

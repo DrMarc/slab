@@ -93,3 +93,23 @@ def test_frames():
             center1 = window[frame_dur][0]
             center2 = sound[numpy.where(sound.times == center)[0][0]][0]
             numpy.testing.assert_almost_equal(center1, center2, decimal=1)
+
+
+def test_sound_equals():
+    """Test that two sounds are equal if they have the same data and samplerate."""
+    n_samples = numpy.random.randint(100, 10000)
+    samplerate = numpy.random.randint(10, 1000)
+    samples = numpy.random.randn(n_samples)
+    sig = slab.Sound(samples, samplerate=samplerate)
+    sig2 = slab.Sound(samples, samplerate=samplerate)  # same data, samplerate
+    sig3 = slab.Sound(numpy.random.randn(n_samples), samplerate=samplerate) # different data, same samplerate
+    sig4 = slab.Sound(samples, samplerate=samplerate+1)  # same data, different samplerate
+    assert numpy.array_equal(sig.data, sig2.data)
+    assert sig.samplerate == sig2.samplerate
+    assert sig == sig2
+    assert numpy.array_equal(sig.data, sig3.data) is False
+    assert sig.samplerate == sig3.samplerate
+    assert sig != sig3
+    assert numpy.array_equal(sig.data, sig4.data)
+    assert sig.samplerate != sig4.samplerate
+    assert sig != sig4
