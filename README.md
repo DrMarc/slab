@@ -218,5 +218,3 @@ License
 -------
 
 The project is licensed under the MIT license.
-
-[![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/)
