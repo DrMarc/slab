@@ -301,7 +301,7 @@ class Signal:
         out.samplerate = samplerate
         return out
 
-    def envelope(self, apply_envelope=None, times=None, kind='gain'):
+    def envelope(self, apply_envelope=None, times=None, kind='gain', cutoff=50):
         """
         Either apply an envelope to a sound or, if no `apply_envelope` was specified, compute the Hilbert envelope
         of the sound.
@@ -314,6 +314,7 @@ class Signal:
                 in envelope are supplied, then the interpolation is piecewise linear between pairs of time and envelope
                 valued (must have same length).
             kind (str): determines the unit of the envelope value
+            cutoff (int): Frequency of the lowpass filter that is applied to remove the temporal fine structure in Hz.
         Returns:
             (slab.Signal): Either a copy of the instance with the specified envelope applied or the sound's
                 Hilbert envelope.
@@ -323,13 +324,13 @@ class Signal:
         else:  # apply the envelope to the sound
             return self._apply_envelope(apply_envelope, times, kind)
 
-    def _get_envelope(self, kind):
+    def _get_envelope(self, kind, cutoff):
         if scipy is False:
             raise ImportError('Calculating envelopes requires scipy.sound.')
         else:
             envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))
             # 50Hz lowpass filter to remove fine-structure
-            filt = scipy.signal.firwin(1000, 50, pass_zero=True, fs=self.samplerate)
+            filt = scipy.signal.firwin(1000, cutoff, pass_zero=True, fs=self.samplerate)
             envs = scipy.signal.filtfilt(filt, [1], envs, axis=0)
             envs[envs <= 0] = numpy.finfo(float).eps  # remove negative values and zeroes
             if kind == 'dB':
