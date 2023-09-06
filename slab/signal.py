@@ -320,7 +320,7 @@ class Signal:
                 Hilbert envelope.
         """
         if apply_envelope is None:  # get the signals envelope
-            return self._get_envelope(kind)
+            return self._get_envelope(kind, cutoff)
         else:  # apply the envelope to the sound
             return self._apply_envelope(apply_envelope, times, kind)
 
