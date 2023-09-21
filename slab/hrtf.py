@@ -220,9 +220,9 @@ class HRTF:
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
         unit = attr['Units']  # extract and decode Units
         if unit in ('hertz', 'Hz'):
-            return (numpy.array(f.variables['Data.SamplingRate'], dtype='int'))
+            return int(f.variables['Data.SamplingRate'][0])
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
-        return 1000 * (numpy.array(f.variables['Data.SamplingRate'], dtype='int'))
+        return 1000 * int(f.variables['Data.SamplingRate'][0])
 
     @staticmethod
     def _sofa_get_sources(f):
@@ -633,8 +633,9 @@ class HRTF:
             (numpy.ndarray): 3-dimensional array where the first dimension represents the sources, the second dimension
             represents the frequency bins and the third dimension represents the channels.
         """
+        if n_bins is None:
+            n_bins = self.data[0].n_frequencies
         n_sources = len(sources)
-        tfs = numpy.zeros((n_bins, n_sources))
         if ear == 'left':
             chan = 0
             tfs = numpy.zeros((n_sources, n_bins, 1))
