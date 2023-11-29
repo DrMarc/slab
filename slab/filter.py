@@ -327,6 +327,9 @@ class Filter(Signal):
         if n_filters is None:
             erb_spacing = Filter._freq2erb(ref_freq*2**bandwidth) - ref_erb
             n_filters = int(numpy.round((h - l) / erb_spacing))
+        elif n_filters is not None and pass_bands is False:
+            # add 2 so that after omitting pass_bands we get the desired n_filt
+            n_filters += 2
         center_freqs, erb_spacing = numpy.linspace(l, h, n_filters, retstep=True)
         if not pass_bands:
             center_freqs = center_freqs[1:-1]  # exclude low and highpass filters

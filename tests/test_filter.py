@@ -86,17 +86,17 @@ def test_cos_filterbank():
 
 
 def test_center_freqs():
-    for i in range(100):
+    for _ in range(100):
         low_cutoff = numpy.random.randint(0, 500)
         high_cutoff = numpy.random.choice([numpy.random.randint(5000, 20000)])
-        bandwidth1 = numpy.random.uniform(0.1, 0.7)
+        bandwidth = numpy.random.uniform(0.1, 0.7)
         pass_bands = False
-        center_freqs1, bandwidth2, _ = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth1, pass_bands)
-        assert numpy.abs(bandwidth1 - bandwidth2) < 0.3
-        fbank = slab.Filter.cos_filterbank(5000, bandwidth1, low_cutoff, high_cutoff, pass_bands, 44100)
-        center_freqs2 = fbank.filter_bank_center_freqs()
-        assert numpy.abs(slab.Filter._erb2freq(center_freqs1[1:]) - center_freqs2[1:]).max() < 40
-        assert numpy.abs(center_freqs1 - slab.Filter._freq2erb(center_freqs2)).max() < 1
+        center_freqs1, bandwidth1, erb_spacing1 = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth=bandwidth, pass_bands=pass_bands)
+        n_filters = len(center_freqs1)
+        center_freqs2, bandwidth2, erb_spacing2 = slab.Filter._center_freqs(low_cutoff, high_cutoff, n_filters=n_filters, pass_bands=pass_bands)
+        assert center_freqs1 == center_freqs2
+        assert bandwidth1 == bandwidth2
+        assert erb_spacing1 == erb_spacing2
 
 
 def test_equalization():
