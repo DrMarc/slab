@@ -268,22 +268,23 @@ class Filter(Signal):
 
     @staticmethod
     # TODO: oversampling factor needed for cochleagram!
-    def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, samplerate=None):
+    def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, n_filters=None, samplerate=None):
         """
         Generate a set of Fourier filters. Each filter's transfer function is given by the positive phase of a
         cosine wave. The amplitude of the cosine is that filters central frequency. Following the organization of the
         cochlea, the width of the filter increases in proportion to it's center frequency. This increase is defined
-        by Moore & Glasberg's formula for the equivalent rectangular bandwidth (ERB) of auditory filters. This
-        functions is used for example to divide a sound into bands for equalization.
+        by Moore & Glasberg's formula for the equivalent rectangular bandwidth (ERB) of auditory filters. 
+        The number of filters is either determined by the `n_filters` argument or calculated based on the desired
+        `bandwidth` or. This function is used for example to divide a sound into sub-bands for equalization.
 
         Attributes:
             length (int): The number of bins in each filter, determines the frequency resolution.
-            bandwidth (float): Width of the sub-filters in octaves. The smaller the bandwidth, the more filters
-                will be generated.
+            bandwidth (float): Width of the sub-filters in octaves. The smaller the bandwidth, the more filters will be generated.
             low_cutoff (int | float): The lower limit of frequency range in Hz.
             high_cutoff (int | float): The upper limit of frequency range in Hz. If None, use the Nyquist frequency.
             pass_bands (bool): Whether to include a half cosine at the filter bank's lower and upper edge frequency.
                 If True, allows reconstruction of original bandwidth when collapsing subbands.
+            n_filters (int | None): Number of filters. When this is not None, the `bandwidth` argument is ignored.
             samplerate (int | None): the samplerate of the sound that the filter shall be applied to.
                 If None, use the default samplerate.s
         Examples::
@@ -304,7 +305,7 @@ class Filter(Signal):
         freq_bins = numpy.fft.rfftfreq(length, d=1/samplerate)
         n_freqs = len(freq_bins)
         center_freqs, bandwidth, erb_spacing = Filter._center_freqs(
-            low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth, pass_bands=pass_bands)
+            low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth, pass_bands=pass_bands, n_filters=n_filters)
         n_filters = len(center_freqs)
         filts = numpy.zeros((n_freqs, n_filters))
         freqs_erb = Filter._freq2erb(freq_bins)
@@ -318,13 +319,14 @@ class Filter(Signal):
         return Filter(data=filts, samplerate=samplerate, fir=False)
 
     @staticmethod
-    def _center_freqs(low_cutoff, high_cutoff, bandwidth=1/3, pass_bands=False):
+    def _center_freqs(low_cutoff, high_cutoff, bandwidth=1/3, pass_bands=False, n_filters=None):
         ref_freq = 1000  # Hz, reference for conversion between oct and erb bandwidth
-        ref_erb = Filter._freq2erb(ref_freq)
-        erb_spacing = Filter._freq2erb(ref_freq*2**bandwidth) - ref_erb
         h = Filter._freq2erb(high_cutoff)
         l = Filter._freq2erb(low_cutoff)
-        n_filters = int(numpy.round((h - l) / erb_spacing))
+        ref_erb = Filter._freq2erb(ref_freq)
+        if n_filters is None:
+            erb_spacing = Filter._freq2erb(ref_freq*2**bandwidth) - ref_erb
+            n_filters = int(numpy.round((h - l) / erb_spacing))
         center_freqs, erb_spacing = numpy.linspace(l, h, n_filters, retstep=True)
         if not pass_bands:
             center_freqs = center_freqs[1:-1]  # exclude low and highpass filters
