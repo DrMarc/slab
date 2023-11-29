@@ -90,13 +90,17 @@ def test_center_freqs():
         low_cutoff = numpy.random.randint(0, 500)
         high_cutoff = numpy.random.choice([numpy.random.randint(5000, 20000)])
         bandwidth = numpy.random.uniform(0.1, 0.7)
-        pass_bands = False
-        center_freqs1, bandwidth1, erb_spacing1 = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth=bandwidth, pass_bands=pass_bands)
-        n_filters = len(center_freqs1)
-        center_freqs2, bandwidth2, erb_spacing2 = slab.Filter._center_freqs(low_cutoff, high_cutoff, n_filters=n_filters, pass_bands=pass_bands)
-        assert center_freqs1 == center_freqs2
+        center_freqs1, bandwidth1, erb_spacing1 = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth=bandwidth, pass_bands=False)
+        center_freqs2, bandwidth2, erb_spacing2 = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth=bandwidth, pass_bands=True)
+        assert all(center_freqs1 == center_freqs2[1:-1])
+        assert len(center_freqs1) == len(center_freqs2)-2
         assert bandwidth1 == bandwidth2
         assert erb_spacing1 == erb_spacing2
+        n_filters = len(center_freqs1)
+        center_freqs3, bandwidth3, erb_spacing3 = slab.Filter._center_freqs(low_cutoff, high_cutoff, n_filters=n_filters, pass_bands=False)
+        assert all(center_freqs1 == center_freqs3)
+        assert bandwidth1 == bandwidth3
+        assert erb_spacing1 == erb_spacing3
 
 
 def test_equalization():
