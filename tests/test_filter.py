@@ -62,24 +62,23 @@ def test_custom_band():
 
 
 def test_cos_filterbank():
-    for i in range(10):
+    for _ in range(10):
         sound = slab.Sound.whitenoise(duration=1.0, samplerate=44100)
         length = numpy.random.randint(1000, 5000)
         low_cutoff = numpy.random.randint(0, 500)
         high_cutoff = numpy.random.choice([numpy.random.randint(5000, 15000), None])
-        pass_bands = False
         n_filters = []
         for bandwidth in numpy.linspace(0.1, 0.9, 9):
-            fbank = slab.Filter.cos_filterbank(length, bandwidth, low_cutoff, high_cutoff, pass_bands, sound.samplerate)
+            fbank = slab.Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_cutoff=low_cutoff, high_cutoff=high_cutoff, pass_bands=False, samplerate=sound.samplerate)
             n_filters.append(fbank.n_filters)
             filtsound = fbank.apply(sound)
             assert filtsound.n_channels == fbank.n_filters
             assert filtsound.n_samples == sound.n_samples
         assert all([n_filters[i] >= n_filters[i+1] for i in range(len(n_filters)-1)])
         bandwidth = numpy.random.uniform(0.1, 0.9)
-        pass_bands = True
-        fbank = slab.Filter.cos_filterbank(sound.n_samples, bandwidth, low_cutoff, high_cutoff, pass_bands,
-                                           sound.samplerate)
+        fbank = slab.Filter.cos_filterbank(
+                length=sound.n_samples, bandwidth=bandwidth, low_cutoff=low_cutoff,
+                high_cutoff=high_cutoff, pass_bands=True, samplerate=sound.samplerate)
         filtsound = fbank.apply(sound)
         collapsed = slab.Filter.collapse_subbands(filtsound, fbank)
         numpy.testing.assert_almost_equal(sound.data, collapsed.data, decimal=-1)
