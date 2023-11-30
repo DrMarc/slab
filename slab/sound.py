@@ -1075,13 +1075,17 @@ class Sound(Signal):
         else:
             return freqs, times, power
 
-    def cochleagram(self, bandwidth=1 / 5, show=True, axis=None):
+    def cochleagram(self, bandwidth=1 / 5, n_bands=None, show=True, axis=None):
         """
-        Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters with given bandwidth
-        and applying a cube-root compression to the resulting envelopes.
+        Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters
+        and applying a cube-root compression to the resulting envelopes. The number of bands 
+        is either calculated based on the desired `bandwidth` or specified by the `n_bands`
+        argument.
 
         Arguments:
             bandwidth (float): filter bandwidth in octaves.
+            n_bands (int | None): number of bands in the cochleagram. If this is not
+                None, the `bandwidth` argument is ignored.
             show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
                 passed, no plot will be created
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
@@ -1090,7 +1094,8 @@ class Sound(Signal):
                 Else, an array with the envelope is returned.
         """
         fbank = Filter.cos_filterbank(bandwidth=bandwidth, low_cutoff=20,
-                                      high_cutoff=None, samplerate=self.samplerate)
+                                      high_cutoff=None, n_filters=n_bands,
+                                      samplerate=self.samplerate)
         freqs = fbank.filter_bank_center_freqs()
         subbands = fbank.apply(self.channel(0))
         envs = subbands.envelope()
@@ -1103,9 +1108,8 @@ class Sound(Signal):
             if axis is None:
                 _, axis = plt.subplots()
             axis.imshow(envs.T, origin='lower', aspect='auto', cmap=cmap)
-            #labels = list(freqs.astype(int))
-            #axis.yaxis.set_major_formatter(matplotlib.ticker.IndexFormatter(
-            #    labels))  # centre frequencies as ticks -> commented because IndexFomatter deprecated in matplotlib 3.3
+            labels = list(freqs.astype(int))
+            axis.set_yticks(ticks=range(fbank.n_filters), labels=labels)
             axis.set_xlim([0, self.duration])
             axis.set(title='Cochleagram', xlabel='Time [sec]', ylabel='Frequency [Hz]')
             if show:
