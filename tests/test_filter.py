@@ -62,41 +62,44 @@ def test_custom_band():
 
 
 def test_cos_filterbank():
-    for i in range(10):
+    for _ in range(10):
         sound = slab.Sound.whitenoise(duration=1.0, samplerate=44100)
         length = numpy.random.randint(1000, 5000)
         low_cutoff = numpy.random.randint(0, 500)
         high_cutoff = numpy.random.choice([numpy.random.randint(5000, 15000), None])
-        pass_bands = False
         n_filters = []
         for bandwidth in numpy.linspace(0.1, 0.9, 9):
-            fbank = slab.Filter.cos_filterbank(length, bandwidth, low_cutoff, high_cutoff, pass_bands, sound.samplerate)
+            fbank = slab.Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_cutoff=low_cutoff, high_cutoff=high_cutoff, pass_bands=False, samplerate=sound.samplerate)
             n_filters.append(fbank.n_filters)
             filtsound = fbank.apply(sound)
             assert filtsound.n_channels == fbank.n_filters
             assert filtsound.n_samples == sound.n_samples
         assert all([n_filters[i] >= n_filters[i+1] for i in range(len(n_filters)-1)])
         bandwidth = numpy.random.uniform(0.1, 0.9)
-        pass_bands = True
-        fbank = slab.Filter.cos_filterbank(sound.n_samples, bandwidth, low_cutoff, high_cutoff, pass_bands,
-                                           sound.samplerate)
+        fbank = slab.Filter.cos_filterbank(
+                length=sound.n_samples, bandwidth=bandwidth, low_cutoff=low_cutoff,
+                high_cutoff=high_cutoff, pass_bands=True, samplerate=sound.samplerate)
         filtsound = fbank.apply(sound)
         collapsed = slab.Filter.collapse_subbands(filtsound, fbank)
         numpy.testing.assert_almost_equal(sound.data, collapsed.data, decimal=-1)
 
 
 def test_center_freqs():
-    for i in range(100):
+    for _ in range(100):
         low_cutoff = numpy.random.randint(0, 500)
         high_cutoff = numpy.random.choice([numpy.random.randint(5000, 20000)])
-        bandwidth1 = numpy.random.uniform(0.1, 0.7)
-        pass_bands = False
-        center_freqs1, bandwidth2, _ = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth1, pass_bands)
-        assert numpy.abs(bandwidth1 - bandwidth2) < 0.3
-        fbank = slab.Filter.cos_filterbank(5000, bandwidth1, low_cutoff, high_cutoff, pass_bands, 44100)
-        center_freqs2 = fbank.filter_bank_center_freqs()
-        assert numpy.abs(slab.Filter._erb2freq(center_freqs1[1:]) - center_freqs2[1:]).max() < 40
-        assert numpy.abs(center_freqs1 - slab.Filter._freq2erb(center_freqs2)).max() < 1
+        bandwidth = numpy.random.uniform(0.1, 0.7)
+        center_freqs1, bandwidth1, erb_spacing1 = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth=bandwidth, pass_bands=False)
+        center_freqs2, bandwidth2, erb_spacing2 = slab.Filter._center_freqs(low_cutoff, high_cutoff, bandwidth=bandwidth, pass_bands=True)
+        assert all(center_freqs1 == center_freqs2[1:-1])
+        assert len(center_freqs1) == len(center_freqs2)-2
+        assert bandwidth1 == bandwidth2
+        assert erb_spacing1 == erb_spacing2
+        n_filters = len(center_freqs1)
+        center_freqs3, bandwidth3, erb_spacing3 = slab.Filter._center_freqs(low_cutoff, high_cutoff, n_filters=n_filters, pass_bands=False)
+        assert all(center_freqs1 == center_freqs3)
+        assert bandwidth1 == bandwidth3
+        assert erb_spacing1 == erb_spacing3
 
 
 def test_equalization():
