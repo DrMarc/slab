@@ -4,7 +4,7 @@
 
 Filters
 =======
-The :class:`Filter` class can be used to generate, manipulate and save filter banks and transfer functions. Filters are represented internally as :class:`Signal` and come in two flavours: finite impulse responses (FIR) and frequency bin amplitudes (FFT). The :attr:`fir` (True or False).
+The :class:`Filter` class can be used to generate, manipulate and save filter banks and transfer functions. Filters are represented internally as :class:`Signal` and come in three flavours: finite impulse responses, impulse responses, and transfer functions, set by the :attr:`fir` attribute, which takes a string ('FIR', 'IR', or 'TF'). FIR filters are applied using :meth:`scipy.signal.filtfilt`, which avoids group delays and is intended for highpass and lowpass filters and the like. IR filters are applied using :meth:`scipy.signal.fftconvolve` and are intended for long room impulse responses, binaural impulse responses and the like, where group delays are intended. TF filters do not contain impulse response taps, but gains per frequency bin, making it easy to construct complicated filters.
 
 Simple Filters
 --------------
@@ -19,8 +19,8 @@ Simple low-, high-, bandpass, and bandstop filters can be used to suppress selec
     filt = slab.Filter.band(frequency=1000, kind='lp')
     sound_filt = filt.apply(sound)
     _, [ax1, ax2] = plt.subplots(2, sharex=True)
-    sound.spectrum(axis=ax1, color="blue")
-    sound_filt.spectrum(axis=ax2, color="red")
+    sound.spectrum(axis=ax1)
+    sound_filt.spectrum(axis=ax2)
 
 The :meth:`~Sound.filter` of the :class:`Sound` class wraps around :meth:`Filter.cutoff_filter` and :meth:`Filter.apply` so that you can use these filters conveniently from within the :class:`Sound` class.
 
