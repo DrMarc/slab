@@ -16,8 +16,12 @@ from slab.signal import Signal  # getting the base class
 
 class Filter(Signal):
     """
-    Class for generating and manipulating filter banks and transfer functions. Filters can be either finite impulse
-    response (FIR) or Fourier filters.
+    Class for generating and manipulating filter banks and transfer functions. Filters can be finite impulse
+    response ('FIR'), impulse response ('IR'), or transfer functions ('TF'). FIR filters are applied using
+    two-way filtering (see scipy.signal.filtfilt), which avoids adding group delays and is intended for high-
+    and lowpass filters and the like. IR filters are applied using convolution (scipy.signal.fftconvolve) and
+    are intended for long room impulse responses, binaural impulse responses and the like, where group delays
+    are intended.
 
     Arguments:
         data (numpy.ndarray | slab.Signal | list): samples of the filter. If it is an array, the first dimension
@@ -25,7 +29,7 @@ class Filter(Signal):
             it must have a .data attribute containing an array. If it's a list, the elements can be arrays or objects.
             The output will be a multi-channel sound with each channel corresponding to an element of the list.
         samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
-        fir (bool): whether this is a finite impulse filter (True) or a Fourier filter (False),
+        fir (str): the kind of filter; options are 'FIR', 'IR', or 'TF'.
     Attributes:
         .n_filters: number of filters in the object (overloads `n_channels` attribute in the parent `Signal` class)
         .n_taps: the number of taps in a finite impulse response filter. Analogous to `n_samples` in a `Signal`.
@@ -37,24 +41,28 @@ class Filter(Signal):
     n_taps = property(fget=lambda self: self.n_samples, doc='The number of filter taps.')
     n_frequencies = property(fget=lambda self: self.n_samples, doc='The number of frequency bins.')
     frequencies = property(fget=lambda self: numpy.fft.rfftfreq(self.n_frequencies * 2 - 1, d=1 / self.samplerate)
-                           if not self.fir else None, doc='The frequency axis of the filter.')
+                           if self.fir=='TF' else None, doc='The frequency axis of the filter.')
 
-    def __init__(self, data, samplerate=None, fir=True):
-        if fir and scipy is False:
-            raise ImportError('FIR filters require scipy.')
+    def __init__(self, data, samplerate=None, fir='FIR'):
+        if isinstance(fir, bool):
+            raise AttributeError("Assigning a boolean to fir is deprecated. Use 'TF' instead of False, and 'FIR' or 'IR' otherwise.")
+        if 'IR' in fir and scipy is False:
+            raise ImportError('(F)IR filters require scipy.')
         super().__init__(data, samplerate)
+        if not (fir=='FIR' or fir=='IR' or fir=='TF'):
+            raise ValueError("fir must be 'FIR', 'IR', or 'TF'!")
         self.fir = fir
 
     def __repr__(self):
         return f'{type(self)} (\n{repr(self.data)}\n{repr(self.samplerate)}\n{repr(self.fir)})'
 
     def __str__(self):
-        if self.fir:
+        if 'IR' in self.fir:
             return f'{type(self)}, filters {self.n_filters}, FIR: taps {self.n_taps}, samplerate {self.samplerate}'
-        return f'{type(self)}, filters {self.n_filters}, FFT: freqs {self.n_frequencies}, samplerate {self.samplerate}'
+        return f'{type(self)}, filters {self.n_filters}, TF: freqs {self.n_frequencies}, samplerate {self.samplerate}'
 
     @staticmethod
-    def band(kind='hp', frequency=100, gain=None, samplerate=None, length=1000, fir=True):
+    def band(kind='hp', frequency=100, gain=None, samplerate=None, length=1000, fir='FIR'):
         """
         Generate simple passband or stopband filters, or filters with a transfer function defined by  pairs
         of `frequency` and `gain` values.
@@ -71,7 +79,7 @@ class Filter(Signal):
                 1.0 (no suppression at that frequency) and 0.0 (maximal suppression at that frequency).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             length (int): The number of samples in the filter
-            fir: If true generate a finite impulse response filter, else generate a Fourier filter.
+            fir (str): If 'FIR' or 'IR' generate a finite impulse response filter, else generate a transfer function.
         Returns:
             (slab.Filter): a filter with the specified properties
         Examples::
@@ -82,7 +90,7 @@ class Filter(Signal):
         """
         if samplerate is None:
             samplerate = slab.signal._default_samplerate
-        if fir:  # design a FIR filter
+        if 'IR' in fir:  # design a FIR filter
             if scipy is False:
                 raise ImportError('Generating FIR filters requires Scipy.')
             if gain is None:  # design band filter
@@ -107,7 +115,7 @@ class Filter(Signal):
                     nyq_gain = [0]
                 filt = scipy.signal.firwin2(numtaps=length, freq=dc+frequency+nyq, gain=dc_gain+gain+nyq_gain,
                                             fs=samplerate)
-        else:  # FFR filter
+        else:  # TF filter
             df = (samplerate/2) / (length-1)
             if gain is None:
                 filt = numpy.zeros(length)
@@ -135,6 +143,10 @@ class Filter(Signal):
         In that case the filtered sound wil contain the same number of channels as the filter with every
         channel being a copy of the original sound with one filter channel applied. If the filter has only
         one channel and the sound has multiple channels, the same filter is applied to each sound channel.
+        FIR filters are applied using two-way filtering (see scipy.signal.filtfilt), which avoids adding
+        group delays and is intended for high- and lowpass filters and the like. IR filters are applied
+        using convolution (scipy.signal.fftconvolve) and are intended for long room impulse responses,
+        binaural impulse responses and the like, where group delays are intended.
 
         Arguments:
             sig (slab.Signal | slab.Sound): The sound to be filtered.
@@ -149,7 +161,7 @@ class Filter(Signal):
         if (self.samplerate != sig.samplerate) and (self.samplerate != 1):
             raise ValueError('Filter and sound have different sampling rates.')
         out = copy.deepcopy(sig)
-        if self.fir:
+        if self.fir == 'FIR':
             if scipy is False:
                 raise ImportError('Applying FIR filters requires Scipy.')
             if out.n_samples < self.n_samples * 3:
@@ -169,6 +181,23 @@ class Filter(Signal):
                 for filt in range(self.n_filters):
                     out.data[:, filt] = scipy.signal.filtfilt(
                         self[:, filt], [1], sig.data, axis=0,  padlen=padlen).flatten()
+            else:
+                raise ValueError(
+                    'Number of filters must equal number of sound channels, or either one of them must be equal to 1.')
+        elif self.fir == 'IR':
+            length = sig.n_samples + self.n_taps - 1
+            if self.n_filters == sig.n_channels:  # filter each channel with corresponding filter
+                out.data = numpy.empty((length, sig.n_channels))
+                for i in range(self.n_filters):
+                    out.data[:, i] = scipy.signal.fftconvolve(sig[:, i], self[:, i], mode='full')
+            elif (self.n_filters == 1) and (sig.n_channels > 1):  # filter each channel
+                out.data = numpy.empty((length, sig.n_channels))
+                for i in range(sig.n_channels):
+                    out.data[:, i] = scipy.signal.fftconvolve(sig[:, i], self[:, 0], mode='full')
+            elif (self.n_filters > 1) and (sig.n_channels == 1):  # apply all filters in bank to sound
+                out.data = numpy.empty((length, self.n_filters))
+                for filt in range(self.n_filters):
+                    out.data[:, filt] = scipy.signal.fftconvolve(sig[:, 0], self[:, filt], mode='full').flatten()
             else:
                 raise ValueError(
                     'Number of filters must equal number of sound channels, or either one of them must be equal to 1.')
@@ -233,7 +262,7 @@ class Filter(Signal):
             channels = list(range(self.n_filters))  # now we have a list of filter indices to process
         if n_bins is None:
             n_bins = self.data.shape[0]
-        if self.fir:
+        if 'IR' in self.fir:
             if scipy is False:
                 raise ImportError('Computing transfer functions of FIR filters requires Scipy.')
             h = numpy.empty((n_bins, len(channels)))
@@ -273,7 +302,7 @@ class Filter(Signal):
         Generate a set of Fourier filters. Each filter's transfer function is given by the positive phase of a
         cosine wave. The amplitude of the cosine is that filters central frequency. Following the organization of the
         cochlea, the width of the filter increases in proportion to it's center frequency. This increase is defined
-        by Moore & Glasberg's formula for the equivalent rectangular bandwidth (ERB) of auditory filters. 
+        by Moore & Glasberg's formula for the equivalent rectangular bandwidth (ERB) of auditory filters.
         The number of filters is either determined by the `n_filters` argument or calculated based on the desired
         `bandwidth` or. This function is used for example to divide a sound into sub-bands for equalization.
 
@@ -316,7 +345,7 @@ class Filter(Signal):
             width = erb_spacing * 2  # width of filter
             filts[(freqs_erb > l) & (freqs_erb < h), i] = numpy.cos(
                 (freqs_erb[(freqs_erb > l) & (freqs_erb < h)] - avg) / width * numpy.pi)
-        return Filter(data=filts, samplerate=samplerate, fir=False)
+        return Filter(data=filts, samplerate=samplerate, fir='TF')
 
     @staticmethod
     def _center_freqs(low_cutoff, high_cutoff, bandwidth=1/3, pass_bands=False, n_filters=None):
@@ -366,7 +395,7 @@ class Filter(Signal):
         if not filter_bank:
             filter_bank = Filter.cos_filterbank(
                 length=subbands.n_samples, samplerate=subbands.samplerate)
-        elif filter_bank.fir:
+        elif 'IR' in filter_bank.fir:
             raise ValueError("Not implemented for FIR filters!")
         if subbands.samplerate != filter_bank.samplerate:
             raise ValueError('Signal and filter bank need to have the same samplerate!')
@@ -385,7 +414,7 @@ class Filter(Signal):
             (numpy.ndarray): array with length equal to the number of filters in the bank, containing each filter's
                 center frequency.
         """
-        if self.fir:
+        if 'IR' in self.fir:
             raise NotImplementedError('Not implemented for FIR filter banks.')
         freqs = self.frequencies
         center_freqs = numpy.zeros(self.n_filters)
@@ -450,10 +479,10 @@ class Filter(Signal):
         if high_cutoff is None:
             high_cutoff = reference.samplerate / 2
         # different conditions on filtering method
-        is_fir = True
+        is_fir = 'FIR'
         filt_scaling = 1
         if filt_meth == 'fft':
-            is_fir = False
+            is_fir = 'TF'
         elif filt_meth in ('slab', 'filtfilt'):
             filt_scaling = 0.5
 
@@ -491,7 +520,13 @@ class Filter(Signal):
             filename(str | pathlib.Path): Full path to which the data is saved.
         """
         fs = numpy.tile(self.samplerate, reps=self.n_filters)
-        fir = numpy.tile(self.fir, reps=self.n_filters)
+        if self.fir == 'IR':
+            fir_coded = 1
+        elif self.fir == 'TF':
+            fir_coded = 2
+        else:
+            fir_coded = 0
+        fir = numpy.tile(fir_coded, reps=self.n_filters)
         fs = fs[numpy.newaxis, :]
         fir = fir[numpy.newaxis, :]
         to_save = numpy.concatenate((fs, fir, self.data))  # prepend the samplerate as new 'filter'
@@ -509,7 +544,13 @@ class Filter(Signal):
         """
         data = numpy.load(filename)
         samplerate = data[0][0]  # samplerate is in the first filter
-        fir = bool(data[1][0])  # fir is in the first filter
+        fir_coded = data[1][0]  # fir is in the first filter
+        if fir_coded == 2:
+            fir = 'TF'
+        elif fir_coded == 1:
+            fir = 'IR'
+        else:
+            fir = 'FIR'
         data = data[2:, :]  # drop the samplerate and fir entries
         return Filter(data, samplerate=samplerate, fir=fir)
 
