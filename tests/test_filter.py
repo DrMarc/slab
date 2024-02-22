@@ -8,7 +8,7 @@ tmpdir = pathlib.Path(tempfile.gettempdir())
 def test_low_high_pass():
     for i in range(10):
         sound = slab.Sound.whitenoise(duration=2.0)
-        for kind, fir in itertools.product(["lp", "hp"], [False, True]):
+        for kind, fir in itertools.product(["lp", "hp"], ['FIR', 'IR', 'TF']):
             edge_freq = numpy.random.uniform(100, 2000)
             length = numpy.random.randint(500, 5000)
             filt = slab.Filter.band(frequency=edge_freq, length=length, kind=kind, fir=fir)
@@ -24,7 +24,7 @@ def test_low_high_pass():
 
 def test_band_pass_stop():
     sound = slab.Sound.whitenoise(duration=2.0)
-    for kind, fir in itertools.product(["bp", "bs"], [False, True]):
+    for kind, fir in itertools.product(["bp", "bs"], ['FIR', 'IR', 'TF']):
         lower_edge_freq = numpy.random.uniform(100, 1000)
         higher_edge_freq = lower_edge_freq + numpy.random.uniform(100, 1000)
         length = numpy.random.randint(500, 5000)
@@ -50,7 +50,7 @@ def test_custom_band():
         [1., 0., 1., 0., 0., 1., 0.]
     ]
     for i in range(10):
-        for fir, gain in itertools.product([True, False], gains):
+        for fir, gain in itertools.product(['FIR', 'IR', 'TF'], gains):
             freqs += numpy.random.uniform(1, 10, 7)
             freqs.sort()
             length = numpy.random.randint(500, 5000)
@@ -133,7 +133,7 @@ def test_load_save():
         (0+numpy.random.uniform(100, 2000), 2000+numpy.random.uniform(100, 2000)),
         (0 + numpy.random.uniform(100, 2000), 2000 + numpy.random.uniform(100, 2000))
     ]):
-        for fir in (True, False):
+        for fir in ('FIR', 'IR', 'TF'):
             filt = slab.Filter.band(kind=kind, frequency=freq, fir=fir)
             filt.save(tmpdir/"filt.npy")
             loaded = slab.Filter.load(tmpdir/"filt.npy")

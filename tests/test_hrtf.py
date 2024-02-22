@@ -6,7 +6,7 @@ plt.ioff()
 
 def test_create_hrtf():
     hrtf1 = slab.HRTF.kemar()
-    assert hrtf1.data[0].fir is True
+    assert hrtf1.data[0].fir == 'IR'
     hrtf2 = slab.HRTF.kemar()
     for i in range(len(hrtf1.data)):
         numpy.testing.assert_equal(hrtf1[i].data, hrtf2[i].data)
@@ -50,7 +50,7 @@ def test_plot_hrtf():
 def test_diffuse_field():
     hrtf = slab.HRTF.kemar()
     dfs = hrtf.diffuse_field_avg()
-    assert dfs.fir is False
+    assert dfs.fir == 'IR'
     assert dfs.n_frequencies == hrtf.data[0].n_taps
     equalized = hrtf.diffuse_field_equalization()
     for i in range(hrtf.n_sources):
@@ -120,8 +120,8 @@ def test_interpolate():
         idx = numpy.random.choice(range(len(hrtf.sources.vertical_polar)))
         azi, ele = hrtf.sources.vertical_polar[idx][0:2]
         method = numpy.random.choice(['nearest', 'bary'])
-        h = hrtf.interpolate(azimuth=azi, elevation=ele, method=method)
-        _, spec_interp = h[0].tf(show=False)
+        filt = hrtf.interpolate(azimuth=azi, elevation=ele, method=method)
+        _, spec_interp = filt.tf(show=False)
         _, spec_origin = hrtf[idx].tf(show=False)
         nearer_channel = 0 if azi-180 < 0 else 1
         # assert numpy.corrcoef(spec_interp[:, nearer_channel], spec_origin[:, nearer_channel]).min() > 0.99
@@ -163,3 +163,46 @@ def test_estimate_hrtf():
     hrtf2 = slab.HRTF.estimate_hrtf(recordings, signal2, sources)
     assert hrtf1.samplerate == hrtf2.samplerate
     assert hrtf1[0].n_samples == hrtf2[0].n_samples
+
+def test_create_room():
+    for i in range(10):
+        size = numpy.random.randint(2, 51, 3)
+        listener = size / 2
+        source_cart = numpy.array([numpy.random.randint(1,i) for i in size])
+        source_pol = slab.HRTF._get_coordinates(source_cart-listener, 'cartesian')[1][0]
+        source_pol[0] -= 180
+        max_echos = numpy.random.randint(1, 250)
+        room = slab.Room(size=size, listener=listener, source=source_pol, order=1, max_echos=max_echos)
+        numpy.testing.assert_almost_equal(source_pol[1:], room.image_locs[0,1:], decimal=0)
+    room = slab.Room(size=[3,3,3], listener=[1,1,1])  # lists work?
+    print(room)  # __str__ ok?
+
+def test_reverb_time():
+    room = slab.Room()
+    t = room.reverb_time()
+    t = room.reverb_time([5,5,5])  # list ok?
+    assert isinstance(t, float)
+    for _ in range(10):
+        size = numpy.random.randint(1, 100, 3)
+        t = room.reverb_time(size=size)
+
+def test_hrir():
+    for i in range(5):
+        size = numpy.random.randint(2, 51, 3)
+        listener = size / 2
+        source_cart = numpy.array([numpy.random.randint(1,i) for i in size])
+        source_pol = slab.HRTF._get_coordinates(source_cart-listener, 'cartesian')[1][0]
+        source_pol[0] -= 180
+        max_echos = numpy.random.randint(1, 50)
+        room = slab.Room(size=size, listener=listener, source=source_pol, order=1, max_echos=max_echos)
+        hrir = room.hrir()
+    for i in range(5):
+        tail = room.reverb(t_reverb=numpy.random.random()*3)  # up to T60 = 3s
+        hrir = room.hrir(reverb=tail)  # try hrir with premade tail
+    assert isinstance(hrir, slab.Filter)
+    for _ in range(5):
+        trim = numpy.random.randint(1, hrir.n_samples)
+        hrir_tmp = room.hrir(trim=trim)  # try integer trim
+        hrir_tmp = room.hrir(trim=numpy.random.random())  # try float trim
+    sig = slab.Sound.vowel(duration=0.2, samplerate=hrir.samplerate)
+    out = hrir.apply(sig)
