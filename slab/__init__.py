@@ -2,7 +2,7 @@ import sys
 import os
 import pathlib
 
-__version__ = '1.1.5'
+__version__ = '1.5.1'
 
 # The variable _in_notebook is used to enable audio playing in Jupiter notebooks
 # and on Google colab (see slab.sound.play())
@@ -17,7 +17,7 @@ except NameError:
 
 sys.path.append('..\\')
 
-from slab.hrtf import HRTF
+from slab.hrtf import HRTF, Room
 from slab.psychoacoustics import *
 from slab.binaural import Binaural
 from slab.sound import Sound, set_default_level, set_calibration_intensity, get_calibration_intensity, calibrate
