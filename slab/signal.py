@@ -80,8 +80,8 @@ class Signal:
             self.samplerate = data.samplerate
         else:
             raise TypeError('Cannot initialise Signal with data of class ' + str(data.__class__))
-        if len(self.data.shape) == 1:
-            self.data.shape = (len(self.data), 1)
+        if self.data.ndim == 1:
+            self.data = self.data[:,numpy.newaxis]
         elif self.data.shape[1] > self.data.shape[0]:
             if not len(data) == 0:  # dont transpose if data is an empty array
                 self.data = self.data.T
@@ -326,34 +326,45 @@ class Signal:
 
     def _get_envelope(self, kind, cutoff):
         if scipy is False:
-            raise ImportError('Calculating envelopes requires scipy.sound.')
-        else:
-            envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))
-            # 50Hz lowpass filter to remove fine-structure
-            filt = scipy.signal.firwin(1000, cutoff, pass_zero=True, fs=self.samplerate)
-            envs = scipy.signal.filtfilt(filt, [1], envs, axis=0)
-            envs[envs <= 0] = numpy.finfo(float).eps  # remove negative values and zeroes
-            if kind == 'dB':
-                envs = 20 * numpy.log10(envs)  # convert amplitude to dB
-            elif not kind == 'gain':
-                raise ValueError('Kind must be either "gain" or "dB"!')
-            return Signal(envs, samplerate=self.samplerate)
+            raise ImportError('Calculating envelopes requires scipy.signal.')
+        envs = numpy.abs(scipy.signal.hilbert(self.data, axis=0))
+        # 50Hz lowpass filter to remove fine-structure
+        filt = scipy.signal.firwin(1000, cutoff, pass_zero=True, fs=self.samplerate)
+        envs = scipy.signal.filtfilt(filt, [1], envs, axis=0)
+        envs[envs <= 0] = numpy.finfo(float).eps  # remove negative values and zeroes
+        if kind == 'dB':
+            envs = 20 * numpy.log10(envs)  # convert amplitude to dB
+        elif not kind == 'gain':
+            raise ValueError('Kind must be either "gain" or "dB"!')
+        return Signal(envs, samplerate=self.samplerate)
 
     def _apply_envelope(self, envelope, times, kind):
+        # TODO: write tests for the new options!
+        if hasattr(envelope, 'data') and hasattr(envelope, 'samplerate'): # it's a child object
+            envelope = envelope.resample(samplerate=self.samplerate)
+        elif isinstance(envelope, (list, numpy.ndarray)):  # make it a Signal, so we can use .n_samples and .n_channels
+            envelope = Signal(numpy.array(envelope), samplerate=self.samplerate)
         new = copy.deepcopy(self)
         if times is None:
-            times = numpy.linspace(0, 1, len(envelope)) * self.duration
+            times = numpy.linspace(0, 1, envelope.n_samples) * self.duration
         else:  # times vector was supplied
-            if len(times) != len(envelope):
+            if len(times) != envelope.n_samples:
                 raise ValueError('Envelope and times need to be of equal length!')
             times = numpy.array(times)
             times[times > self.duration] = self.duration  # clamp between 0 and sound duration
             times[times < 0] = 0
-        # get an envelope value for each sample time
-        envelope = numpy.interp(self.times, times, numpy.array(envelope))
+        envelope_interp = numpy.empty((self.n_samples,envelope.n_channels)) # prep array for interpolated env
+        for i in range(envelope.n_channels): # interp each channel
+            envelope_interp[:,i] = numpy.interp(self.times, times, envelope[:,i])
         if kind == 'dB':
-            envelope = 10**(envelope/20.)  # convert dB to gain factors
-        new.data *= envelope[:, numpy.newaxis]  # multiply
+            envelope_interp = 10**(envelope_interp/20.) # convert dB to gain factors
+        if envelope.n_channels == new.n_channels: # corresponding chans -> just multiply
+            new.data *= envelope_interp
+        elif envelope.n_channels == 1 and new.n_channels > 1: # env 1 chan, sound multichan -> apply env to each chan
+            for i in range(new.n_channels):
+                new.data[:,i] *= envelope_interp[:,0]
+        else: # or neither (raise error)
+            raise ValueError('Envelope needs to be 1d or have the same number of channels as the sound!')
         return new
 
     def delay(self, duration=1, channel=0, filter_length=2048):
@@ -411,7 +422,7 @@ class Signal:
                     sig_portion = sig[i:i+filter_length]
                     # sig_portion and tap_weight have the same length, so the valid part of the convolution is just
                     # one sample, which gets written into the sound at the current index
-                    new.data[i, channel] = numpy.convolve(sig_portion, tap_weight, mode='valid')
+                    new.data[i, channel] = numpy.convolve(sig_portion, tap_weight, mode='valid')[0]
         return new
 
     def plot_samples(self, show=True, axis=None):
@@ -430,7 +441,7 @@ class Signal:
             axis.stem(self.channel(0))
         else:
             for i in range(self.n_channels):
-                axis.stem(self.channel(i), label=f'channel {i}', color=f'C{i}')
+                axis.stem(self.channel(i), label=f'channel {i}', linefmt=f'C{i}')
             plt.legend()
         axis.set(title='Samples', xlabel='Number', ylabel='Value')
         if show:

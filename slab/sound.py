@@ -85,7 +85,7 @@ class Sound(Signal):
         sig.level = 80  # set the level to 80 dB
         sig = sig.ramp(duration=0.05)  # add a 50 millisecond ramp
         sig.spectrum(log_power=True)  # plot the spectrum
-        sig. waveform()  # plot the time courses
+        sig.waveform()  # plot the time courses
     """
 
     def _get_level(self):
@@ -331,12 +331,11 @@ class Sound(Signal):
     @staticmethod
     def powerlawnoise(duration=1.0, alpha=1, samplerate=None, level=None, n_channels=1):
         """
-        Generate a power-law noise with a spectral density per unit of bandwidth scales as 1/(f**alpha).
+        Generate a power-law noise where the spectral density per unit of bandwidth scales as 1/(f**alpha).
 
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
             alpha (int) : power law exponent.
-            samplerate: output samplerate
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
                 can be provided to set the level of each channel individually. If None, the level is set to the default
@@ -386,7 +385,7 @@ class Sound(Signal):
     @staticmethod
     def pinknoise(duration=1.0, samplerate=None, level=None, n_channels=1):
         """
-        Generate pink noise (power law noise with exponent alpha==1. This is simply a wrapper for calling
+        Generate pink noise (power law noise with exponent alpha==1). This is simply a wrapper for calling
         the `powerlawnoise` method.
 
         Arguments:
@@ -1078,7 +1077,7 @@ class Sound(Signal):
     def cochleagram(self, bandwidth=1 / 5, n_bands=None, show=True, axis=None):
         """
         Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters
-        and applying a cube-root compression to the resulting envelopes. The number of bands 
+        and applying a cube-root compression to the resulting envelopes. The number of bands
         is either calculated based on the desired `bandwidth` or specified by the `n_bands`
         argument.
 
