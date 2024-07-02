@@ -674,7 +674,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         print(f'mean of final 6 reversals: {stairs.threshold()}')
     """
     def __init__(self, start_val, n_reversals=None, step_sizes=1, step_up_factor=1, n_pretrials=0, n_up=1,
-                 n_down=2, step_type='lin', min_val=-numpy.Inf, max_val=numpy.Inf, label=''):
+                 n_down=2, step_type='lin', min_val=-numpy.inf, max_val=numpy.inf, label=''):
         self.label = label
         self.start_val = start_val
         self.n_up = n_up
