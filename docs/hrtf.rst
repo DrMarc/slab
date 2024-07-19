@@ -27,9 +27,7 @@ the sofa file as an argument.
 
 .. note:: The class is at the moment geared towards plotting and analysis of HRTF files in the `sofa format <https://www.sofaconventions.org/>`_, because we needed that functionality for grant applications. The functionality will grow as we start to record and manipulate HRTFs more often.
 
-.. note:: When we started to writing this code, there was no python module for reading and writing sofa files.
-Now that `pysofaconventions <https://github.com/andresperezlopez/pysofaconventions>`_ is available, we will at some
-point switch internally to using that module as backend for reading sofa files, instead of our own limited implementation.
+.. note:: When we started to writing this code, there was no python module for reading and writing sofa files. Now that `pysofaconventions <https://github.com/andresperezlopez/pysofaconventions>`_ is available, we will at some point switch internally to using that module as backend for reading sofa files, instead of our own limited implementation.
 
 Plotting sources
 --------------------
@@ -54,6 +52,7 @@ midline:
 
 Try a few angles for the :meth:`.elevation_sources` and :meth:`.cone_sources` methods to understand how selecting
 the sources works!
+
 
 Plotting transfer functions
 ---------------------------
@@ -134,7 +133,7 @@ Applying an HRTF to a monaural sound
 The HRTF describes the directional filtering of incoming sounds by the listeners ears, head and torso. Since this is the
 basis for localizing sounds in three dimensions, we can apply the HRTF to a sound to evoke the impression of it coming
 from a certain direction in space when listening through headphones. The :meth:`HRTF.apply` method returns an instance of
-the :class:`slab.Binaural`. This method differs from :meth:`~Filter.apply` and conserves ITDs. In the example below we
+the :class:`slab.Binaural`. It uses :meth:`~Filter.apply` with fir='IR', which conserves ITDs. In the example below we
 apply the transfer functions corresponding to three sound sources at different elevations along the vertical midline to white noise.
 
 .. plot::
@@ -163,5 +162,48 @@ corresponding to an off-center direction, you should also apply an ITD correspon
 Finally, the HRTF filters are recorded only at certain locations (710, in case of KEMAR - plot the source locations to
 inspect them). You can interpolate a filter for any location covered by these sources with the :meth:`HRTF.interpolate`
 method. It triangulates the source locations and finds three sources that form a triangle around the requested location
-and interpolate a filter with a (barycentric) weighted average in the spectral domain. The resulting filter may not have
-the same overall gain, so remember to set the level of your stimulus after having applied the interpolated HRTF.
+and interpolates a filter with a (barycentric) weighted average in the spectral domain. The resulting :class:`slab.Filter`
+object may not have the same overall gain, so remember to set the level of your stimulus after having applied the interpolated HRTF.
+
+.. _Room:
+
+Room simulations
+================
+The :class:`Room` class provides methods to simulate directional echos and reverberation in rectangular rooms. It computes lists of reflections, estimates reverberations times, and generates reverberation tail filters and room impulse responses. The main aim is to provide an easy way to add and manipulate reverb to sounds.
+
+Adding reverb to a sound
+------------------------
+The quickest way to add some reverb to a sound, using default values where possible, takes just three lines of code::
+
+  room = slab.Room()  # generating an echo list for the default room
+  hrir = room.hrir()  # compute the room impulse response
+  echos = hrir.apply(sound)  # assuming 'sound' is an slab.Sound object
+
+Initializing a :class:`Room` object sets the room dimensions and listener coordinates (both in cartesian coordinates), and the sound source location with respect to the listener (in polar coordinates). The default values generate a room of 4 by 5 by 3 m with the listener in the center and a source straight ahead a 1.4 m distance. A list of echo directions in polar coordinates (azimuth, elevation, distance) with respect to the listener is automatically computed using the **image source model** method, along with corresponding lists of the number of wall and floor reflections for each echo. The genereation of these lists can be controlled by two additional parameters, ``order`` (number of times the source is reflected along each wall, default is 2) and ``max_echos`` (the length of the returned list, default 50).
+
+In addition, the ``absorption`` parameter of the walls can be set to affect the duration of the reverberation tail.
+
+A moving source
+---------------
+Use the :meth:`set_source` method to change the sound source direction and automatically recompute the echo list (this is done by calling the :meth:`_simulated_echo_locations` method). Here is an example that moves a source in a circle with 0.5 m radius counter-clockwise around the listener. The sound is a short synthetic vowel::
+
+  sig = slab.Binaural.vowel(duration=0.3)
+  for d in range(0,360,36):
+    room.set_source([d, 20, .5])  # change azi, elevation is 20 deg above the head
+    hrir = room.hrir(trim=5000)
+    rev = hrir.apply(sig)
+    rev.level = 70
+    rev.play()
+
+(Listen to this example with headphones.) The generated room impulse responses always have excessively long tails. Plot the response like so:
+
+.. plot::
+    :include-source:
+
+    room = slab.Room()
+    hrir = room.hrir()
+    hrir.plot_samples()
+
+Then determine a suitable cutoff, at which the filter taps are near zero, for instance 20000 samples in this case. You can cut off the filter with the ``trim`` argument, which takes an integer and cuts to that number of samples, or a float between 0 and 1 and cuts to that fraction (the default is 0.5, i.e. cut off the second half of the impulse response).
+
+The :meth:`hrir` method computes the room impulse response by iterating through the echo list and adding the HRTF filter corresponding to each echo direction, delayed and attenuated by the distance of the echo and convolved with the wall or floor material filters, and then adding a noise reverberation tail. The reverberation tail can be provided as an :class:`slab.Filter` object or will be automatically generated by the :meth:`reverb` method using the :meth:`reverb` method to calculate the T60 reverberation time from the room dimensions and ``absorption`` coefficient. You can set the HRTF to use with the ``hrtf`` argument. The resulting impulse response will have the same samplerate as the ``hrtf`` objects (``hrtf.samplerate``).

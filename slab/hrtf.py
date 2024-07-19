@@ -10,6 +10,7 @@ import pickle
 import bz2
 import numpy
 import datetime
+import itertools
 try:
     import matplotlib
     from matplotlib import pyplot as plt
@@ -54,7 +55,7 @@ class HRTF:
             does not result in a typical HRTF object and is only intended for equalization filter banks). Given a 3D
             array, the first dimension represents the sources, the second the number of taps per filter and the last the
             number of filter channels per filter (should be always 2, for left and right ear).
-        datatype (None | string): type of the HRTF filter bank, can be 'FIR' for finite imoulse response filters or 'TF'
+        datatype (None | string): type of the HRTF filter bank, can be 'FIR' for finite impulse response filters or 'TF'
             for Fourier filters.
         samplerate (None | float): rate at which the data was acquired, only relevant when not loading from .sofa file
         sources (None | array): positions of the recorded sources, only relevant when not loading from .sofa file
@@ -103,7 +104,7 @@ class HRTF:
                 raise ValueError('Must provide spherical source positions when initializing HRTF from a Filter object.')
             self.samplerate = data.samplerate
             fir = data.fir
-            if fir:
+            if 'IR' in fir:
                 self.datatype = 'FIR'
             else:
                 self.datatype = 'TF'
@@ -125,9 +126,9 @@ class HRTF:
                 raise ValueError('Must specify data type (FIR or TF) when initialising HRTF from an array.')
             self.datatype = datatype.upper()
             if self.datatype == 'FIR':
-                fir = True
+                fir = 'IR'
             elif self.datatype == 'TF':
-                fir = False
+                fir = 'TF'
             else:
                 raise ValueError(f'Unsupported data type: {datatype}')
             if sources is None:
@@ -195,13 +196,13 @@ class HRTF:
         if datatype == 'FIR':
             ir_data = numpy.array(f.variables['Data.IR'], dtype='float')
             for idx in range(ir_data.shape[0]):
-                data.append(Filter(ir_data[idx, :, :].T, samplerate))  # n_taps x 2 (left, right) filter
+                data.append(Filter(ir_data[idx, :, :].T, samplerate, fir='IR'))  # n_taps x 2 (left, right) filter
         elif datatype == 'TF':
             data_real = numpy.array(f.variables['Data.Real'], dtype='float')
             data_imag = numpy.array(f.variables['Data.Imag'], dtype='float')
             tf_data = numpy.abs(numpy.vectorize(complex)(data_real, data_imag))
             for idx in range(tf_data.shape[0]):
-                data.append(Filter(tf_data[idx, :, :].T, samplerate, fir=False))
+                data.append(Filter(tf_data[idx, :, :].T, samplerate, fir='TF'))
         else:
             raise NotImplementedError('Unsuppored datatype: {self.datatype}')
         return data, datatype, samplerate
@@ -267,9 +268,9 @@ class HRTF:
 
         Arguments:
             sources (numpy.ndarray): sound source coordinates in cartesian coordinates (x, y, z),
-            vertical-polar or interaural-polar coordinates (azimuth, elevation, distance).
+                vertical-polar or interaural-polar coordinates (azimuth, elevation, distance).
             coordinate_system (string): type of the provided coordinates. Can be 'cartesian',
-            'vertical_polar' or 'interaural_polar'.
+                'vertical_polar' or 'interaural_polar'.
         Returns:
             (named tuple): cartesian, vertical-polar and interaural-polar coordinates of all sources.
         """
@@ -393,14 +394,7 @@ class HRTF:
                 raise ValueError('Filter and sound must have same sampling rates.')
             original_rate = sound.samplerate
             sound = sound.resample(self.samplerate)  # does nothing if samplerates are the same
-            left = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 0])
-            if sound.n_channels == 1:
-                right = scipy.signal.fftconvolve(sound[:, 0], self[source][:, 1])
-            else:
-                right = scipy.signal.fftconvolve(sound[:, 1], self[source][:, 1])
-            convolved_sig = Signal([left, right], samplerate=self.samplerate)
-            out = copy.deepcopy(sound)
-            out.data = convolved_sig.data
+            out = self[source].apply(sound)
             return Binaural(out.resample(original_rate))
         if self.datatype == 'TF':  # Filter.apply DTF as Fourier filter
             return self[source].apply(sound)
@@ -541,7 +535,7 @@ class HRTF:
                 _, h = filt.tf(channels=chan, show=False)
                 dfa.append(h)
         dfa = 10 ** (numpy.mean(dfa, axis=0)/20)  # average and convert from dB to gain
-        return Filter(dfa, fir=False, samplerate=self.samplerate)
+        return Filter(dfa, fir='IR', samplerate=self.samplerate)
 
     def diffuse_field_equalization(self, dfa=None):
         """
@@ -564,7 +558,7 @@ class HRTF:
             filt = dtfs.data[source]
             _, h = filt.tf(show=False)
             h = 10 ** (h / 20) * dfa
-            dtfs.data[source] = Filter(data=h, fir=False, samplerate=self.samplerate)
+            dtfs.data[source] = Filter(data=h, fir='TF', samplerate=self.samplerate)
         return dtfs
 
     def cone_sources(self, cone=0, full_cone=False):
@@ -668,7 +662,7 @@ class HRTF:
             plot_tri (bool): plot the triangulation of source positions used of interpolation. Useful for checking
                 for areas where the interpolation may not be accurate (look for irregular or elongated triangles).
         Returns:
-            (slab.HRTF): an HRTF object with a single source
+            (slab.Filter): an IR-type binaural Filter
         """
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
         coordinates = self.sources.cartesian
@@ -717,9 +711,9 @@ class HRTF:
             gains = avg_amps - avg_amps.max()  # shift so that maximum is zero, because we can only attenuate
             gains[gains < -60] = -60  # limit dynamic range to 60 dB
             gains_lin = 10**(gains/20)  # transform attenuations in dB to factors
-            filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), length=self[idx].n_samples, fir=True,
+            filt_l = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 0]), length=self[idx].n_samples, fir='IR',
                                  samplerate=self[vertex_list[0]].samplerate)
-            filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), length=self[idx].n_samples, fir=True,
+            filt_r = Filter.band(frequency=list(freqs), gain=list(gains_lin[:, 1]), length=self[idx].n_samples, fir='IR',
                                  samplerate=self[vertex_list[0]].samplerate)
             filt = Filter(data=[filt_l, filt_r])
             itds = list()
@@ -728,10 +722,7 @@ class HRTF:
                 itds.append(taps.itd())  # use Binaural.itd to compute correlation lag between channels
             avg_itd = itds[0] * weights[0] + itds[1] * weights[1] + itds[2] * weights[2]  # average ITD
             filt = filt.delay(avg_itd / self.samplerate)
-        data = filt.data[numpy.newaxis, ...]  # get into correct shape (idx, taps, ear)
-        source_loc = numpy.array([[azimuth, elevation, r]])
-        out = HRTF(data, datatype='FIR', samplerate=self.samplerate, sources=source_loc, listener=self.listener)
-        return out
+        return filt
 
     @staticmethod
     def _barycentric_weights(triangle, point):
@@ -849,6 +840,8 @@ class HRTF:
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
             _kemar.sources = HRTF._get_coordinates(_kemar.sources, 'spherical')
             _kemar.datatype = 'FIR'
+            for f in _kemar.data:
+                f.fir = 'IR'
         return _kemar
 
     @staticmethod
@@ -993,3 +986,296 @@ class HRTF:
         samplingRateVar.Units = 'hertz'
         samplingRateVar[:] = self.samplerate
         sofa.close()
+
+
+class Room:
+    """
+    Class for acoustic room simulations, including binaural room impulse responses for given source and listener positions,
+    echo locations, reverberation, and wall filters. Initializing a room objects immediately computes echo image locations.
+    Reverb times, a reverb filter, and the binaural room impulse response can then be obtained with the respective methods.
+
+    Arguments:
+        size (list | numpy.ndarray): width, length, and height of room in meters.
+        listener (list | numpy.ndarray): cartesian coordinates of listener in the room (x,y,z)
+        source (list | numpy.ndarray): source location relative to listener in spherical coordiates (azimuth,elevation,distance).
+            The source location is immediately transformed into cartesian coordinates relative to the room.
+        order (int): Number of reflections to simulate (default 2).
+        max_echos (int): Number of source images to keep (defaults to simulated number, around 50 is perceptually sufficient).
+        absorption (int | list): absorption coefficients [wall, [floor, [ceiling]]] in 1/m^2
+        wall_filters (int | list): [wall, [floor, [ceiling]]] filter indices into the database !!NOT IMPLEMENTED YET!!
+
+    Attributes:
+        .image_locs (numpy.ndarray): Echo locations in spherical coordinates (azimuth, elevation, distance).
+        .orders (list): Reflection order for each echo in image_locs.
+        .floor_orders (list): Number of reflections from the floor for each echo.
+        .ceil_orders (list): Number of reflections from the ceiling for each echo.
+
+    Example:
+        import slab
+    """
+
+    def __init__(self, size=[4,5,3], listener=[2,2.5,1.5], source=[0,0,1.4], order=2, max_echos=50, absorption=[0.1,], wall_filters=None):
+        self.size = size
+        self.listener = numpy.array(listener)
+        if numpy.any(self.listener < 0) or numpy.any(self.listener > size):
+            raise ValueError('Listener outside room bounds!')
+        self.order = order
+        self.absorption = absorption
+        self.max_echos = max_echos
+        self.wall_filters = wall_filters
+        self.set_source(source)
+
+    def __repr__(self):
+        return f'{type(self)} (\n{repr(self.size)}\n{repr(self.listener)}\n{repr(self.source)}\n{repr(self.order)}\n{repr(self.absorption)}'
+
+    def __str__(self):
+        return f'{type(self)} with dimensions {self.size}, listener at {self.listener} and source at {self.source[0]}'
+
+    def set_source(self, source):
+        """
+        Set the source attribute, convert source to cartesian coordinates, and recompute image_locs and orders.
+
+        Arguments:
+            source (list | numpy.ndarray): source location relative to listener in spherical coordiates (azimuth,elevation,distance).
+        """
+        source_loc_cartesian = HRTF._get_coordinates(source, 'spherical')[0]
+        source_loc_cartesian += self.listener
+        if numpy.any(source_loc_cartesian < 0) or numpy.any(source_loc_cartesian > self.size):
+            raise ValueError('Source outside room bounds!')
+        self.source = source_loc_cartesian
+        self.image_locs, self.orders, self.floor_orders, self.ceil_orders = \
+                    Room._simulated_echo_locations(self.size, self.listener, source_loc_cartesian, self.order, self.max_echos)
+
+    @staticmethod
+    def _simulated_echo_locations(room_size=[4,5,3], listener_loc=[2,2.5,1.5], source_loc=[2,4,1.5], sim_ord=2, max_sources=None):
+        """
+        Compute the locations and order of echos in a shoebox room using the mirror image method.
+
+        Arguments:
+            room_size (list | numpy.ndarray): width, length, and height of room in meters.
+            listener_loc (list | numpy.ndarray): cartesian coordinates of listener in the room (x,y,z)
+            source_loc (list | numpy.ndarray): cartesian coordinates of sound source in the room (x,y,z)
+            sim_ord (int): Number of reflections to simulate (default 2).
+            max_sources (int): Number of source images to keep (defaults to simulated number, around 50 is perceptually sufficient).
+        Returns:
+            img_loc_pol (numpy.ndarray): Echo locations in spherical coordinates (azimuth, elevation, distance).
+            order (list): Reflection order for each echo in img_pol_loc.
+            floor_order (list): Number of reflections from the floor for each echo.
+            ceil_order (list): Number of reflections from the ceiling for each echo.
+        """
+        # calculate source images
+        Lx, Ly, Lz = room_size
+        Sx, Sy, Sz = source_loc[0,0], source_loc[0,1], source_loc[0,2]
+        Ix = []
+        Iy = []
+        Iz = []
+        order = []
+        floor_order = []
+        ceil_order = []
+        # positions of images, all combinations of mirrored locs along x,y,z axes
+        for (l, m, n) in itertools.product(range(-sim_ord,sim_ord+1), repeat=3):
+            xl =  Sx + 2 * l * Lx
+            xr = -Sx + 2 * l * Lx
+            Ix.extend([xl,xl,xl,xl,xr,xr,xr,xr])
+            yf =  Sy + 2 * m * Ly
+            yb = -Sy + 2 * m * Ly
+            Iy.extend([yf,yf,yb,yb,yf,yf,yb,yb])
+            zu =  Sz + 2 * n * Lz
+            zd = -Sz + 2 * n * Lz
+            Iz.extend([zu,zd,zu,zd,zu,zd,zu,zd])
+        for x, y, z in zip(Ix, Iy, Iz):
+            if x >= 0:
+                n_order = numpy.floor(x/Lx)
+            else:
+                n_order = numpy.ceil(-x/Lx)
+            if y >= 0:
+                n_order = n_order + numpy.floor(y/Ly)
+            else:
+                n_order = n_order + numpy.ceil(-y/Ly)
+            if z >= 0:
+                n_order = n_order + numpy.floor(z/Lz)
+                n_floor_order = numpy.floor(numpy.floor(z/Lz)/2)
+                n_ceil_order = numpy.ceil(numpy.floor(z/Lz)/2)
+            else:
+                n_order = n_order + numpy.ceil(-z/Lz)
+                n_floor_order = numpy.ceil(numpy.ceil(-z/Lz)/2)
+                n_ceil_order = numpy.floor(numpy.ceil(-z/Lz)/2)
+            order.append(int(n_order))
+            floor_order.append(int(n_floor_order))
+            ceil_order.append(int(n_ceil_order))
+        img_locs = numpy.stack([Ix, Iy, Iz], axis=-1)
+        # source images are in cartesian, with reference to room coordinate
+        # transform it into vertical polar with reference to listener
+        _, img_loc_pol, _ = HRTF._get_coordinates(img_locs - listener_loc, 'cartesian')
+        if max_sources is None:
+            max_sources = len(order)
+        # sort according to distance; get the index used to sort
+        s_idx = numpy.argsort(img_loc_pol[:, 2])
+        # choose N closest sources
+        img_loc_pol = img_loc_pol[s_idx[:max_sources]]
+        order = numpy.array(order)[s_idx[:max_sources]]
+        floor_order = numpy.array(floor_order)[s_idx[:max_sources]]
+        ceil_order = numpy.array(ceil_order)[s_idx[:max_sources]]
+        return img_loc_pol, order, floor_order, ceil_order
+
+    @staticmethod
+    def _walltrns(dry_filter, total_order, floor_order):
+        """
+        Applies wall and floor absorptions to the HRTF filter for one echo direction.
+
+        Arguments:
+            dry_filter (slab.Filter): head-related transfer function for a given direction in the form of a binaural IR Filter.
+            total_order (int): total number of reflections (echo order)
+            floor_order (int): number of floor reflections
+        Returns:
+            (slab.Filter): 2-channel filter (left/right ear)
+        """
+        floorcoef = numpy.array([0.6921,    0.0523,    0.0612,    0.0020,    0.0071,    0.0071,    0.0162,
+                              0.0176,    0.0187,    0.0152,    0.0117,    0.0075,    0.0045,    0.0025,
+                              0.0014,    0.0008,    0.0004,    0.0002,    0.0001,   -0.0000,   -0.0001,
+                              -0.0002,   -0.0002,   -0.0003,   -0.0003,   -0.0003,  -0.0003,   -0.0002,
+                              -0.0002,   -0.0001,   -0.0001,   -0.0001,   -0.0001,  -0.0001,   -0.0001,
+                              -0.0001,   -0.0001,   -0.0001,   -0.0000,   -0.0000,   0.0000,    0.0000,
+                              0.0000,    0.0000,    0.0001,    0.0001,    0.0001,    0.0001,    0.0001,
+                              0.0001,    0.0001,    0.0001,    0.0001,    0.0001,    0.0001,    0.0001,
+                              0.0001,    0.0001,    0.0001,    0.0001,    0.0001,    0.0001,    0.0001,
+                              0.0001,    0.0001,    0.0001,    0.0001,    0.0001]) # Uncut pile Carpet, fabric impregnated a6-1
+        wallcoef = numpy.array([0.2655,    0.3718,    0.0672,   -0.0008,    0.0259,    0.0207,    0.0195,
+                              0.0141,    0.0120,    0.0090,    0.0082,    0.0068,    0.0064,    0.0057,
+                              0.0051,    0.0046,    0.0041,    0.0037,    0.0033,    0.0030,    0.0027,
+                              0.0024,    0.0022,    0.0019,    0.0017,    0.0016,    0.0014,    0.0013,
+                              0.0012,    0.0010,    0.0009,    0.0009,    0.0008,    0.0007,    0.0006,
+                              0.0006,    0.0005,    0.0005,    0.0004,    0.0004,    0.0004,    0.0003,
+                              0.0003,    0.0003,    0.0002,    0.0002,    0.0002,    0.0002,    0.0001,
+                              0.0001,    0.0001]) # Coconut Fibre - Roller felt a3.1-1
+        HRIR_l = dry_filter[:, 0]
+        HRIR_r = dry_filter[:, 1]
+        for n in range(total_order - floor_order):
+            HRIR_l = numpy.convolve(HRIR_l, wallcoef)
+            HRIR_r = numpy.convolve(HRIR_r, wallcoef)
+        for n in range(floor_order):
+            HRIR_l = numpy.convolve(HRIR_l, floorcoef)
+            HRIR_r = numpy.convolve(HRIR_r, floorcoef)
+        return Filter([HRIR_l, HRIR_r], samplerate=dry_filter.samplerate, fir='IR')
+
+    def reverb_time(self, size=None, absorption=None):
+        """
+        Use Sabine formula to calculate reverberation time for the given room.
+        Can be called as static method arguments size and absorption, otherwise uses current room parameters.
+
+        Arguments:
+            size (list): optional, room dimensions in meters (width, length, height)
+            absorption (list): optional, absorption coefficients [wall, [floor, [ceiling]]] in 1/m^2
+        Returns:
+            (float): reverberation time in s
+        """
+        c = 344 # speed of sound
+        if size is None:
+            size = self.size
+        if absorption is None:
+            absorption = self.absorption
+        vol = size[0] * size[1] * size[2]
+        wall_surface = (size[0] * size[2]) * 2 + (size[1] * size[2]) * 2
+        floor_surface = size[0] * size[1]
+        ceil_surface = floor_surface
+        # calculate sabins
+        if len(self.absorption) == 3:
+            sa = wall_surface * absorption[0] + floor_surface * absorption[1] + \
+                 ceil_surface * absorption[2]
+        elif len(self.absorption) == 2:
+            sa = wall_surface * absorption[0] + 2 * floor_surface * absorption[1]
+        elif len(self.absorption) == 1:
+            sa = (wall_surface + 2 * floor_surface) * absorption[0]
+        else:
+            raise ValueError("absorption coefficients not understood")
+        # sabine formula
+        return 24 * numpy.log(10) / c * vol / sa
+
+    def reverb(self, t_reverb=None, low_factor=0.8, trim=0.25, samplerate=44100):
+        """
+        Generate an exponentially decaying reverberation tail impulse response.
+
+        Arguments:
+            t_reverb (int | float): optional, reverberation time in seconds (default: use current room parameters)
+            low_factor (float): t_reverb * low_factor is the reverb time used for the low frequencies (default 0.8)
+            trim (int | float): shorten the (usually unnecessarily long) reverb tail; if int: trim to that number of samples, if float < 1:  trim to that fraction (default is 0.5).
+            samplerate (int | float): samplerate of the resulting noise (default 44100)
+        Returns:
+            (slab.Filter): reverberation tail impulse response
+        """
+        if t_reverb is None:
+            t_reverb = self.reverb_time()
+        RTlow, RThigh = low_factor * t_reverb, t_reverb
+        RT = max(RTlow, RThigh)
+        t = numpy.arange(RT * samplerate * 2) / samplerate
+        envLow = numpy.exp(-t/RTlow * 60/20 * numpy.log(10))
+        envHigh = numpy.exp(-t/RThigh * 60/20 * numpy.log(10))
+        n_samples = len(envHigh)
+        # generate filtered noise
+        noise_data = numpy.random.randn(n_samples)
+        # fft params
+        fft_length = 2 ** (len(noise_data) - 1).bit_length()
+        f = samplerate * (numpy.arange(fft_length / 2) + 1) / fft_length
+        fr = f[::-1]
+        ff = numpy.hstack([f, fr])
+        # log-powered filter in frequency domain
+        s = (numpy.log2(ff) - numpy.log2(ff[0])) / (numpy.log2(ff[int(len(ff)/2)]) - numpy.log2(ff[0]))
+        out = numpy.zeros((len(envHigh), 2))
+        # convolution
+        nd_fft = numpy.fft.fft(noise_data, fft_length)
+        out[:, 0] = numpy.fft.ifft(nd_fft * s).real[:len(noise_data)] * envHigh + \
+                    numpy.fft.ifft(nd_fft * (1 - s)).real[:len(noise_data)] * envLow
+        noise_data = numpy.random.randn(n_samples)
+        nd_fft = numpy.fft.fft(noise_data, fft_length)
+        out[:, 1] = numpy.fft.ifft(nd_fft * s).real[:len(noise_data)] * envHigh + \
+                    numpy.fft.ifft(nd_fft * (1 - s)).real[:len(noise_data)] * envLow
+        out = Filter(out, fir='IR', samplerate=samplerate)
+        if isinstance(trim, float):
+            trim = int(out.n_samples * trim)
+        out = out.resize(trim)
+        return out
+
+    def hrir(self, reverb=None, hrtf=None, trim=0.5):
+        """
+        Compute the binaural room response. The resulting filter has the same samplerate as the HRTF object.
+
+        Arguments:
+            reverb (float | slab.Filter): if None, generate the decaying reverberation tail from current room parameters (default),
+                                        if float, generate the reverberation tail with a time constant of 'reverb',
+                                        if slab.Filter, use the provided binaural filter
+            hrtf (slab.HRTF): HRTF dataset (default: slab.HRTF.kemar)
+            trim (int | float): shorten the (usually unnecessarily long) reverb tail; if int: trim to that number of samples, if float < 1:  trim to that fraction (default is 0.5).
+
+        Return:
+            (slab.Filter): binaural room response for given source, room, and listener position
+        """
+        if hrtf is None:
+            hrtf = HRTF.kemar() # get HRIRs from slab
+        if reverb is None:
+            reverb = self.reverb(samplerate=hrtf.samplerate)
+        elif isinstance(reverb, float): # use as reverb time
+            reverb = self.reverb(t_reverb=reverb, samplerate=hrtf.samplerate)
+        delays = self.image_locs[:, 2] / 344 # source distance * speed of sound
+        # delays[1:] = delays[1:] + ((numpy.random.rand(len(delays)-1)-.5) * delays[1:] / 10)
+        onsets = numpy.ceil(delays * hrtf.samplerate).astype(int)
+        onsets[onsets==0] = 1
+        r0 = min(delays) # delay of the direct sound
+        n_samples = numpy.max(onsets) + hrtf[0].n_taps + 1000
+        echo_HRIR = numpy.zeros((n_samples, 2))
+        for i, (azi, ele) in enumerate(self.image_locs[:,:2]):
+            this_dry_hrtf = hrtf.interpolate(azimuth=azi, elevation=ele) # get the hrtf for the current echo direction
+            single_echo_HRIR = Room._walltrns(this_dry_hrtf, self.orders[i], self.floor_orders[i])
+            single_echo_HRIR *= (r0 / delays[i]) # attenuate sound pressure by distance (p ~ 1/d)
+            # update total HRIR
+            offset = onsets[i] + single_echo_HRIR.n_taps
+            echo_HRIR[onsets[i]:offset, :] += single_echo_HRIR
+        # combine calculated sources and simulated tail
+        peak = numpy.max(numpy.abs(single_echo_HRIR)) # maximum amplitude of last (faintest) echo
+        combined_HRIR = numpy.zeros((onsets[i] + reverb.n_taps, 2))
+        combined_HRIR[onsets[i]:, :] = reverb * peak # put reverbtail at start of last echo
+        combined_HRIR[:offset] += echo_HRIR[:offset]
+        out = Filter(combined_HRIR, samplerate=hrtf.samplerate, fir='IR')
+        if isinstance(trim, float):
+            trim = int(out.n_samples * trim)
+        out = out.resize(trim)
+        return out

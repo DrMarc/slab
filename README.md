@@ -1,6 +1,7 @@
 ![Package](https://github.com/DrMarc/slab/workflows/Python%20package/badge.svg)
 [![PyPI](https://github.com/DrMarc/slab/workflows/PyPi/badge.svg)](https://pypi.org/project/slab/)
 [![Documentation Status](https://readthedocs.org/projects/slab/badge/?version=latest)](https://slab.readthedocs.io/en/latest/?badge=latest)
+[![Tutorial](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/DrMarc/slab/blob/master/slab_tutorial.ipynb)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://github.com/DrMarc/slab/graphs/commit-activity)
 ![PyPI pyversions](https://img.shields.io/badge/python-%3E%3D3.6-blue)
 ![PyPI license](https://img.shields.io/badge/license-MIT-brightgreen)
@@ -8,6 +9,11 @@
 
 **slab**: easy manipulation of sounds and psychoacoustic experiments in Python
 ======================
+
+> [!IMPORTANT]
+> Version 1.5 changes the Filter and HRTF interfaces very slightly. Existing code should be updated in the following way:
+> 1) HRTF.interpolate now returns a Filter instead of an HRTF object with a single source, so call __hrir.apply()__ instead of __hrtf[0].apply()__.
+> 2) The __fir__ attribute of the Filter class now takes a string to indicate the type of filter ('FIR', 'IR', 'TF') instead of a bool. Use __fir='TF'__ where you previously used __fir=False__, and __fir='FIR'__ or __'IR'__ where you used __fir=True__, depending on whether the filter should be applied using scipy.signal.filtfilt (intended for highpass filters and the like) or scipy.signal.fftfilt (intended for HRTFs and room responses).
 
 **Slab** ('es-lab', or sound laboratory) is an open source project and Python package that makes working with sounds and running psychoacoustic experiments simple, efficient, and fun! For instance, it takes just eight lines of code to run a pure tone audiogram using an adaptive staircase:
 ```python
@@ -66,6 +72,7 @@ right_lateralized = sig.itd(duration=600e-6) # add an interaural time difference
 # apply a linearly increasing or decreasing interaural time difference.
 # This is achieved by sinc interpolation of one channel with a dynamic delay:
 moving = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
+hrtf = slab.HRTF.kemar() # using the default head-related transfer function
 level_spectrum = slab.Binaural.make_interaural_level_spectrum(hrtf) # compute frequency-band-specific ILDs from KEMAR
 lateralized = sig.at_azimuth(azimuth=-45, ils=level_spectrum) # add frequency-dependent ITD and ILD corresponding to a sound at 45 deg
 external = lateralized.externalize() # add an under-sampled HRTF filter that results in the percept of an external source
@@ -100,6 +107,14 @@ sourceidx = hrtf.cone_sources(20) # select sources on a cone of confusion at 20 
 hrtf.plot_sources(sourceidx) # plot the sources in 3D, highlighting the selected sources
 hrtf.plot_tf(sourceidx,ear='left') # plot transfer functions of selected sources in a waterfall plot
 dtf = hrtf.diffuse_field_equalization() # apply diffuse field equalization to remove non-spatial components of the HRTF
+```
+
+**Room**: Easy simulation of echoes and reverberation.
+```python
+room = slab.Room(size=[4,6,3], listener=[2,3,1.8], source=[0,0,1])  # create an echo list for a room size, listener ans source position
+hrir = room.hrir()  # compute the room impulse response (as an slab.Filter)
+sound = slab.Sound.vowel(duration=0.3, samplerate=hrir.samplerate)  # create an example sound to add the reverb to
+echos = hrir.apply(sound)  # apply the room impolse response
 ```
 
 **Psychoacoustics**: A collection of classes for working trial sequences, adaptive staircases, forced-choice procedures, stimulus presentation and response recording from the keyboard and USB button boxes, handling of precomputed stimulus lists, results files, and experiment configuration files.
@@ -179,6 +194,8 @@ Documentation
 -------------
 
 Read the tutorial-style documentation on [ReadTheDocs](https://slab.readthedocs.io/).
+For an interactive tutorial without installing anything, try the Colab notebook:
+[![Open tutorial in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/DrMarc/slab/blob/master/slab_tutorial.ipynb)
 
 Citing slab
 -----------
@@ -214,5 +231,3 @@ License
 -------
 
 The project is licensed under the MIT license.
-
-[![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/)

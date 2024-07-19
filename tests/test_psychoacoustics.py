@@ -104,7 +104,6 @@ def test_precomputed():
     sounds = slab.Precomputed(sounds.random_choice(5))
     sounds.write(PATH / "precomputed.zip")
     sounds = slab.Precomputed.read(PATH / "precomputed.zip")
-    cfg = slab.psychoacoustics.load_config("tests/config.txt")
 
 
 def test_results():

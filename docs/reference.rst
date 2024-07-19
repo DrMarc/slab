@@ -59,13 +59,17 @@ Psychoacoustic procedures
 
 
 Filters
--------
+^^^^^^^
 .. autoclass:: Filter
    :members:
    :member-order: bysource
 
 HRTFs
------
+^^^^^
 .. autoclass:: HRTF
+   :members:
+   :member-order: bysource
+
+.. autoclass:: Room
    :members:
    :member-order: bysource

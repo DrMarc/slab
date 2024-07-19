@@ -300,7 +300,7 @@ class Binaural(Sound):
         resampled_signal = copy.deepcopy(self)
         # if sound and HRTF has different samplerates, resample the sound, apply the HRTF, and resample back:
         resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate)  # resample to hrtf rate
-        filt = Filter(10**(h/20), fir=False, samplerate=hrtf.data[0].samplerate)
+        filt = Filter(10**(h/20), fir='TF', samplerate=hrtf.data[0].samplerate)
         filtered_signal = filt.apply(resampled_signal)
         filtered_signal = filtered_signal.resample(self.samplerate)
         return filtered_signal

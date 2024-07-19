@@ -83,6 +83,7 @@ def test_externalize():
                                   (hrtf.sources.vertical_polar[:, 0] == 0))[0][0]
         sound = slab.Binaural.whitenoise(samplerate=hrtf.samplerate)
         filtered = hrtf.data[idx_frontal].apply(sound)
+        filtered = filtered.resize(sound.duration)
         external = sound.externalize()
         assert numpy.abs(filtered.data-external.data).sum() < numpy.abs(filtered.data-sound.data).sum()
         assert numpy.abs(sound.level - external.level).max() < 0.6
