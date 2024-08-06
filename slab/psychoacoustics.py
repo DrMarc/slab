@@ -651,8 +651,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         n_down (int): number of `correct` (or 1) responses before the staircase level decreases (see `n_up`).
         step_type (str): defines the change of stimulus intensity at each step of the staircase. possible inputs are
             'lin' (adds or subtract a certain amount), 'db', and 'log' (prevents the intensity from reaching zero).
-        min_val (int or float): smallest stimulus value permitted, or -Inf for staircase without lower limit
-        max_val (int or float): largest stimulus value permitted, or Inf for staircase without upper limit
+        min_val (int or float): smallest stimulus value permitted, or -inf for staircase without lower limit
+        max_val (int or float): largest stimulus value permitted, or inf for staircase without upper limit
         label (str): text label for the sequence, defaults to an empty string
     Attributes:
         .this_trial_n: number of completed trials
@@ -674,7 +674,7 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
         print(f'mean of final 6 reversals: {stairs.threshold()}')
     """
     def __init__(self, start_val, n_reversals=None, step_sizes=1, step_up_factor=1, n_pretrials=0, n_up=1,
-                 n_down=2, step_type='lin', min_val=-numpy.Inf, max_val=numpy.Inf, label=''):
+                 n_down=2, step_type='lin', min_val=-numpy.inf, max_val=numpy.inf, label=''):
         self.label = label
         self.start_val = start_val
         self.n_up = n_up
@@ -900,8 +900,8 @@ class Staircase(collections.abc.Iterator, LoadSaveMixin, TrialPresentationOption
             axis.clear()
             axis.plot(x, y)
             axis.set_xlim(-self.n_pretrials, max(20, (self.this_trial_n + 15)//10*10))
-            axis.set_ylim(min(0, min(y)) if self.min_val == -numpy.Inf else self.min_val,
-                          max(y) if self.max_val == numpy.Inf else self.max_val)
+            axis.set_ylim(min(0, min(y)) if self.min_val == -numpy.inf else self.min_val,
+                          max(y) if self.max_val == numpy.inf else self.max_val)
             # plot green dots at correct/yes responses
             axis.scatter(x[responses], y[responses], color='green')
             # plot red dots at correct/yes responses
