@@ -14,7 +14,6 @@ def test_signal_generation():
         assert sig.samplerate == samplerate
         assert len(sig.times) == len(sig.data)
         numpy.testing.assert_almost_equal(sig.times.max()*samplerate, n_samples, decimal=-1)
-    assert sig.name == 'unnamed'
 
 
 def test_arithmetics():

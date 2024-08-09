@@ -32,13 +32,11 @@ class Signal:
             it must have a .data attribute containing an array. If it's a list, the elements can be arrays or objects.
             The output will be a multi-channel sound with each channel corresponding to an element of the list.
         samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
-        name (str): a string label for the signal object. Default is 'unnamed'.
     Attributes:
         .duration: duration of the sound in seconds
         .n_samples: duration of the sound in samples
         .n_channels: number of channels in the sound
         .times: list with the time point of each sample
-        .name: string label
     Examples::
 
         import slab, numpy
@@ -59,7 +57,7 @@ class Signal:
                           doc='The number of channels in the Signal.')
 
     # __methods (class creation, printing, and slice functionality)
-    def __init__(self, data, samplerate=None, name='unnamed'):
+    def __init__(self, data, samplerate=None):
         if hasattr(data, 'samplerate') and samplerate is not None:
             warnings.warn('First argument has a samplerate property. Ignoring given samplerate.')
         if isinstance(data, numpy.ndarray):
@@ -92,24 +90,19 @@ class Signal:
                 self.samplerate = _default_samplerate
             else:
                 self.samplerate = samplerate
-        if hasattr(data, 'name') and name == 'unnamed': # carry over name if source object has one and no new name provided
-            self.name = data.name
-        else:
-            self.name = name
-
 
     def __repr__(self):
-        return f'{type(self)} (\n{repr(self.data)}\n{repr(self.samplerate)}\n{repr(self.name)})'
+        return f'{type(self)} (\n{repr(self.data)}\n{repr(self.samplerate)})'
 
     def __str__(self):
-        return f'{type(self)} ({self.name}) duration {self.duration}, samples {self.n_samples}, channels {self.n_channels},' \
+        return f'{type(self)} duration {self.duration}, samples {self.n_samples}, channels {self.n_channels},' \
                f'samplerate {self.samplerate}'
 
     def _repr_html_(self):
         'HTML image representation for Jupyter notebook support'
         elipses = '\u2026'
         class_name = str(type(self))[8:-2]
-        html = [f'<h4>{class_name} ({self.name}) with samplerate = {self.samplerate}</h4>']
+        html = [f'<h4>{class_name} with samplerate = {self.samplerate}</h4>']
         html += ['<table><tr><th>#</th>']
         samps, chans = self.data.shape
         html += (f'<th>channel {j}</th>' for j in range(chans))
@@ -343,7 +336,7 @@ class Signal:
             envs = 20 * numpy.log10(envs)  # convert amplitude to dB
         elif not kind == 'gain':
             raise ValueError('Kind must be either "gain" or "dB"!')
-        return Signal(envs, samplerate=self.samplerate, name='envelope')
+        return Signal(envs, samplerate=self.samplerate)
 
     def _apply_envelope(self, envelope, times, kind):
         # TODO: write tests for the new options!

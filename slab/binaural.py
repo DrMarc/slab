@@ -50,7 +50,10 @@ class Binaural(Sound):
 
     def __init__(self, data, samplerate=None, name='unnamed'):
         if isinstance(data, (Sound, Signal)):
-            self.name = data.name
+            if hasattr(data, 'name'):
+                self.name = data.name
+            else:
+                self.name = name
             if data.n_channels == 1:  # if there is only one channel, duplicate it.
                 self.data = numpy.tile(data.data, 2)
             elif data.n_channels == 2:

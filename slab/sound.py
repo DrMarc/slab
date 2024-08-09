@@ -152,7 +152,15 @@ class Sound(Signal):
             self.name = _.name
         else:
             # delegate to the baseclass init
-            super().__init__(data, samplerate, name)
+            super().__init__(data, samplerate)
+            self.name = name
+
+    def __repr__(self): # including the .name attribute
+        return f'{type(self)} (\n{repr(self.data)}\n{repr(self.samplerate)}\n{repr(self.name)})'
+
+    def __str__(self):
+        return f'{type(self)} ({self.name}) duration {self.duration}, samples {self.n_samples}, channels {self.n_channels},' \
+               f'samplerate {self.samplerate}'
 
     # static methods (creating sounds)
     @staticmethod
@@ -777,7 +785,7 @@ class Sound(Signal):
         """
         sound = copy.deepcopy(self)
         sound.data = numpy.vstack((sound.data,) * int(n))
-        sound.name = f'{n}x_{sound.name}'
+        sound.name = f'{n}x_{self.name}'
         return sound
 
     @staticmethod
@@ -869,7 +877,7 @@ class Sound(Signal):
         envelope = envelope[:, None]  # add an empty axis to get to the same shape as sound.data
         # if data is 2D (>1 channel) broadcast the envelope to fit
         out.data *= numpy.broadcast_to(envelope, out.data.shape)
-        out.name = f'{frequency}Hz-pulsed_{out.name}'
+        out.name = f'{frequency}Hz-pulsed_{self.name}'
         return out
 
     def am(self, frequency=10, depth=1, phase=0):
@@ -887,7 +895,7 @@ class Sound(Signal):
         envelope = (1 + depth * numpy.sin(2 * numpy.pi * frequency * out.times + phase))
         envelope = envelope[:, None]
         out.data *= numpy.broadcast_to(envelope, out.data.shape)
-        out.name = f'{frequency}Hz-am_{out.name}'
+        out.name = f'{frequency}Hz-am_{self.name}'
         return out
 
     def filter(self, frequency=100, kind='hp'):
@@ -907,7 +915,7 @@ class Sound(Signal):
         filt = Filter.band(
             frequency=frequency, kind=kind, samplerate=self.samplerate, length=n)
         out.data = filt.apply(self).data
-        out.name = f'{frequency}Hz-{kind}_{out.name}'
+        out.name = f'{frequency}Hz-{kind}_{self.name}'
         return out
 
     def aweight(self):
@@ -931,7 +939,7 @@ class Sound(Signal):
         b, a = scipy.signal.filter_design.bilinear(numerators, denominators, self.samplerate)
         out = copy.deepcopy(self)
         out.data = scipy.signal.lfilter(b, a, self.data, axis=0)
-        out.name = f'aweighted_{out.name}'
+        out.name = f'aweighted_{self.name}'
         return out
 
     @staticmethod
