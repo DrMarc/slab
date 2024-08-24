@@ -24,7 +24,7 @@ except ImportError:
 import slab
 
 results_folder = 'Results'
-input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard', 'buttonbox', or 'prompt'
+input_method = 'keyboard'  #: sets the input for the Key context manager to 'keyboard', 'buttonbox', 'prompt', or 'figure'
 
 
 class _Buttonbox:
@@ -953,7 +953,7 @@ class ResultsFile:
 
     Arguments:
         subject (str): determines the name of the sub-folder and files.
-        folder (None | str): folder in which all results are saved, if None use the global variable results_folder.
+        folder (None | str): folder in which all results are saved, defaults to global variable results_folder.
     Attributes:
         .path: full path to the results file.
         .subject: the subject's name.
@@ -978,12 +978,12 @@ class ResultsFile:
 
     def write(self, data, tag=None):
         """
-        Safely write data to the file which is opened just before writing and closed immediately after to avoid
-        data loss. Call this method at the end of each trial to save the response and trial state.
+        Safely write data to the file which is opened just before writing and closed immediately after
+        to avoid data loss. Call this method at the end of each trial to save the response and trial state.
 
         Arguments:
-            data (any): data to save must be JSON serializable [string, list, dict, ...]). If data is an object,
-                the __dict__ is extracted and saved.
+            data (any): data to save must be JSON serializable [string, list, dict, ...]). If data is an
+                object, the __dict__ is extracted and saved.
             tag (str): The tag is prepended as a key. If None is provided, the current time is used.
         """
         if hasattr(data, "__dict__"):
@@ -1007,9 +1007,9 @@ class ResultsFile:
             filename (str | pathlib.Path):
             tag (None | str):
         Returns:
-            (list | dict): The content of the file. If tag is None, the whole file is returned, else only the
-                dictionaries with that tag as a key are returned. The content will be a list of dictionaries or a
-                dictionary if there is only a single element.
+            (list | dict): The content of the file. If tag is None, the whole file is returned,
+                else only the dictionaries with that tag as a key are returned. The content will
+                be a list of dictionaries or a dictionary if there is only a single element.
         """
         content = []
         with open(filename) as file:
@@ -1049,6 +1049,94 @@ class ResultsFile:
         """ Clears the file by erasing all content. """
         with open(self.path, 'w') as file:
             file.write('')
+
+
+class ResultsTable(ResultsFile):
+    """
+    A class for foolproof writing of results tables as comma separated values (CSV), including
+    generating the name, creating the folders, and writing to the file after each trial. On
+    initialization you have to provide the column headers of the CSV table, either as a list,
+    a comma_separated string, or as Path object to a separate text file containing the column
+    headers.
+    The ResultsTable object
+
+    Arguments:
+        subject (str): determines the name of the sub-folder and files.
+        columns (list | str | path.Path): list of column names or comma-separated column names
+            in a string (read from a text file if Path object is given). Must be valid Python variable
+            names! Will be the first row of the results file. Adding rows to the table requires giving
+            a value for each variable name. (This is enforced through a namedtuple of these variables.)
+        folder (None | str): folder in which all results are saved, defaults to global variable results_folder.
+    Attributes:
+        .path: full path to the results file.
+        .subject: the subject's name.
+        .name: file name
+        .Row: Namedtuple with column names as fields. Must be fully populated to write to the table.
+    Example::
+
+        ResultsTable.results_folder = 'MyResults'
+        header = 'timestamp, subject, trial, stimulus, response'
+        # OR: header = ('timestamp', 'subject', etc.)
+        # OR: header = path.Path('header_names.csv')
+        table = ResultsTable(subject='MS', columns=header)
+        print(table.name) # this file is now created and contains the header row
+        print(table.Row) # a namedtuple has also been created with the header attributes
+        print(table.Row._fields) # the fields are the column names
+        # to write a row of results at the end of the trial loop:
+        row = table.Row(timestamp=datetime.now(), subject=table.subject, trail=stairs.this_n, stimulus=stim.name, response=button)
+        table.write(row)
+    """
+
+    def __init__(self, columns, subject='test', folder=None, filename=None):
+        super().__init__(subject, folder, filename)
+        self.Row = self._make_Row(columns)
+        self._write_header()
+
+    @staticmethod
+    def _make_Row(columns):
+        "Generate a namedtuple with fields corresponding to column names. Called automatically during init."
+        if isinstance(columns, pathlib.Path):
+            with open(columns) as f:
+                first_line = f.readline().strip('\n')
+                field_names = [x.strip() for x in first_line.split(',')]
+        elif isinstance(columns, str):
+            field_names = [x.strip() for x in columns.split(',')]
+        else:
+            field_names = columns
+        return collections.namedtuple('Row', field_names)
+
+    def write(self, row):
+        """
+        Safely write data to the file which is opened just before writing and closed immediately
+        after to avoid data loss. Call this method at the end of each trial to save the response
+        and trial state. Values with commas are enclosed in double quotes to keep the CSV valid.
+
+        Arguments:
+            row (self.Row): All values to be written have to be provided as namedtuple, the fields
+                of which were generated at initialization time and cannot be changed. This ensures
+                table consistency.
+        Example::
+            # to write a row of results at the end of the trial loop, first make a new instance of Row:
+            row = table.Row(timestamp=datetime.now(), subject=table.subject, trail=stairs.this_n, stimulus=stim.name, response=button)
+            # then write these row values to the file:
+            table.write(row)
+        """
+        if not isinstance(row, self.Row):
+            raise TypeError('Data has to be given as instance of namedtuple Row.')
+        with open(self.path, 'a') as file:
+            vals = ['\"' + str(v) + '\"' if ',' in str(v) else str(v) for v in row._asdict().values()]
+            file.write(',\t'.join(vals) + '\n')
+
+    def _write_header(self):
+        "Writes the column names as header to the file, separated by commas. Called automatically during init."
+        with open(self.path, 'w') as file:
+            file.write(','.join(self.Row._fields) + '\n')
+
+    def read_file(self, *args):
+        raise NotImplementedError('Use pandas.read_csv or csv directly.')
+
+    def read(self, *args):
+        raise NotImplementedError('Use pandas.read_csv or csv directly.')
 
 
 class Precomputed(list):
@@ -1178,7 +1266,6 @@ def load_config(filename):
         conf.speeds
         # Out: [60, 120, 180]
     """
-    from collections import namedtuple
     with open(filename, 'r') as f:
         lines = f.readlines()
     if lines:
@@ -1188,5 +1275,5 @@ def load_config(filename):
             var, val = line.strip().split('=')
             var_names.append(var.strip())
             values.append(eval(val.strip()))
-        config_tuple = namedtuple('config', var_names)
+        config_tuple = collections.namedtuple('config', var_names)
         return config_tuple(*values)

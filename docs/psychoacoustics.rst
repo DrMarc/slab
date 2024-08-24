@@ -374,10 +374,17 @@ stimulus played just before), and remembers all previously played stimuli in the
 Results files
 -------------
 In most experiments, the performance of the listener, experimental settings, the presented stimuli, and other
-information need to be saved to disk during the experiment. The :class:`ResultsFile` class helps with several typical
-functions of these files, like generating timestamps, creating the necessary folders, and ensuring that the file is
-readable if the experiment is interrupted writing to the file after each trial. Information is written incrementally to
-the file in single lines of JSON (a `JSON Lines <http://jsonlines.org>`_ file).
+information need to be saved to disk during the experiment. Slab provides two methods for saving results during
+an experiment. The first (:class:`ResultsFile`) is event-based and saves timestamped blocks of JSON-formatted data.
+The second (:class:`ResultsTable`) saves a comma-separated-value table one row at a time, with pre-defined columns.
+This second option generates files that can be loaded directly in statistics software.
+Both help with typical functions of these files, like generating timestamps, creating the necessary folders, and
+ensuring that the file is readable if the experiment is interrupted or the program crashes.
+
+ResultsFile
+^^^^^^^^^^^
+The :class:`ResultsFile` class writes information incrementally to a file in single lines of JSON (a `JSON Lines
+<http://jsonlines.org>`_ file).
 
 Set the folder that will hold results files from all participants for the experiment somewhere at the top of your script
 with the :data:`.results_folder`. Then you can create a file by initializing a class instance with a subject name::
@@ -415,6 +422,29 @@ The :meth:`~ResultsFile.write` method writes a dictionary with a single key-valu
 json-serialized data you want to save. The information can be read back from the file, either while the experiment is
 running and you need to access a previously saved result (:meth:`~ResultsFile.read`), or for later data analysis (:meth:`ResultsFile.read_file`). Both methods can take a ``tag`` argument to extract all instances saved under that tag
 in a list.
+
+ResultsTable
+^^^^^^^^^^^^
+The :class:`ResultsTable` class is suitable for more structured data, where the same set of experiment values (trial
+number, stimulus name, response, reaction time, etc.) is saved to a comma-separated-value (CSV) file at the end of each
+trial. CSV files are much easier to read with statistical software, and if the correct values are saved, the file could
+be imported into R, SPSS, JASP, or (God forbid) Excel for analysis.
+
+To make a :class:`ResultsTable` you have to specify the column names of the table, one for each variable you want to save.
+These names have to be valid Python variable names, because a :class:`Namedtuple` object (".Row") is created with fields identical
+to these names. Creating a new :class:`ResultsTable` also creates the corresponding CSV file with the header row::
+
+    table = slab.ResultsTable(subject='MS01', columns='timestamp, subject, trial, stim, response, RT')
+
+At the end of each trial, make a new instance of the Row tuple by providing values for each field (this forces the same
+variables each time data is written to the file), and then write the row using the :meth:`~ResultsTable.write` method::
+
+    row = table.Row(timestamp=datetime.now(), subject=table.subject, trial=stairs.this_n, stim=sound.name, response=button, RT=345.5)
+    table.write(row)
+
+After the experiment, these CSV files can be read back using `Pandas.read_csv` or the builtin `csv` module, or can be
+imported into any statistical software.
+
 
 Configuration files
 -------------------

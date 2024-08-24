@@ -114,3 +114,7 @@ def test_results():
     results.read()
     results = slab.ResultsFile.read_file(slab.ResultsFile.previous_file(subject="MrPink"))
     results.clear()
+    # ResultsTable
+    results = slab.ResultsTable(subject="MrPink", columns="subject, trial")
+    row = results.Row(subject=results.subject, trial=1)
+    results.write(row)
