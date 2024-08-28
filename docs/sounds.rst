@@ -169,6 +169,25 @@ seconds, with 5 ms crossfade overlap, then filtered between 0.8 and 3.2 kHz: ::
     stimulus.spectrogram() # note that there is no change at the transition
     stimulus.play() # but you can hear the onset of the regularity (pitch)
 
+Playing a sound in the background
+---------------------------------
+In some experiments you may want to play a continuous background signal (a noise or a multitalker babble for instance)
+and present stimuli in that background noise. The :meth:`play_background` starts a non-blocking SoundDevice.OutputStream
+in the background that is not interrupted by playing other stimuli. The background sound can also be played in a loop.
+This stream is temporarily attached to the Sound object as :attr:`stream` attribute together with a :attr:`current_frame`
+attribute that holds a frame counter that is updated during play. Don't access these variables unless you know what you
+are doing. The stream has to be terminated by calling the :meth:`stop_background` method, even when the background sound
+has already finished playing. This closes the stream object and removed the temporary :attr:`stream` and :attr:`current_frame`
+attributes. ::
+
+    sig = slab.Sound.vowel(vowel='a', duration=5., samplerate=44100) # a long background sound
+    sig.play_background(looping=True) # start playing an endless background /a/
+    sig2 = slab.Sound.vowel(vowel='i', duration=.5, samplerate=44100) # a short foreground sound
+    for _ in range(5):
+        time.sleep(.5)
+        sig2.play() # each second, play a short /i/
+    sig.stop_background() # necessary to close the background stream
+
 Plotting and analysis
 ---------------------
 You can inspect sounds by plotting the :meth:`.waveform`, :meth:`.spectrum`, or :meth:`.spectrogram`:

@@ -17,9 +17,9 @@ except OSError as e:
     print("If you use Linux, libsndfile needs to be installed manually:"
           "sudo apt-get install libsndfile1")
 try:
-    import soundcard
+    import sounddevice
 except ImportError:
-    soundcard = False
+    sounddevice = False
 try:
     import scipy.signal
 except ImportError:
@@ -945,7 +945,7 @@ class Sound(Signal):
     @staticmethod
     def record(duration=1.0, samplerate=None):
         """
-        Record from inbuilt microphone. Uses SoundCard module if installed [recommended], otherwise uses SoX.
+        Record from inbuilt microphone. Uses Sounddevice module if installed [recommended], otherwise uses SoX.
 
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
@@ -957,10 +957,9 @@ class Sound(Signal):
         """
         if samplerate is None:
             samplerate = slab.get_default_samplerate()
-        if soundcard is not False:
+        if sounddevice is not False:
             duration = Sound.in_samples(duration, samplerate)
-            mic = soundcard.default_microphone()
-            data = mic.record(samplerate=samplerate, numframes=duration, channels=1)
+            data = sounddevice.rec(frames=duration, samplerate=samplerate, channels=1, blocking=True)
             out = Sound(data, samplerate=samplerate)
         else:  # use sox
             try:
@@ -974,50 +973,113 @@ class Sound(Signal):
                     'Windows: see SoX website: http://sox.sourceforge.net/)')
             time.sleep(duration/samplerate+0.1)  # add 100ms to make sure the tmp file is written
             out = Sound(filename)
-            out.name = 'recorded'
+        out.name = 'recorded'
         return out
 
-    def play(self):
+    def play(self, blocking=True):
         """
-        Plays the sound through the default device. If the soundcard module is installed it is used
-        to play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via the
-        `play_file` method.
+        Plays the sound through the default device. If the sounddevice module is installed it is used to
+        play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via
+        the `play_file` method.
         """
         if _in_notebook:
             display(Audio(self.data.T, rate=self.samplerate, autoplay=True))
-            time.sleep(self.duration)  # playing in Jupiter/Colab notebook is non_blocking, thus busy-wait for stim duration
-        elif soundcard is not False:
-            soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
+            if blocking:
+                time.sleep(self.duration)  # playing in Jupiter/Colab notebook is non_blocking, thus busy-wait for stim duration
+        elif sounddevice is not False:
+            sounddevice.play(data=self.data, samplerate=self.samplerate, blocking=blocking)
         else:
             filename = hashlib.sha256(self.data).hexdigest() + '.wav'  # make unique name
             filename = _tmpdir / filename
             if not filename.is_file():
                 self.write(filename, normalise=False)
-            Sound.play_file(filename)
+            Sound.play_file(filename, blocking)
 
     @staticmethod
-    def play_file(filename):
+    def play_file(filename, blocking=True):
         """
         Play a .wav file using the OS-specific mechanism for Windows, Linux or Mac.
 
         Arguments:
              filename (str | pathlib.Path): full path to the .wav file to be played.
+             blocking (bool): if true, wait for sound to finish playing before resuming execution.
         """
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
         if _in_notebook:
             display(Audio(filename, autoplay=True))
         elif _system == 'Windows':
-            winsound.PlaySound(filename, winsound.SND_FILENAME)
+            if blocking:
+                winsound.PlaySound(filename, winsound.SND_FILENAME & winsound.SND_ASYNC)
+            else:
+                winsound.PlaySound(filename, winsound.SND_FILENAME)
         elif _system == 'Darwin':  # MacOS
-            subprocess.call(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            if blocking:
+                subprocess.call(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            else:
+                subprocess.Popen(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         else:  # Linux
             try:
-                subprocess.call(['sox', filename, '-d'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                if blocking:
+                    subprocess.call(['sox', filename, '-d'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                else:
+                    subprocess.Popen(['sox', filename, '-d'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
             except FileNotFoundError:
                 raise NotImplementedError(
-                    'Playing from files on Linux without SoundCard module requires SoX. '
+                    'Playing from files on Linux without Sounddevice module requires SoX. '
                     'Install: sudo apt-get install sox libsox-fmt-all or pip install SoundCard')
+
+    def play_background(self, looping=False):
+        """
+        Play the sound in the background (non-blocking and not interrupted by playing other sounds).
+        A typical scenario would be presenting stimuli in a continuous masking noise.
+        The playback starts immediately and HAS TO BE terminated by calling the ´stop_background´ method
+        (even if the sounds has finished playing), because a SoundDevice.Stream object is set up internally
+        which needs to be closed after playing.
+
+        Arguments:
+            looping (bool): sound is played in a loop if True.
+        Example::
+            sig = slab.Sound.vowel(vowel='a', duration=5., samplerate=44100) # a long background sound
+            sig.play_background() # start playing the backgrond /a/
+            sig2 = slab.Sound.vowel(vowel='i', duration=.5, samplerate=44100) # a short foreground sound
+            for i in range(5):
+                time.sleep(1)
+                print(i)
+                sig2.play() # each second, play a short /i/
+            sig.stop_background() # necessary to close the background stream
+        """
+        data = self.data
+        self.current_frame = 0 # hack to get current_frame variable into the callback context
+
+        if looping:
+            def callback(outdata, frames, time, status):
+                chunksize = min(len(data) - self.current_frame, frames)
+                outdata[:chunksize] = data[self.current_frame:self.current_frame + chunksize]
+                if chunksize < frames:
+                    self.current_frame = 0 # loop by resetting the frame index
+                self.current_frame += chunksize
+        else:
+            def callback(outdata, frames, time, status):
+                chunksize = min(len(data) - self.current_frame, frames)
+                outdata[:chunksize] = data[self.current_frame:self.current_frame + chunksize]
+                if chunksize < frames:
+                    outdata[chunksize:] = 0
+                    raise sounddevice.CallbackStop()
+                self.current_frame += chunksize
+
+        self.stream = sounddevice.OutputStream(samplerate=44100, callback=callback)
+        self.stream.start()
+
+    def stop_background(self):
+        """
+        Stop playing in the background if it was started by the play_background method.
+        """
+        if hasattr(self, 'stream'):
+            self.stream.stop()
+            self.stream.close()
+            del self.stream # remove the added stream context variables from the Sound object
+            del self.current_frame
 
     def waveform(self, start=0, end=None, show=True, axis=None):
         """
