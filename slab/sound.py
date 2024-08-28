@@ -976,18 +976,22 @@ class Sound(Signal):
         out.name = 'recorded'
         return out
 
-    def play(self, blocking=True):
+    def play(self, blocking=True, device=None):
         """
         Plays the sound through the default device. If the sounddevice module is installed it is used to
         play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via
         the `play_file` method.
+
+        Arguments:
+            blocking (bool): wait while playing the sound if True, otherwise start playing
+                and continue program execution.
         """
         if _in_notebook:
             display(Audio(self.data.T, rate=self.samplerate, autoplay=True))
             if blocking:
                 time.sleep(self.duration)  # playing in Jupiter/Colab notebook is non_blocking, thus busy-wait for stim duration
         elif sounddevice is not False:
-            sounddevice.play(data=self.data, samplerate=self.samplerate, blocking=blocking)
+            sounddevice.play(data=self.data, samplerate=self.samplerate, blocking=blocking, device=device)
         else:
             filename = hashlib.sha256(self.data).hexdigest() + '.wav'  # make unique name
             filename = _tmpdir / filename
