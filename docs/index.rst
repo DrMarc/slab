@@ -37,9 +37,9 @@ Then go to the installation directory and run::
 
     pytest
 
-On Linux, you may need to install libsndfile (required by SoundFile) using your distribution's package manager, for instance::
+On Linux, you may need to install libsndfile (required by SoundFile) and PortAudio (required by SoundDevice to play sounds) using your distribution's package manager, for instance for Ubuntu::
 
-    sudo apt-get install libsndfile1
+    sudo apt-get install libsndfile1 libportaudio2
 
 On Windows, you may need to install `windows-curses <https://pypi.org/project/windows-curses/>`_ (required for getting button presses in the psychoacoustics classes)::
 
