@@ -115,7 +115,9 @@ class HRTF:
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
             self.sources = HRTF._get_coordinates(sources, 'spherical')
             if listener is None:
-                self.listener = [0, 0, 0]
+                self.listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
+                                 'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
+                                 'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
             else:
                 self.listener = listener
         elif isinstance(data, numpy.ndarray):
@@ -138,7 +140,9 @@ class HRTF:
             for idx in range(data.shape[0]):
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
             if listener is None:
-                self.listener = [0, 0, 0]
+                self.listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
+                                 'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
+                                 'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
             else:
                 self.listener = listener
         else:
@@ -342,16 +346,32 @@ class HRTF:
         Convert cartesian to vertical-polar coordinates.
 
         Arguments:
-            cartesian (numpy.ndarray): cartesian coordinates (azimuth, elevation, distance).
+            cartesian (numpy.ndarray): cartesian coordinates (x, y, z).
         Returns:
-            (numpy.ndarray): vertical-polar coordinates.
+            (numpy.ndarray): vertical-polar coordinates (azimuth, elevation, distance).
         """
+        # radius = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+        # z_div_r = np.divide(
+        #     z, radius, out=np.zeros_like(radius, dtype=float), where=radius != 0)
+        # colatitude = np.arccos(z_div_r)
+        # azimuth = np.mod(np.arctan2(y, x), 2 * np.pi)
+        #
+        # vertical_polar = numpy.zeros_like(cartesian)
+        # vertical_polar[:, 2] = numpy.sqrt(cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2 + cartesian[:, 2] ** 2)  # radius
+        # z_div_r = numpy.divide(cartesian[:, 2], vertical_polar[:, 2],
+        #                        out=numpy.zeros_like(vertical_polar[:, 2], dtype=float), where=vertical_polar[:, 2] != 0)
+        # vertical_polar[:, 1] = numpy.arccos(z_div_r)
+        # vertical_polar[:, 0] = numpy.mod(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]), 2 * numpy.pi)
+
+
         vertical_polar = numpy.zeros_like(cartesian)
         xy = cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2
         vertical_polar[:, 0] = numpy.rad2deg(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]))
         vertical_polar[vertical_polar[:, 0] < 0, 0] += 360
         vertical_polar[:, 1] = 90 - numpy.rad2deg(numpy.arctan2(numpy.sqrt(xy), cartesian[:, 2]))
         vertical_polar[:, 2] = numpy.sqrt(xy + cartesian[:, 2] ** 2)
+        # vertical_polar[:, 1] = numpy.arccos(cartesian[:, 2]/ vertical_polar[:, 2])  # doesnt work
+
         return vertical_polar
 
     @staticmethod
@@ -569,8 +589,8 @@ class HRTF:
 
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
-            full_cone (bool): If True, return all sources that lie on the cone, otherwise, return only sources
-                in front of the listener.
+            full_cone (bool): If True, return all sources that lie on the cone, otherwise return sources
+                in front of the listener only.
         Returns:
             (list): elements of the list are the indices of sound sources on the frontal half of the cone.
         Examples::
@@ -582,21 +602,22 @@ class HRTF:
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot
         """
         cone = numpy.sin(numpy.deg2rad(cone))
-        eles = self.elevations()
+        elevations = self.elevations()
         _cartesian = self.sources.cartesian / 1.4  # get cartesian coordinates on the unit sphere
         out = []
-        for ele in eles:  # for each elevation, find the source closest to the reference y
+        for ele in elevations:  # for each elevation, find the source closest to the reference y
             if full_cone == False:  # only return cone sources in front of listener
                 subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (_cartesian[:, 0] >= 0))
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources.vertical_polar[:, 1]) == ele)
-            cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
-            if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
-                idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
-                        numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
-                out.append(idx[0])
-                if full_cone and len(idx) > 1:
-                    out.append(idx[1])
+            if subidx.size != 0:  # check whether sources exist
+                cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
+                if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
+                    idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
+                            numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
+                    out.append(idx[0])
+                    if full_cone and len(idx) > 1:
+                        out.append(idx[1])
         return sorted(out, key=lambda x: self.sources.vertical_polar[x, 1])
 
     def elevation_sources(self, elevation=0):
@@ -986,6 +1007,7 @@ class HRTF:
         samplingRateVar.Units = 'hertz'
         samplingRateVar[:] = self.samplerate
         sofa.close()
+
 
 
 class Room:
