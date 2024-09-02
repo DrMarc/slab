@@ -1016,10 +1016,26 @@ class HRTF:
             raise TypeError('coordinates must be string')
         sourceidx = numpy.arange(self.n_sources)
         sources = getattr(self.sources, coordinates)
-        az_mask = numpy.logical_and(sources[sourceidx, 0] > azimuth_range[0],
-                                    sources[sourceidx, 0] < azimuth_range[1])
-        ele_mask = numpy.logical_and(sources[sourceidx, 1] > elevation_range[0],
-                                     sources[sourceidx, 1] < elevation_range[1])
+        if type(azimuth_range) in [tuple, list]:
+            az_mask = numpy.logical_and(sources[sourceidx, 0] > azimuth_range[0],
+                                        sources[sourceidx, 0] < azimuth_range[1])
+        elif type(azimuth_range) in [int, float]:
+            az_mask = sources[sourceidx, 0] == azimuth_range
+        else:
+            raise TypeError('azimuth range must be a float, int, list or tuple')
+        if not any(az_mask):
+            raise ValueError('Could not find sources for the specified azimuth range')
+            return []
+        if type(elevation_range) in [tuple, list]:
+            ele_mask = numpy.logical_and(sources[sourceidx, 1] > elevation_range[0],
+                                         sources[sourceidx, 1] < elevation_range[1])
+        elif type(elevation_range) in [int, float]:
+            ele_mask = sources[sourceidx, 1] == elevation_range
+        else:
+            raise TypeError('azimuth range must be a float, int, list or tuple')
+        if not any(ele_mask):
+            raise ValueError('Could not find sources for the specified elevation range')
+            return []
         return sourceidx[numpy.logical_and(az_mask, ele_mask)]
 
 class Room:
