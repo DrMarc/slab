@@ -1016,9 +1016,10 @@ class HRTF:
             raise TypeError('coordinates must be string')
         sourceidx = numpy.arange(self.n_sources)
         sources = getattr(self.sources, coordinates)
+        az_mask = numpy.logical_and(sources[sourceidx, 0] > azimuth_range[0],
+                                    sources[sourceidx, 0] < azimuth_range[1])
         ele_mask = numpy.logical_and(sources[sourceidx, 1] > elevation_range[0],
                                      sources[sourceidx, 1] < elevation_range[1])
-        az_mask = numpy.logical_and(sources[sourceidx, 1] > azimuth_range[0], sources[sourceidx, 1] < azimuth_range[1])
         return sourceidx[numpy.logical_and(az_mask, ele_mask)]
 
 class Room:
