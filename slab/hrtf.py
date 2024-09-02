@@ -1008,7 +1008,18 @@ class HRTF:
         samplingRateVar[:] = self.samplerate
         sofa.close()
 
-
+    def get_source_idx(self, azimuth_range=(-40, 40), elevation_range=(-40, 40), coordinates='vertical_polar'):
+        if type(coordinates) == str:
+            if coordinates.lower() not in ['vertical_polar', 'interaural_polar']:
+                raise ValueError('coordinates must be this or that')
+        else:
+            raise TypeError('coordinates must be string')
+        sourceidx = numpy.arange(self.n_sources)
+        sources = getattr(self.sources, coordinates)
+        ele_mask = numpy.logical_and(sources[sourceidx, 1] > elevation_range[0],
+                                     sources[sourceidx, 1] < elevation_range[1])
+        az_mask = numpy.logical_and(sources[sourceidx, 1] > azimuth_range[0], sources[sourceidx, 1] < azimuth_range[1])
+        return sourceidx[numpy.logical_and(az_mask, ele_mask)]
 
 class Room:
     """
