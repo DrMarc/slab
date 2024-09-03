@@ -1024,8 +1024,8 @@ class HRTF:
         sourceidx = numpy.arange(self.n_sources)
         sources = getattr(self.sources, coordinates)
         if type(azimuth_range) in [tuple, list]:
-            az_mask = numpy.logical_and(sources[sourceidx, 0] > azimuth_range[0],
-                                        sources[sourceidx, 0] < azimuth_range[1])
+            az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth_range[0],
+                                        sources[sourceidx, 0] <= azimuth_range[1])
         elif type(azimuth_range) in [int, float, numpy.float16]:
             az_mask = sources[sourceidx, 0] == azimuth_range
         else:
@@ -1034,8 +1034,8 @@ class HRTF:
             raise ValueError('Could not find sources for the specified azimuth range.')
             return []
         if type(elevation_range) in [tuple, list]:
-            ele_mask = numpy.logical_and(sources[sourceidx, 1] > elevation_range[0],
-                                         sources[sourceidx, 1] < elevation_range[1])
+            ele_mask = numpy.logical_and(sources[sourceidx, 1] >= elevation_range[0],
+                                         sources[sourceidx, 1] <= elevation_range[1])
         elif type(elevation_range) in [int, float, numpy.float16]:
             ele_mask = sources[sourceidx, 1] == elevation_range
         else:
