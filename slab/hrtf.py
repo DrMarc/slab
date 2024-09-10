@@ -1008,13 +1008,14 @@ class HRTF:
         samplingRateVar[:] = self.samplerate
         sofa.close()
 
-    def get_source_idx(self, azimuth_range=(-40, 40), elevation_range=(-40, 40), coordinates='vertical_polar'):
+    def get_source_idx(self, azimuth=(-40, 40), elevation=(-40, 40), coordinates='vertical_polar'):
         """
         Find sources in range.
-
         Arguments:
-
+            azimuth (int, float, tuple, list):
+            elevation (int, float, tuple, list):
         Returns:
+            Indices of sources in the HRTF within the specified angles.
         """
         if type(coordinates) == str:
             if coordinates.lower() not in ['vertical_polar', 'interaural_polar']:
@@ -1023,27 +1024,38 @@ class HRTF:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
         sources = getattr(self.sources, coordinates)
-        if type(azimuth_range) in [tuple, list]:
-            az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth_range[0],
-                                        sources[sourceidx, 0] <= azimuth_range[1])
-        elif type(azimuth_range) in [int, float, numpy.float16]:
-            az_mask = sources[sourceidx, 0] == azimuth_range
+        if type(azimuth) in [tuple, list]:
+            az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0],
+                                        sources[sourceidx, 0] <= azimuth[1])
+        elif type(azimuth) in [int, float, numpy.float16]:
+            az_mask = sources[sourceidx, 0] == azimuth
         else:
             raise TypeError('Azimuth range must be a float, int, list or tuple.')
         if not any(az_mask):
             raise ValueError('Could not find sources for the specified azimuth range.')
             return []
-        if type(elevation_range) in [tuple, list]:
-            ele_mask = numpy.logical_and(sources[sourceidx, 1] >= elevation_range[0],
-                                         sources[sourceidx, 1] <= elevation_range[1])
-        elif type(elevation_range) in [int, float, numpy.float16]:
-            ele_mask = sources[sourceidx, 1] == elevation_range
+        if type(elevation) in [tuple, list]:
+            ele_mask = numpy.logical_and(sources[sourceidx, 1] >= elevation[0],
+                                         sources[sourceidx, 1] <= elevation[1])
+        elif type(elevation) in [int, float, numpy.float16]:
+            ele_mask = sources[sourceidx, 1] == elevation
         else:
             raise TypeError('Elevation range must be a float, int, list or tuple.')
         if not any(ele_mask):
             raise ValueError('Could not find sources for the specified elevation range.')
             return []
         return sourceidx[numpy.logical_and(az_mask, ele_mask)]
+
+    def tf2ir(self):
+        """
+        Convert HRTF to HRIR
+        Returns:
+            HRTF object with impulse response filters
+        """
+        if not self.datatype == 'TF':
+            raise TypeError('HRTF must be of datatype "TF".')
+
+
 
 class Room:
     """
