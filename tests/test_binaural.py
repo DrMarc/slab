@@ -100,13 +100,16 @@ def test_interaural_level_spectrum():
         subbands_right = fbank.apply(lateral.right)
         assert -1 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 1
 
+
 def test_overloaded_sound_generators():
-    methods = [attribute for attribute in dir(slab.Sound) if callable(getattr(slab.Sound, attribute)) and attribute.startswith('__') is False]
+    methods = ['chirp', 'click', 'clicktrain', 'dynamic_tone', 'equally_masking_noise',
+               'harmoniccomplex', 'irn', 'multitone_masker', 'pinknoise', 'powerlawnoise',
+               'silence', 'tone', 'vowel', 'whitenoise']
     for method in methods:
-        func = getattr(slab.Sound, method)
-        args, _, _ = inspect.getargs(func.__code__)
-        if 'n_channels' in args:
-            assert getattr(slab.Binaural, method)().n_channels == 2
+        func = getattr(slab.Binaural, method)
+        assert func().n_channels == 2
+        assert func().name != 'unnamed'
+
 
 def test_drr():
     for _ in range(10):

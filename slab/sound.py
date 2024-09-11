@@ -17,9 +17,9 @@ except OSError as e:
     print("If you use Linux, libsndfile needs to be installed manually:"
           "sudo apt-get install libsndfile1")
 try:
-    import soundcard
+    import sounddevice
 except ImportError:
-    soundcard = False
+    sounddevice = False
 try:
     import scipy.signal
 except ImportError:
@@ -66,15 +66,19 @@ class Sound(Signal):
     samplerate or by using one of the sound-generating methods of the class (all of the @staticmethods).
 
     Arguments:
-        data ( str | pathlib.Path | numpy.ndarray | slab.Signal | list): Given a string or Path pointing to the
+        data (str | pathlib.Path | numpy.ndarray | slab.Signal | list): Given a string or Path pointing to the
             .wav file, the `data` and `samplerate` will be loaded from the file. Given an array, and instance of
             a `Signal` or a list, the data will be passed to the super class (see documentation of slab.Signal).
-        samplerate(int | float): must only be defined when creating a `Sound` from an array.
+        samplerate (int | float): must only be defined when creating a `Sound` from an array.
+        name (str): A string label for the Sound object. The inbuilt sound generating functions will automatically
+            set .name to the name of the method used (f.i. Sound.pinknoise will set the name of the resulting sound
+            object to 'pinknoise'). Useful for logging during experiments.
     Attributes:
         .data: the data-array of the Sound object which has the shape `n_samples` x `n_channels`.
         .n_channels: the number of channels in `data`.
         .n_samples: the number of samples in `data`. Equals `duration` * `samplerate`.
         .duration: the duration of the sound in seconds. Equals `n_samples` / `samplerate`.
+        .name: string label of the sound.
     Examples::
 
         import slab, numpy
@@ -136,7 +140,7 @@ class Sound(Signal):
     :meth:`slab.calibrate` to make the computed level reflect output intensity.
     """)
 
-    def __init__(self, data, samplerate=None):
+    def __init__(self, data, samplerate=None, name='unnamed'):
         if isinstance(data, pathlib.Path):  # Sound initialization from a file name (pathlib object)
             data = str(data)
         if isinstance(data, str):  # Sound initialization from a file name (string)
@@ -145,9 +149,18 @@ class Sound(Signal):
             _ = Sound.read(data)
             self.data = _.data
             self.samplerate = _.samplerate
+            self.name = _.name
         else:
             # delegate to the baseclass init
             super().__init__(data, samplerate)
+            self.name = name
+
+    def __repr__(self): # including the .name attribute
+        return f'{type(self)} (\n{repr(self.data)}\n{repr(self.samplerate)}\n{repr(self.name)})'
+
+    def __str__(self):
+        return f'{type(self)} ({self.name}) duration {self.duration}, samples {self.n_samples}, channels {self.n_channels},' \
+               f'samplerate {self.samplerate}'
 
     # static methods (creating sounds)
     @staticmethod
@@ -164,7 +177,7 @@ class Sound(Signal):
             raise ImportError(
                 'Reading wav files requires SoundFile (pip install git+https://github.com/bastibe/SoundFile.git')
         data, samplerate = soundfile.read(filename)
-        return Sound(data, samplerate=samplerate)
+        return Sound(data, samplerate=samplerate, name=filename)
 
     @staticmethod
     def tone(frequency=500, duration=1., phase=0, samplerate=None, level=None, n_channels=1):
@@ -187,21 +200,22 @@ class Sound(Signal):
         if samplerate is None:
             samplerate = slab.get_default_samplerate()
         duration = Sound.in_samples(duration, samplerate)
-        frequency = numpy.array(frequency)
+        freq = numpy.array(frequency)
         phase = numpy.array(phase)
-        if frequency.size > n_channels == 1:
-            n_channels = frequency.size
+        if freq.size > n_channels == 1:
+            n_channels = freq.size
         if phase.size > n_channels == 1:
             n_channels = phase.size
-        if frequency.size == n_channels:
-            frequency.shape = (1, n_channels)
+        if freq.size == n_channels:
+            freq.shape = (1, n_channels)
         if phase.size == n_channels:
             phase.shape = (1, n_channels)
         t = numpy.arange(0, duration, 1) / samplerate
         t.shape = (t.size, 1)  # ensures C-order
-        x = numpy.sin(phase + 2 * numpy.pi * frequency * numpy.tile(t, (1, n_channels)))
+        x = numpy.sin(phase + 2 * numpy.pi * freq * numpy.tile(t, (1, n_channels)))
         out = Sound(x, samplerate)
         out.level = level
+        out.name = f'tone_{str(frequency)}'
         return out
 
     @staticmethod
@@ -243,6 +257,7 @@ class Sound(Signal):
         x = numpy.sin(phase + 2 * numpy.pi * numpy.cumsum(frequencies) / samplerate)
         out = Sound(x, samplerate)
         out.level = level
+        out.name = 'dynamic_tone'
         return out
 
     @staticmethod
@@ -300,6 +315,7 @@ class Sound(Signal):
             tmp.level = lvl + amplitudes[i]
             out += tmp
         out.level = level
+        out.name = f'harmonic_{str(f0)}'
         return out
 
     @staticmethod
@@ -326,6 +342,7 @@ class Sound(Signal):
         x = numpy.random.randn(duration, n_channels)
         out = Sound(x, samplerate)
         out.level = level
+        out.name = 'whitenoise'
         return out
 
     @staticmethod
@@ -380,6 +397,7 @@ class Sound(Signal):
         x.shape = (n, n_channels)
         out = Sound(x, samplerate)
         out.level = level
+        out.name = f'powerlawnoise_{str(alpha)}'
         return out
 
     @staticmethod
@@ -393,7 +411,9 @@ class Sound(Signal):
         Returns:
             (slab.Sound): power law noise generated from the parameters with exponent alpha==1.
         """
-        return Sound.powerlawnoise(duration=duration, alpha=1, samplerate=samplerate, level=level, n_channels=n_channels)
+        out = Sound.powerlawnoise(duration=duration, alpha=1, samplerate=samplerate, level=level, n_channels=n_channels)
+        out.name = 'pinknoise'
+        return out
 
     @staticmethod
     def irn(frequency=100, gain=1, n_iter=4, duration=1.0, samplerate=None, level=None, n_channels=1):
@@ -436,6 +456,7 @@ class Sound(Signal):
             out.append(x)
         out = Sound(out, samplerate)
         out.level = level
+        out.name = f'irn_{str(frequency)}'
         return out
 
     @staticmethod
@@ -457,6 +478,7 @@ class Sound(Signal):
         duration = Sound.in_samples(duration, samplerate)
         out = Sound(numpy.ones((duration, n_channels)), samplerate)
         out.level = level
+        out.name = 'click'
         return out
 
     @staticmethod
@@ -485,6 +507,7 @@ class Sound(Signal):
         oneclick = oneclick.resize(interval)
         oneclick = oneclick.repeat(n)
         oneclick.level = level
+        oneclick.name = f'clicktrain_{str(frequency)}'
         return oneclick
 
     @staticmethod
@@ -517,6 +540,7 @@ class Sound(Signal):
             t, from_frequency, t[-1], to_frequency, method=kind, vertex_zero=True)
         out = Sound(chirp, samplerate=samplerate)
         out.level = level
+        out.name = 'chirp'
         return out
 
     @staticmethod
@@ -535,6 +559,7 @@ class Sound(Signal):
             samplerate = slab.get_default_samplerate()
         duration = Sound.in_samples(duration, samplerate)
         out = Sound(numpy.zeros((duration, n_channels)), samplerate)
+        out.name = 'silence'
         return out
 
     @staticmethod
@@ -595,10 +620,11 @@ class Sound(Signal):
                                                          f * numpy.mod(times, glottal_pulse_time))
         if n_channels > 1:
             out = numpy.tile(out, (n_channels, 1))
-        vowel = Sound(data=out, samplerate=samplerate)
-        vowel.filter(frequency=0.75 * samplerate / 2, kind='lp')
-        vowel.level = level
-        return vowel
+        out = Sound(data=out, samplerate=samplerate)
+        out.filter(frequency=0.75 * samplerate / 2, kind='lp')
+        out.level = level
+        out.name = f'vowel_{str(formants)}'
+        return out
 
     @staticmethod
     def multitone_masker(duration=1.0, low_cutoff=125, high_cutoff=4000, bandwidth=1 / 3, samplerate=None, level=None):
@@ -634,6 +660,7 @@ class Sound(Signal):
         data = numpy.sum(sig.data, axis=1) / len(freqs)  # collapse across channels
         out = Sound(data, samplerate=samplerate)
         out.level = level
+        out.name = 'multitone_masker'
         return out
 
     @staticmethod
@@ -676,6 +703,7 @@ class Sound(Signal):
         fnoise = fnoise[:duration]
         out = Sound(data=fnoise, samplerate=samplerate)
         out.level = level
+        out.name = 'equally_masking_noise'
         return out
 
     @staticmethod
@@ -696,9 +724,10 @@ class Sound(Signal):
         for sound in sounds:
             if sound.samplerate != samplerate:
                 raise ValueError('All sounds must have the same sample rate.')
-        sounds = tuple(s.data for s in sounds)
-        x = numpy.vstack(sounds)
-        return Sound(x, samplerate)
+        data = tuple(s.data for s in sounds)
+        data = numpy.vstack(data)
+        name = '_x_'.join([s.name for s in sounds])
+        return Sound(data, samplerate, name)
 
     # instance methods
     def write(self, filename, normalise=True, fmt='WAV'):
@@ -756,6 +785,7 @@ class Sound(Signal):
         """
         sound = copy.deepcopy(self)
         sound.data = numpy.vstack((sound.data,) * int(n))
+        sound.name = f'{n}x_{self.name}'
         return sound
 
     @staticmethod
@@ -799,18 +829,23 @@ class Sound(Signal):
                 n_silence_after = n_total - n_silence_before - sound.n_samples
                 if i == len(sounds) - 1:
                     sound = sound.ramp(duration=overlap, when="onset")  # for the last sound only add onset ramp
+                    name = sound.name
                     sounds[i] = Sound.sequence(
                         Sound.silence(n_silence_before, samplerate=sound.samplerate, n_channels=sound.n_channels),
                         sound)
+                    sounds[i].name = name # avoid adding _x_silence to the name
                 else:
                     sound = sound.ramp(duration=overlap, when="both")  # for all other sounds add both
+                    name = sound.name
                     sounds[i] = Sound.sequence(
                         Sound.silence(n_silence_before, samplerate=sound.samplerate, n_channels=sound.n_channels),
                         sound,
                         Sound.silence(n_silence_after, samplerate=sound.samplerate, n_channels=sound.n_channels))
+                    sounds[i].name = name # avoid adding _x_silence to the name
             n_previous += n_samples
-        sound = sum(sounds)
-        return sound
+        out = sum(sounds)
+        out.name = '_x_'.join([s.name for s in sounds])
+        return out
 
     def pulse(self, frequency=4, duty=0.75, gate_time=0.005):
         """
@@ -825,24 +860,25 @@ class Sound(Signal):
         Returns:
             slab.Sound: pulsed copy of the instance.
         """
-        sound = copy.deepcopy(self)
+        out = copy.deepcopy(self)
         pulse_period = 1 / frequency
-        n_pulses = round(sound.duration / pulse_period)  # number of pulses in the stimulus
-        pulse_period = sound.duration / n_pulses  # period in s, fits into stimulus duration
-        pulse_samples = Sound.in_samples(pulse_period * duty, sound.samplerate)
-        fall_samples = Sound.in_samples(gate_time, sound.samplerate)  # 5ms rise/fall time
+        n_pulses = round(out.duration / pulse_period)  # number of pulses in the stimulus
+        pulse_period = out.duration / n_pulses  # period in s, fits into stimulus duration
+        pulse_samples = Sound.in_samples(pulse_period * duty, out.samplerate)
+        fall_samples = Sound.in_samples(gate_time, out.samplerate)  # 5ms rise/fall time
         if (pulse_samples - 2 * fall_samples) < 0:
             raise ValueError(f'The pulse duration {pulse_samples} is shorter than the combined ramps'
                              f'({fall_samples} each). Reduce ´pulse_frequency´ or `gate_time`!')
         fall = numpy.cos(numpy.pi * numpy.arange(fall_samples) / (2 * fall_samples)) ** 2
         pulse = numpy.concatenate((1 - fall, numpy.ones(pulse_samples - 2 * fall_samples), fall))
         pulse = numpy.concatenate(
-            (pulse, numpy.zeros(Sound.in_samples(pulse_period, sound.samplerate) - len(pulse))))
+            (pulse, numpy.zeros(Sound.in_samples(pulse_period, out.samplerate) - len(pulse))))
         envelope = numpy.tile(pulse, n_pulses)
         envelope = envelope[:, None]  # add an empty axis to get to the same shape as sound.data
         # if data is 2D (>1 channel) broadcast the envelope to fit
-        sound.data *= numpy.broadcast_to(envelope, sound.data.shape)
-        return sound
+        out.data *= numpy.broadcast_to(envelope, out.data.shape)
+        out.name = f'{frequency}Hz-pulsed_{self.name}'
+        return out
 
     def am(self, frequency=10, depth=1, phase=0):
         """
@@ -855,11 +891,12 @@ class Sound(Signal):
         Returns:
             slab.Sound: amplitude modulated copy of the instance.
         """
-        sound = copy.deepcopy(self)
-        envelope = (1 + depth * numpy.sin(2 * numpy.pi * frequency * sound.times + phase))
+        out = copy.deepcopy(self)
+        envelope = (1 + depth * numpy.sin(2 * numpy.pi * frequency * out.times + phase))
         envelope = envelope[:, None]
-        sound.data *= numpy.broadcast_to(envelope, sound.data.shape)
-        return sound
+        out.data *= numpy.broadcast_to(envelope, out.data.shape)
+        out.name = f'{frequency}Hz-am_{self.name}'
+        return out
 
     def filter(self, frequency=100, kind='hp'):
         """
@@ -873,12 +910,13 @@ class Sound(Signal):
         Returns:
             slab.Sound: filtered copy of the instance.
         """
-        sound = copy.deepcopy(self)
+        out = copy.deepcopy(self)
         n = min(1000, self.n_samples)
         filt = Filter.band(
             frequency=frequency, kind=kind, samplerate=self.samplerate, length=n)
-        sound.data = filt.apply(self).data
-        return sound
+        out.data = filt.apply(self).data
+        out.name = f'{frequency}Hz-{kind}_{self.name}'
+        return out
 
     def aweight(self):
         """
@@ -901,12 +939,13 @@ class Sound(Signal):
         b, a = scipy.signal.filter_design.bilinear(numerators, denominators, self.samplerate)
         out = copy.deepcopy(self)
         out.data = scipy.signal.lfilter(b, a, self.data, axis=0)
+        out.name = f'aweighted_{self.name}'
         return out
 
     @staticmethod
     def record(duration=1.0, samplerate=None):
         """
-        Record from inbuilt microphone. Uses SoundCard module if installed [recommended], otherwise uses SoX.
+        Record from inbuilt microphone. Uses Sounddevice module if installed [recommended], otherwise uses SoX.
 
         Arguments:
             duration (float | int): duration of the sound in seconds (given a float) or in samples (given an int).
@@ -918,10 +957,9 @@ class Sound(Signal):
         """
         if samplerate is None:
             samplerate = slab.get_default_samplerate()
-        if soundcard is not False:
+        if sounddevice is not False:
             duration = Sound.in_samples(duration, samplerate)
-            mic = soundcard.default_microphone()
-            data = mic.record(samplerate=samplerate, numframes=duration, channels=1)
+            data = sounddevice.rec(frames=duration, samplerate=samplerate, channels=1, blocking=True)
             out = Sound(data, samplerate=samplerate)
         else:  # use sox
             try:
@@ -935,49 +973,117 @@ class Sound(Signal):
                     'Windows: see SoX website: http://sox.sourceforge.net/)')
             time.sleep(duration/samplerate+0.1)  # add 100ms to make sure the tmp file is written
             out = Sound(filename)
+        out.name = 'recorded'
         return out
 
-    def play(self):
+    def play(self, blocking=True, device=None):
         """
-        Plays the sound through the default device. If the soundcard module is installed it is used
-        to play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via the
-        `play_file` method.
+        Plays the sound through the default device. If the sounddevice module is installed it is used to
+        play the sound. Otherwise the sound is saved as .wav to a temporary directory and is played via
+        the `play_file` method.
+
+        Arguments:
+            blocking (bool): wait while playing the sound if True, otherwise start playing
+                and continue program execution.
         """
         if _in_notebook:
             display(Audio(self.data.T, rate=self.samplerate, autoplay=True))
-            time.sleep(self.duration)  # playing in Jupiter/Colab notebook is non_blocking, thus busy-wait for stim duration
-        elif soundcard is not False:
-            soundcard.default_speaker().play(self.data, samplerate=self.samplerate)
+            if blocking:
+                time.sleep(self.duration)  # playing in Jupiter/Colab notebook is non_blocking, thus busy-wait for stim duration
+        elif sounddevice is not False:
+            sounddevice.play(data=self.data, samplerate=self.samplerate, blocking=blocking, device=device)
         else:
             filename = hashlib.sha256(self.data).hexdigest() + '.wav'  # make unique name
             filename = _tmpdir / filename
             if not filename.is_file():
                 self.write(filename, normalise=False)
-            Sound.play_file(filename)
+            Sound.play_file(filename, blocking)
 
     @staticmethod
-    def play_file(filename):
+    def play_file(filename, blocking=True):
         """
         Play a .wav file using the OS-specific mechanism for Windows, Linux or Mac.
 
         Arguments:
              filename (str | pathlib.Path): full path to the .wav file to be played.
+             blocking (bool): if true, wait for sound to finish playing before resuming execution.
         """
         if isinstance(filename, pathlib.Path):
             filename = str(filename)
         if _in_notebook:
             display(Audio(filename, autoplay=True))
         elif _system == 'Windows':
-            winsound.PlaySound(filename, winsound.SND_FILENAME)
+            if blocking:
+                winsound.PlaySound(filename, winsound.SND_FILENAME & winsound.SND_ASYNC)
+            else:
+                winsound.PlaySound(filename, winsound.SND_FILENAME)
         elif _system == 'Darwin':  # MacOS
-            subprocess.call(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            if blocking:
+                subprocess.call(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            else:
+                subprocess.Popen(['afplay', filename], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         else:  # Linux
             try:
-                subprocess.call(['sox', filename, '-d'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                if blocking:
+                    subprocess.call(['sox', filename, '-d'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                else:
+                    subprocess.Popen(['sox', filename, '-d'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
             except FileNotFoundError:
                 raise NotImplementedError(
-                    'Playing from files on Linux without SoundCard module requires SoX. '
+                    'Playing from files on Linux without Sounddevice module requires SoX. '
                     'Install: sudo apt-get install sox libsox-fmt-all or pip install SoundCard')
+
+    def play_background(self, looping=False):
+        """
+        Play the sound in the background (non-blocking and not interrupted by playing other sounds).
+        A typical scenario would be presenting stimuli in a continuous masking noise.
+        The playback starts immediately and HAS TO BE terminated by calling the ´stop_background´ method
+        (even if the sounds has finished playing), because a SoundDevice.Stream object is set up internally
+        which needs to be closed after playing.
+
+        Arguments:
+            looping (bool): sound is played in a loop if True.
+        Example::
+            sig = slab.Sound.vowel(vowel='a', duration=5., samplerate=44100) # a long background sound
+            sig.play_background() # start playing the backgrond /a/
+            sig2 = slab.Sound.vowel(vowel='i', duration=.5, samplerate=44100) # a short foreground sound
+            for i in range(5):
+                time.sleep(1)
+                print(i)
+                sig2.play() # each second, play a short /i/
+            sig.stop_background() # necessary to close the background stream
+        """
+        data = self.data
+        self.current_frame = 0 # hack to get current_frame variable into the callback context
+
+        if looping:
+            def callback(outdata, frames, time, status):
+                chunksize = min(len(data) - self.current_frame, frames)
+                outdata[:chunksize] = data[self.current_frame:self.current_frame + chunksize]
+                if chunksize < frames:
+                    self.current_frame = 0 # loop by resetting the frame index
+                self.current_frame += chunksize
+        else:
+            def callback(outdata, frames, time, status):
+                chunksize = min(len(data) - self.current_frame, frames)
+                outdata[:chunksize] = data[self.current_frame:self.current_frame + chunksize]
+                if chunksize < frames:
+                    outdata[chunksize:] = 0
+                    raise sounddevice.CallbackStop()
+                self.current_frame += chunksize
+
+        self.stream = sounddevice.OutputStream(samplerate=44100, callback=callback)
+        self.stream.start()
+
+    def stop_background(self):
+        """
+        Stop playing in the background if it was started by the play_background method.
+        """
+        if hasattr(self, 'stream'):
+            self.stream.stop()
+            self.stream.close()
+            del self.stream # remove the added stream context variables from the Sound object
+            del self.current_frame
 
     def waveform(self, start=0, end=None, show=True, axis=None):
         """
@@ -1257,7 +1363,9 @@ class Sound(Signal):
         subbands_noise = fbank.apply(noise)  # divide into same subbands as sound
         subbands_noise *= envs  # apply envelopes
         subbands_noise.level = subbands.level
-        return Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
+        out = Sound(Filter.collapse_subbands(subbands=subbands_noise, filter_bank=fbank))
+        out.name = f'vocoded_{self.name}'
+        return out
 
     def crest_factor(self):
         """

@@ -18,6 +18,9 @@ class Binaural(Sound):
         data (slab.Signal | numpy.ndarray | list | str): see documentation of slab.Sound for details. the `data` must
             have either one or two channels. If it has one, that channel is duplicated
         samplerate (int): samplerate in Hz, must only be specified when creating an instance from an array.
+        name (str): A string label for the Sound object. The inbuilt sound generating functions will automatically
+            set .name to the name of the method used. Useful for logging during experiments.
+
     Attributes:
         .left: the first data channel, containing the sound for the left ear.
         .right: the second data channel, containing the sound for the right ear
@@ -25,7 +28,8 @@ class Binaural(Sound):
         .n_channels: the number of channels in `data`. Must be 2 for a binaural sound.
         .n_samples: the number of samples in `data`. Equals `duration` * `samplerate`.
         .duration: the duration of the sound in seconds. Equals `n_samples` / `samplerate`.
-    """
+        .name: string label of the sound.
+   """
     # instance properties
     def _set_left(self, other):
         if hasattr(other, 'samplerate'):  # probably an slab object
@@ -44,8 +48,12 @@ class Binaural(Sound):
     right = property(fget=lambda self: Sound(self.channel(1)), fset=_set_right,
                      doc='The right channel for a stereo sound.')
 
-    def __init__(self, data, samplerate=None):
+    def __init__(self, data, samplerate=None, name='unnamed'):
         if isinstance(data, (Sound, Signal)):
+            if hasattr(data, 'name'):
+                self.name = data.name
+            else:
+                self.name = name
             if data.n_channels == 1:  # if there is only one channel, duplicate it.
                 self.data = numpy.tile(data.data, 2)
             elif data.n_channels == 2:
@@ -53,24 +61,24 @@ class Binaural(Sound):
             else:
                 raise ValueError("Data must have one or two channel!")
             self.samplerate = data.samplerate
-        elif isinstance(data, (list, tuple)):
+        elif isinstance(data, (list, tuple)): # list of Sounds
             if isinstance(data[0], (Sound, Signal)):
                 if data[0].n_samples != data[1].n_samples:
                     raise ValueError('Sounds must have same number of samples!')
                 if data[0].samplerate != data[1].samplerate:
                     raise ValueError('Sounds must have same samplerate!')
-                super().__init__([data[0].data[:, 0], data[1].data[:, 0]], data[0].samplerate)
-            else:
-                super().__init__(data, samplerate)
-        elif isinstance(data, str):
+                super().__init__([data[0].data[:, 0], data[1].data[:, 0]], data[0].samplerate, name=data[0].name)
+            else: # list of samples
+                super().__init__(data, samplerate, name=name)
+        elif isinstance(data, str): # file name
             super().__init__(data, samplerate)
             if self.n_channels == 1:
                 self.data = numpy.tile(self.data, 2)  # duplicate channel if monaural file
-        else:
-            super().__init__(data, samplerate)
+        else: # anything but Sound, list, or file name
+            super().__init__(data, samplerate, name=name)
             if self.n_channels == 1:
                 self.data = numpy.tile(self.data, 2)  # duplicate channel if monaural file
-        if self.n_channels != 2:
+        if self.n_channels != 2: # bail if unable to enforce 2 channels
             ValueError('Binaural sounds must have two channels!')
 
     def itd(self, duration=None, max_lag=0.001):
@@ -96,7 +104,9 @@ class Binaural(Sound):
         """
         if duration is None:
             return self._get_itd(max_lag)
-        return self._apply_itd(duration)
+        out = copy.deepcopy(self)
+        out.name = f'{str(duration)}-itd_{self.name}'
+        return out._apply_itd(duration)
 
     def _get_itd(self, max_lag):
         max_lag = Sound.in_samples(max_lag, self.samplerate)
@@ -135,11 +145,12 @@ class Binaural(Sound):
         """
         if dB is None:
             return self.right.level - self.left.level
-        new = copy.deepcopy(self)  # so that we can return a new sound
+        out = copy.deepcopy(self)  # so that we can return a new sound
         level = numpy.mean(self.level)
-        new_levels = (level - dB/2, level + dB/2)
-        new.level = new_levels
-        return new
+        out_levels = (level - dB/2, level + dB/2)
+        out.level = out_levels
+        out.name = f'{str(dB)}-ild_{self.name}'
+        return out
 
     def itd_ramp(self, from_itd=-6e-4, to_itd=6e-4):
         """
@@ -158,7 +169,7 @@ class Binaural(Sound):
             moving = sig.itd_ramp(from_itd=-0.001, to_itd=0.01)
             moving.play()
         """
-        new = copy.deepcopy(self)
+        out = copy.deepcopy(self)
         # make the ITD ramps
         left_ramp = numpy.linspace(from_itd / 2, to_itd / 2, self.n_samples)
         right_ramp = numpy.linspace(-from_itd / 2, -to_itd / 2, self.n_samples)
@@ -168,9 +179,10 @@ class Binaural(Sound):
             filter_length = self.n_samples // 16 * 2  # 1/8th of n_samples, always even
         else:
             raise ValueError('Signal too short! (min 512 samples)')
-        new = new.delay(duration=left_ramp, channel=0, filter_length=filter_length)
-        new = new.delay(duration=right_ramp, channel=1, filter_length=filter_length)
-        return new
+        out = out.delay(duration=left_ramp, channel=0, filter_length=filter_length)
+        out = out.delay(duration=right_ramp, channel=1, filter_length=filter_length)
+        out.name = f'ild-ramp_{self.name}'
+        return out
 
     def ild_ramp(self, from_ild=-50, to_ild=50):
         """
@@ -190,16 +202,17 @@ class Binaural(Sound):
             moving = sig.ild_ramp(from_ild=-10, to_ild=10)
             move.play()
         """
-        new = self.ild(0)  # set ild to zero
+        out = self.ild(0)  # set ild to zero
         # make ramps
         left_ramp = numpy.linspace(-from_ild / 2, -to_ild / 2, self.n_samples)
         right_ramp = numpy.linspace(from_ild / 2, to_ild / 2, self.n_samples)
         left_ramp = 10**(left_ramp/20.)
         right_ramp = 10**(right_ramp/20.)
         # multiply channels with ramps
-        new.data[:, 0] *= left_ramp
-        new.data[:, 1] *= right_ramp
-        return new
+        out.data[:, 0] *= left_ramp
+        out.data[:, 1] *= right_ramp
+        out.name = f'ild-ramp_{self.name}'
+        return out
 
     @staticmethod
     def azimuth_to_itd(azimuth, frequency=2000, head_radius=8.75):
@@ -275,6 +288,7 @@ class Binaural(Sound):
         itd = Binaural.azimuth_to_itd(azimuth, frequency=centroid)
         ild = Binaural.azimuth_to_ild(azimuth, frequency=centroid, ils=ils)
         out = self.itd(duration=itd)
+        out.name = f'{azimuth}-azi_{self.name}'
         return out.ild(dB=ild)
 
     def externalize(self, hrtf=None):
@@ -301,9 +315,10 @@ class Binaural(Sound):
         # if sound and HRTF has different samplerates, resample the sound, apply the HRTF, and resample back:
         resampled_signal = resampled_signal.resample(hrtf.data[0].samplerate)  # resample to hrtf rate
         filt = Filter(10**(h/20), fir='TF', samplerate=hrtf.data[0].samplerate)
-        filtered_signal = filt.apply(resampled_signal)
-        filtered_signal = filtered_signal.resample(self.samplerate)
-        return filtered_signal
+        out = filt.apply(resampled_signal)
+        out = out.resample(self.samplerate)
+        out.name = f'externalized_{self.name}'
+        return out
 
     @staticmethod
     def make_interaural_level_spectrum(hrtf=None):
@@ -397,6 +412,7 @@ class Binaural(Sound):
         out_left = Filter.collapse_subbands(subbands_left, filter_bank=fbank)
         out_right = Filter.collapse_subbands(subbands_right, filter_bank=fbank)
         out = Binaural([out_left, out_right])
+        out.name = f'ils_{self.name}'
         return out.resample(samplerate=original_samplerate)
 
     def drr(self, winlength=0.0025):
@@ -465,6 +481,7 @@ class Binaural(Sound):
             out.left = out.right
         else:
             raise ValueError("kind must be 'dichotic' or 'diotic'.")
+        out.name = f'{kind}-{out.name}'
         return out
 
     @staticmethod
@@ -473,7 +490,9 @@ class Binaural(Sound):
         Generate binaural pink noise. `kind`='diotic' produces the same noise samples in both channels,
         `kind`='dichotic' produces uncorrelated noise. The rest is identical to `slab.Sound.pinknoise`.
         """
-        return Binaural.powerlawnoise(alpha=1, kind=kind, **kwargs)
+        out = Binaural.powerlawnoise(alpha=1, kind=kind, **kwargs)
+        out.name = f'{kind}-pinknoise'
+        return out
 
     @staticmethod
     def powerlawnoise(kind='diotic', **kwargs):
@@ -489,6 +508,7 @@ class Binaural(Sound):
             out.left = out.right
         else:
             raise ValueError("kind must be 'dichotic' or 'diotic'.")
+        out.name = f'{kind}-{out.name}'
         return out
 
     @staticmethod
@@ -502,6 +522,7 @@ class Binaural(Sound):
             out.left = out.right
         else:
             raise ValueError("kind must be 'dichotic' or 'diotic'.")
+        out.name = f'{kind}-{out.name}'
         return out
 
     @staticmethod
