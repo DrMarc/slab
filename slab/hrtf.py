@@ -1008,7 +1008,7 @@ class HRTF:
         samplingRateVar[:] = self.samplerate
         sofa.close()
 
-    def get_source_idx(self, azimuth=(-40, 40), elevation=(-40, 40), coordinates='vertical_polar'):
+    def get_source_idx(self, azimuth=(0, 360), elevation=(0, 360), coordinates='vertical_polar'):
         """
         Find sources in range.
         Arguments:
@@ -1045,17 +1045,6 @@ class HRTF:
             raise ValueError('Could not find sources for the specified elevation range.')
             return []
         return sourceidx[numpy.logical_and(az_mask, ele_mask)]
-
-    def tf2ir(self):
-        """
-        Convert HRTF to HRIR
-        Returns:
-            HRTF object with impulse response filters
-        """
-        if not self.datatype == 'TF':
-            raise TypeError('HRTF must be of datatype "TF".')
-
-
 
 class Room:
     """
