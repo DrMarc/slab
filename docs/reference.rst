@@ -49,6 +49,10 @@ Psychoacoustic procedures
    :members:
    :member-order: bysource
 
+.. autoclass:: ResultsTable
+   :members:
+   :member-order: bysource
+
 .. autoclass:: ResultsFile
    :members:
    :member-order: bysource
