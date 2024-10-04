@@ -250,8 +250,8 @@ class Binaural(Sound):
 
         Arguments:
             azimuth (int | float): The azimuth angle of the sound source, negative numbers refer to sources to the left.
-            frequency (int | float): Frequency in Hz for which the ITD is estimated.
-                Use the default for for sounds with a broadband spectrum.
+            frequency (int | float): Frequency in Hz for which the ILD is estimated.
+                Use the default for sounds with a broadband spectrum.
             ils (dict | None): interaural level spectrum from which the ILD is taken. If None,
             `make_interaural_level_spectrum()` is called. For repeated use, it is better to generate and keep the ils in
             a variable to avoid re-computing it.
@@ -323,10 +323,10 @@ class Binaural(Sound):
     @staticmethod
     def make_interaural_level_spectrum(hrtf=None):
         """
-        Compute the frequency band specific interaural intensity differences for all sound source azimuth's in
+        Compute the frequency band specific binaural intensities for all sound source azimuth's in
         a head-related transfer function. For every azimuth in the hrtf, the respective transfer function is applied
-        to a sound. This sound is then divided into frequency sub-bands. The interaural level spectrum is the level
-        difference between right and left for each of these sub-bands for each azimuth.
+        to a sound. This sound is then divided into frequency sub-bands. The interaural level spectrum is the binaural
+        level difference at each sub-band and azimuth from the sub-bands of a sound at 0° azimuth.
         When individual HRTFs are not avilable, the level spectrum of the KEMAR mannequin may be used (default).
         Note that the computation may take a few minutes. Save the level spectrum to avoid re-computation, for instance
         with pickle or numpy.save (see documentation on readthedocs for examples).
@@ -335,10 +335,10 @@ class Binaural(Sound):
             hrtf (None | slab.HRTF): The head-related transfer function used to compute the level spectrum. If None,
                 use the recordings from the KEMAR mannequin.
         Returns:
-            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], and `level_diffs` [n x m],
-                where `frequencies` lists the centres of sub-bands for which the level difference was computed, and
-                `azimuths` lists the sound source azimuth's in the hrft. `level_diffs` is a matrix of the interaural
-                level difference for each sub-band and azimuth.
+            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], `level_diffs_left` [n x m],
+                and `level_diffs_right` [n x m], where `frequencies` lists the centres of sub-bands for which the level
+                difference was computed, and `azimuths` lists the sound source azimuth's in the hrft. `level_diffs_left`
+                and 'level_diffs_right' are matrices of the level spectrum for each ear, sub-band and azimuth.
         Examples::
 
             ils = slab.Binaural.make_interaural_level_spectrum()  # get the ils from the KEMAR recordings
@@ -361,16 +361,20 @@ class Binaural(Sound):
         fbank = Filter.cos_filterbank(samplerate=hrtf.samplerate, pass_bands=True)
         freqs = fbank.filter_bank_center_freqs()
         noise = Sound.pinknoise(duration=5., samplerate=hrtf.samplerate)
+        noise_0 = Binaural(hrtf.data[idx[0]].apply(noise))
+        noise_0_bank = fbank.apply(noise_0.left)
         ils = dict()
         ils['samplerate'] = hrtf.samplerate
         ils['frequencies'] = freqs
         ils['azimuths'] = azi[sort]
-        ils['level_diffs'] = numpy.zeros((len(freqs), len(idx)))
+        ils['level_diffs_left'] = numpy.zeros((len(freqs), len(idx)))
+        ils['level_diffs_right'] = numpy.zeros((len(freqs), len(idx)))
         for n, i in enumerate(idx[sort]):  # put the level differences in order of increasing angle
             noise_filt = Binaural(hrtf.data[i].apply(noise))
             noise_bank_left = fbank.apply(noise_filt.left)
             noise_bank_right = fbank.apply(noise_filt.right)
-            ils['level_diffs'][:, n] = noise_bank_right.level - noise_bank_left.level
+            ils['level_diffs_right'][:, n] = noise_0_bank.level - noise_bank_right.level
+            ils['level_diffs_left'][:, n] = noise_0_bank.level - noise_bank_left.level
         return ils
 
     def interaural_level_spectrum(self, azimuth, ils=None):
@@ -399,16 +403,20 @@ class Binaural(Sound):
         ils_samplerate = ils['samplerate']
         original_samplerate = self.samplerate
         azis = ils['azimuths']
-        level_diffs = ils['level_diffs']
-        levels = numpy.array([numpy.interp(azimuth, azis, level_diffs[i, :]) for i in range(level_diffs.shape[0])])
+        level_diffs_left = ils['level_diffs_left']
+        level_diffs_right = ils['level_diffs_right']
+        levels_right = [numpy.interp(azimuth, ils['azimuths'], level_diffs_right[i, :]) for i in
+                        range(level_diffs_right.shape[0])]
+        levels_left = [numpy.interp(azimuth, ils['azimuths'], level_diffs_left[i, :]) for i in
+                       range(level_diffs_left.shape[0])]
         # resample the signal to the rate of the HRTF from which the filter was computed:
         resampled = self.resample(samplerate=ils_samplerate)
         fbank = Filter.cos_filterbank(length=resampled.n_samples, samplerate=ils_samplerate, pass_bands=True)
         subbands_left = fbank.apply(resampled.left)
         subbands_right = fbank.apply(resampled.right)
         # change subband levels:
-        subbands_left.level = subbands_left.level + levels / 2
-        subbands_right.level = subbands_right.level - levels / 2
+        subbands_left.level = subbands_left.level + levels_left
+        subbands_right.level = subbands_right.level - levels_right
         out_left = Filter.collapse_subbands(subbands_left, filter_bank=fbank)
         out_right = Filter.collapse_subbands(subbands_right, filter_bank=fbank)
         out = Binaural([out_left, out_right])
