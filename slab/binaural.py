@@ -224,7 +224,7 @@ class Binaural(Sound):
         Arguments:
             azimuth (int | float): The azimuth angle of the sound source, negative numbers refer to sources to the left.
             frequency (int | float): Frequency in Hz for which the ITD is estimated.
-                Use the default for for sounds with a broadband spectrum.
+                Use the default for sounds with a broadband spectrum.
             head_radius (int | float): Radius of the head in centimeters. The bigger the head, the larger the ITD.
         Returns:
             (float): The interaural time difference for a sound source at a given azimuth.
@@ -236,8 +236,10 @@ class Binaural(Sound):
         head_radius = head_radius / 100
         azimuth_radians = numpy.radians(azimuth)
         speed_of_sound = 344  # m/s
+        if numpy.pi / 2 <= numpy.abs(azimuth_radians) <= numpy.pi:  # for sources from the back
+            azimuth_radians = numpy.pi - numpy.abs(azimuth_radians)
         itd_2000 = (head_radius / speed_of_sound) * \
-            (azimuth_radians + numpy.sin(azimuth_radians))  # Woodworth
+                   (azimuth_radians + numpy.sin(azimuth_radians))  # Woodworth
         itd_500 = (3 * head_radius / speed_of_sound) * numpy.sin(azimuth_radians)
         itd = numpy.interp(frequency, [500, 2000], [itd_500, itd_2000],
                            left=itd_500, right=itd_2000)
