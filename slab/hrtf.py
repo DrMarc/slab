@@ -1008,12 +1008,15 @@ class HRTF:
         samplingRateVar[:] = self.samplerate
         sofa.close()
 
-    def get_source_idx(self, azimuth=(0, 360), elevation=(0, 360), coordinates='vertical_polar'):
+    def get_source_idx(self, azimuth=(-180, 180), elevation=(-90, 90), coordinates='vertical_polar'):
         """
-        Find sources in range.
+        Return the indices of sources in the HRTF at specified azimuth and elevation angles or within range if a pair of
+         angles are provided.
         Arguments:
-            azimuth (int, float, tuple, list):
-            elevation (int, float, tuple, list):
+            azimuth (int, float, tuple, list): Single angle or interval of azimuth angles for which the source indices
+             are returned. The azimuth range is typically restricted to the half-open interval (-180°, 180°).
+            elevation (int, float, tuple, list): Discrete angle or interval of elevation angles for which the source
+             indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
         Returns:
             Indices of sources in the HRTF within the specified angles.
         """
@@ -1023,7 +1026,9 @@ class HRTF:
         else:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
+        # in case azimuth sources are given as interval (0°, 360°) convert to half-open interval (−180°, +180°)
         sources = getattr(self.sources, coordinates)
+        sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
         if type(azimuth) in [tuple, list]:
             az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0],
                                         sources[sourceidx, 0] <= azimuth[1])
