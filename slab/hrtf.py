@@ -224,7 +224,7 @@ class HRTF:
         """
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
         unit = attr['Units']  # extract and decode Units
-        if unit in ('hertz', 'Hz'):
+        if unit.lower() in ('hertz', 'hz'):
             return int(f.variables['Data.SamplingRate'][0])
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
         return 1000 * int(f.variables['Data.SamplingRate'][0])
