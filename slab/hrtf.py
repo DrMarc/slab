@@ -1036,23 +1036,21 @@ class HRTF:
                                         sources[sourceidx, 0] <= azimuth[1])
         elif type(azimuth) in [int, float, numpy.float16]:
             # only return precise match
-            # az_mask = sources[sourceidx, 0] == azimuth
-            # return nearest
-            sources = self.cone_sources(azimuth)
-            _cartesian = self.sources.cartesian / 1.4  # cartesian unit circle coordinates
-            r = self.sources.vertical_polar[:, 2].mean()
-            target_coordinates = numpy.array((azimuth, elevation))
-
-            subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 0]) == azimuth)
-                                  & (_cartesian[:, 0] >= 0))
-
-            target = self._get_coordinates((azimuth, elevation, r), 'vertical_polar').cartesian
-            # compute distances from target direction
-            distances = numpy.sqrt(((target - coordinates) ** 2).sum(axis=1))
-            idx_nearest = numpy.argmin(distances)
-            # idx = numpy.searchsorted(sources[sourceidx, 0], azimuth, side="left")
-            az_mask = numpy.zeros_like(sources[sourceidx, 0])
-            az_mask[idx_nearest] = True
+            az_mask = sources[sourceidx, 0] == azimuth
+            # # return nearest  # todo
+            # az_mask = numpy.zeros(len(sources), dtype=bool)
+            # az_mask[self.cone_sources(azimuth)] = True
+            #
+            # _cartesian = self.sources.cartesian / 1.4  # cartesian unit circle coordinates
+            # r = self.sources.vertical_polar[:, 2].mean()
+            #
+            # target = self._get_coordinates((azimuth, elevation, r), 'vertical_polar').cartesian
+            # # compute distances from target direction
+            # distances = numpy.sqrt(((target - coordinates) ** 2).sum(axis=1))
+            # idx_nearest = numpy.argmin(distances)
+            # # idx = numpy.searchsorted(sources[sourceidx, 0], azimuth, side="left")
+            # az_mask = numpy.zeros_like(sources[sourceidx, 0])
+            # az_mask[idx_nearest] = True
         else:
             raise TypeError('Azimuth range must be a float, int, list or tuple.')
         if not any(az_mask):
