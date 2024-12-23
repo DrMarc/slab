@@ -948,7 +948,7 @@ class HRTF:
         # ----------Attributes----------#
         sofa.DataType = self.datatype
         if self.datatype == 'FIR':
-            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '2.0'
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '1.0'
             delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
             delay = numpy.zeros((i, r))
             delayVar[:, :] = delay
@@ -978,7 +978,7 @@ class HRTF:
         sofa.AuthorContact, sofa.License = 'Leipzig University', 'PublicLicence'
         sofa.ListenerShortName, sofa.Organization = 'sub01', 'Eurecat - UPF'
         sofa.DateCreated, sofa.DateModified = str(datetime.datetime.now()), str(datetime.datetime.now())
-        sofa.Title, sofa.DatabaseName = 'sofa_title', 'UniLeipzig Freefield'
+        sofa.Title, sofa.DatabaseName = 'sofa_title', 'Freefield Uni Leipzig'
         # ----------Variables----------#
         listenerPositionVar = sofa.createVariable('ListenerPosition', 'f8', ('I', 'C'))
         listenerPositionVar.Units = 'metre'
