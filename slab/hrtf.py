@@ -959,7 +959,7 @@ class HRTF:
                 IR_data.append(idx.T)
             dataIRVar[:] = numpy.asarray(IR_data)
         elif self.datatype == 'TF':
-            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '2.0'
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '1.0'
             dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
             TF_data = []
             for idx in numpy.asarray(self[:]):
@@ -972,7 +972,7 @@ class HRTF:
             NVar.Units = 'hertz'
             NVar[:] = n
         sofa.RoomType = 'free field'
-        sofa.Conventions, sofa.Version = 'SOFA', '2.0'
+        sofa.Conventions, sofa.Version = 'SOFA', '2.1'
         sofa.APIName, sofa.APIVersion = 'pysofaconventions', '0.1'
         sofa.AuthorContact, sofa.License = 'Leipzig University', 'PublicLicence'
         sofa.ListenerShortName, sofa.Organization = 'sub01', 'Eurecat - UPF'
@@ -1010,13 +1010,14 @@ class HRTF:
 
     def get_source_idx(self, azimuth=(-180, 180), elevation=(-90, 90), coordinates='vertical_polar'):
         """
-        Return the indices of sources in the HRTF at specified azimuth and elevation angles or within range if a pair of
-         angles are provided.
+        Return the index of the filter in the HRTF nearest to specified coordinates. If coordinates are
+         provided as intervals, return the filter indices in the specified angle interval.
         Arguments:
             azimuth (int, float, tuple, list): Single angle or interval of azimuth angles for which the source indices
              are returned. The azimuth range is typically restricted to the half-open interval (-180°, 180°).
             elevation (int, float, tuple, list): Discrete angle or interval of elevation angles for which the source
-             indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
+            indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
+            coordinates (str): Coordinate system in which the source coordinates are provided.
         Returns:
             Indices of sources in the HRTF within the specified angles.
         """
@@ -1026,19 +1027,31 @@ class HRTF:
         else:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
-        # in case azimuth sources are given as interval (0°, 360°) convert to half-open interval (−180°, +180°)
         sources = getattr(self.sources, coordinates)
+        # in case azimuth sources are given as interval (0°, 360°) convert to half-open interval (−180°, +180°)
         sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
         if type(azimuth) in [tuple, list]:
             az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0],
                                         sources[sourceidx, 0] <= azimuth[1])
         elif type(azimuth) in [int, float, numpy.float16]:
-            az_mask = sources[sourceidx, 0] == azimuth
+            # only return precise match
+            # az_mask = sources[sourceidx, 0] == azimuth
+            # return nearest
+            coordinates = self.sources.cartesian
+            r = self.sources.vertical_polar[:, 2].mean()
+            target = self._get_coordinates((azimuth, elevation, r), 'spherical').cartesian
+            # compute distances from target direction
+            distances = numpy.sqrt(((target - coordinates) ** 2).sum(axis=1))
+            idx_nearest = numpy.argmin(distances)
+            # idx = numpy.searchsorted(sources[sourceidx, 0], azimuth, side="left")
+            az_mask = numpy.zeros_like(sources[sourceidx, 0])
+            az_mask[idx_nearest] = True
         else:
             raise TypeError('Azimuth range must be a float, int, list or tuple.')
         if not any(az_mask):
-            raise ValueError('Could not find sources for the specified azimuth range.')
+            raise ValueError('Could not find sources for the specified azimuth. Returning empty list.')
             return []
+
         if type(elevation) in [tuple, list]:
             ele_mask = numpy.logical_and(sources[sourceidx, 1] >= elevation[0],
                                          sources[sourceidx, 1] <= elevation[1])
@@ -1047,7 +1060,7 @@ class HRTF:
         else:
             raise TypeError('Elevation range must be a float, int, list or tuple.')
         if not any(ele_mask):
-            raise ValueError('Could not find sources for the specified elevation range.')
+            raise ValueError('Could not find sources for the specified elevation range. Returning empty list.')
             return []
         return sourceidx[numpy.logical_and(az_mask, ele_mask)]
 
