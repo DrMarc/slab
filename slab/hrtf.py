@@ -113,7 +113,7 @@ class HRTF:
             self.data = []
             for idx in range(data.shape[0]):
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
-            self.sources = HRTF._get_coordinates(sources, 'spherical')
+            self.sources = HRTF._get_coordinates(sources, 'vertical_polar')
             if listener is None:
                 self.listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
                                  'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
@@ -135,7 +135,7 @@ class HRTF:
                 raise ValueError(f'Unsupported data type: {datatype}')
             if sources is None:
                 raise ValueError('Must provide vertical-polar source positions when initializing HRTF from an array.')
-            self.sources = HRTF._get_coordinates(sources, 'spherical')
+            self.sources = HRTF._get_coordinates(sources, 'vertical_polar')
             self.data = []
             for idx in range(data.shape[0]):
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
@@ -240,7 +240,7 @@ class HRTF:
             (numpy.ndarray): coordinates of all sources.
             (string): coordinate system used in the SOFA file.
         """
-        # spherical coordinates, (azi,ele,radius), azi 0..360 (0=front, 90=left, 180=back), ele -90..90
+        # vertical_polar coordinates, (azi,ele,radius), azi 0..360 (0=front, 90=left, 180=back), ele -90..90
         sources = numpy.array(f.variables['SourcePosition'], dtype='float')
         attr = dict(f.variables['SourcePosition'].attrs.items())  # get attributes as dict
         coordinate_system = attr['Type'].split(',')[0]  # extract and decode Units
@@ -284,11 +284,11 @@ class HRTF:
             sources = sources[numpy.newaxis, ...]
         sources = sources.astype('float64')
         source_coordinates = namedtuple('sources', 'cartesian vertical_polar interaural_polar')
-        if coordinate_system == 'spherical':
+        if coordinate_system == 'vertical_polar':
             vertical_polar = sources
             cartesian = HRTF._vertical_polar_to_cartesian(vertical_polar)
             interaural_polar = HRTF._vertical_polar_to_interaural_polar(vertical_polar)
-        elif coordinate_system == 'interaural':
+        elif coordinate_system == 'interaural_polar':
             interaural_polar = sources
             cartesian = HRTF._interaural_polar_to_cartesian(interaural_polar)
             vertical_polar = HRTF._cartesian_to_vertical_polar(cartesian)
@@ -615,9 +615,10 @@ class HRTF:
                 if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
                     idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
                             numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
-                    out.append(idx[0])
-                    if full_cone and len(idx) > 1:
-                        out.append(idx[1])
+                    if full_cone:
+                        out.extend(idx)
+                    else:
+                        out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
         return sorted(out, key=lambda x: self.sources.vertical_polar[x, 1])
 
     def elevation_sources(self, elevation=0):
@@ -688,7 +689,7 @@ class HRTF:
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
         coordinates = self.sources.cartesian
         r = self.sources.vertical_polar[:, 2].mean()
-        target = self._get_coordinates((azimuth, elevation, r), 'spherical').cartesian
+        target = self._get_coordinates((azimuth, elevation, r), 'vertical_polar').cartesian
         # compute distances from target direction
         distances = numpy.sqrt(((target - coordinates)**2).sum(axis=1))
         if method == 'nearest':
@@ -859,7 +860,7 @@ class HRTF:
         if _kemar is None:
             kemar_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_normal_pinna.bz2'
             _kemar = pickle.load(bz2.BZ2File(kemar_path, "r"))
-            _kemar.sources = HRTF._get_coordinates(_kemar.sources, 'spherical')
+            _kemar.sources = HRTF._get_coordinates(_kemar.sources, 'vertical_polar')
             _kemar.datatype = 'FIR'
             for f in _kemar.data:
                 f.fir = 'IR'
@@ -1037,9 +1038,15 @@ class HRTF:
             # only return precise match
             # az_mask = sources[sourceidx, 0] == azimuth
             # return nearest
-            coordinates = self.sources.cartesian
+            sources = self.cone_sources(azimuth)
+            _cartesian = self.sources.cartesian / 1.4  # cartesian unit circle coordinates
             r = self.sources.vertical_polar[:, 2].mean()
-            target = self._get_coordinates((azimuth, elevation, r), 'spherical').cartesian
+            target_coordinates = numpy.array((azimuth, elevation))
+
+            subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 0]) == azimuth)
+                                  & (_cartesian[:, 0] >= 0))
+
+            target = self._get_coordinates((azimuth, elevation, r), 'vertical_polar').cartesian
             # compute distances from target direction
             distances = numpy.sqrt(((target - coordinates) ** 2).sum(axis=1))
             idx_nearest = numpy.argmin(distances)
@@ -1114,7 +1121,7 @@ class Room:
         Arguments:
             source (list | numpy.ndarray): source location relative to listener in spherical coordiates (azimuth,elevation,distance).
         """
-        source_loc_cartesian = HRTF._get_coordinates(source, 'spherical')[0]
+        source_loc_cartesian = HRTF._get_coordinates(source, 'vertical_polar')[0]
         source_loc_cartesian += self.listener
         if numpy.any(source_loc_cartesian < 0) or numpy.any(source_loc_cartesian > self.size):
             raise ValueError('Source outside room bounds!')
