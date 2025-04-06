@@ -215,10 +215,12 @@ existing matplotlib.pyplot axis supplied with the :attr:`axis` argument.
 .. _spectral_features:
 
 You can also extract common features from sounds, such as the :meth:`.crest_factor` (a measure of how 'peaky'
-the waveform is), or the average :meth:`.onset_slope` (a measure of how fast the on-ramps in the sound are---important
-for sound localization). Features of the spectral content are bundled in the :meth:`.spectral_feature` method.
-It can compute spectral centroid, flux, flatness, and rolloff, either for an entire sound (suitable for stationary
-sounds), or for successive time windows (frames, suitable for time-varying sounds).
+the waveform is), the average :meth:`.onset_slope` (a measure of how fast the on-ramps in the sound are---important
+for sound localization), or the :meth:`.spectral_coverage` (the fraction of the spectrogram containing energy as a measure of the masking ability of a sound).
+
+Features of the spectral content are bundled in the :meth:`.spectral_feature` method. It can compute spectral
+centroid, flux, flatness, and rolloff, either for an entire sound (suitable for stationary sounds), or for
+successive time windows (frames, suitable for time-varying sounds).
 * The centroid is a measure of the center of mass of a spectrum (i.e. the 'center' frequency).
 * The flux measures how quickly the power spectrum is changing by comparing the power spectrum for one frame against the
 power spectrum from the previous frame; flatness measures how tone-like a sound is, as opposed to being noise-like, and
