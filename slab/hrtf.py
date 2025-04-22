@@ -607,7 +607,8 @@ class HRTF:
         out = []
         for ele in elevations:  # for each elevation, find the source closest to the reference y
             if full_cone == False:  # only return cone sources in front of listener
-                subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (_cartesian[:, 0] >= 0))
+                subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele)
+                                      & (numpy.round(_cartesian[:, 0], decimals=3) >= 0))
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources.vertical_polar[:, 1]) == ele)
             if subidx.size != 0:  # check whether sources exist
