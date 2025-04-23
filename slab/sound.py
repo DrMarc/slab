@@ -1180,7 +1180,7 @@ class Sound(Signal):
         else:
             return freqs, times, power
 
-    def cochleagram(self, bandwidth=1 / 5, n_bands=None, show=True, axis=None):
+    def cochleagram(self, bandwidth=1/5, n_bands=None, filter_width_factor=1, show=True, axis=None):
         """
         Computes a cochleagram of the sound by filtering with a bank of cosine-shaped filters
         and applying a cube-root compression to the resulting envelopes. The number of bands
@@ -1191,16 +1191,19 @@ class Sound(Signal):
             bandwidth (float): filter bandwidth in octaves.
             n_bands (int | None): number of bands in the cochleagram. If this is not
                 None, the `bandwidth` argument is ignored.
-            show (bool): whether to show the plot right after drawing. Note that if show is False and no `axis` is
-                passed, no plot will be created
+            filter_width_factor (float): Default 1; use higher values to make the filter coverage
+                denser (oversampled).
+            show (bool): whether to show the plot right after drawing. Note that if show is False
+                and no `axis` is passed, no plot will be created
             axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
         Returns:
-            (None | numpy.ndarray): If `show == True` or an axis was passed, a plot is drawn and nothing is returned.
-                Else, an array with the envelope is returned.
+            (None | numpy.ndarray): If `show == True` or an axis was passed, a plot is drawn and
+                nothing is returned. Else, an array with the envelope is returned.
         """
         fbank = Filter.cos_filterbank(bandwidth=bandwidth, low_cutoff=20,
                                       high_cutoff=None, n_filters=n_bands,
-                                      samplerate=self.samplerate)
+                                      filter_width_factor=filter_width_factor,
+                                      pass_bands=True, samplerate=self.samplerate)
         freqs = fbank.filter_bank_center_freqs()
         subbands = fbank.apply(self.channel(0))
         envs = subbands.envelope()
@@ -1342,7 +1345,7 @@ class Sound(Signal):
             out_all = Signal(data=out_all, samplerate=self.samplerate)  # cast as Signal
         return out_all
 
-    def vocode(self, bandwidth=1 / 3):
+    def vocode(self, bandwidth=1/3, filter_width_factor=1):
         """
         Returns a noise vocoded version of the sound by computing the envelope in different frequency subbands,
         filling these envelopes with noise, and collapsing the subbands into one sound. This removes most spectral
@@ -1350,16 +1353,22 @@ class Sound(Signal):
 
         Arguments:
             bandwidth (float): width of the subbands in octaves.
+            filter_width_factor (float): Multiplier for the width of the filters. Default is 1;
+                use smaller values to make the filter coverage sparser and larger values to make
+                it denser. Intended to keep energetic masking constant when changing bandwidth.
         Returns:
             (slab.Sound): a vocoded copy of the sound.
         """
-        fbank = Filter.cos_filterbank(length=self.n_samples, bandwidth=bandwidth,
-                                      low_cutoff=30, pass_bands=True, samplerate=self.samplerate)
+        fbank = Filter.cos_filterbank(length=self.n_samples, bandwidth=bandwidth, low_cutoff=30,
+                                      pass_bands=True, samplerate=self.samplerate)
         subbands = fbank.apply(self.channel(0))
         envs = subbands.envelope()
         envs.data[envs.data < 1e-9] = 0  # remove small values that cause waring with numpy.power
         noise = Sound.whitenoise(duration=self.n_samples,
                                  samplerate=self.samplerate)  # make white noise
+        fbank = Filter.cos_filterbank(length=self.n_samples, bandwidth=bandwidth, low_cutoff=30,
+                                      pass_bands=True, filter_width_factor=filter_width_factor,
+                                      samplerate=self.samplerate)
         subbands_noise = fbank.apply(noise)  # divide into same subbands as sound
         subbands_noise *= envs  # apply envelopes
         subbands_noise.level = subbands.level
@@ -1401,6 +1410,36 @@ class Sound(Signal):
         bin_centers = (bins[:-1] + bins[1:]) / 2
         norm = hist / hist.sum()  # normalize histogram so that it sums to 1
         return numpy.sum(bin_centers * norm)  # compute centroid of histogram
+
+    def spectral_coverage(self, threshold=-50, low_cutoff=20, high_cutoff=None):
+        """
+        Computes the fraction of a sounds spectrogram bins which exceed a certain threshold
+        relative to the the sound's rms level. The default threshold is -50 dB.
+        When threshold is set to 'otsu', a value is automatically determined to optimally
+        split the spectrogram level histogram using Otsu's method [Otsu 1979, IEEE].
+
+        Arguments:
+            threshold (int | float): threshold for 'foreground' regions in the cochleagram. Default -50.
+            low_cut_off (int | float): lower frequency edge of the spectrum to be taken into account.
+            high_cutoff (int | float): higher frequency edge of the spectrum to be taken into account.
+
+        Returns:
+            (float): The spectral coverage provided by the sound between 0 and 1, 1 indicating full coverage.
+        """
+        def otsu_var(data,th): # helper function to compute Otsu interclass variance
+            return numpy.nansum(
+                [numpy.mean(cls) * numpy.var(data,where=cls) for cls in [data>=th,data<th]])
+        fbank = Filter.cos_filterbank(low_cutoff=low_cutoff, high_cutoff=high_cutoff,
+                                      filter_width_factor=0.75,
+                                      pass_bands=True, samplerate=self.samplerate)
+        subbands = fbank.apply(self.channel(0))
+        envs = subbands.envelope(kind='dB').data
+        if threshold == 'otsu':
+            threshold = min(
+                range(int(numpy.min(envs)) + 1, int(numpy.max(envs))),
+                key=lambda th: otsu_var(envs,th) )
+        coverage = numpy.where(envs>threshold,1,0).sum()/envs.size
+        return coverage
 
     def frames(self, duration=1024):
         """

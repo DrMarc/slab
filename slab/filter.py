@@ -296,8 +296,7 @@ class Filter(Signal):
             return w, h
 
     @staticmethod
-    # TODO: oversampling factor needed for cochleagram!
-    def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, n_filters=None, samplerate=None):
+    def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, n_filters=None, filter_width_factor=1, samplerate=None):
         """
         Generate a set of Fourier filters. Each filter's transfer function is given by the positive phase of a
         cosine wave. The amplitude of the cosine is that filters central frequency. Following the organization of the
@@ -314,8 +313,9 @@ class Filter(Signal):
             pass_bands (bool): Whether to include a half cosine at the filter bank's lower and upper edge frequency.
                 If True, allows reconstruction of original bandwidth when collapsing subbands.
             n_filters (int | None): Number of filters. When this is not None, the `bandwidth` argument is ignored.
+            filter_width_factor (float): Multiplier for the width of the filters. Default is 1; use smaller values to make the filter coverage sparser (undersampled) and larger values to make it denser (oversampled).
             samplerate (int | None): the samplerate of the sound that the filter shall be applied to.
-                If None, use the default samplerate.s
+                If None, use the default samplerate.
         Examples::
 
             sig = slab.Sound.pinknoise(samplerate=44100)
@@ -335,6 +335,7 @@ class Filter(Signal):
         n_freqs = len(freq_bins)
         center_freqs, bandwidth, erb_spacing = Filter._center_freqs(
             low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth, pass_bands=pass_bands, n_filters=n_filters)
+        erb_spacing = erb_spacing * filter_width_factor
         n_filters = len(center_freqs)
         filts = numpy.zeros((n_freqs, n_filters))
         freqs_erb = Filter._freq2erb(freq_bins)
@@ -342,7 +343,7 @@ class Filter(Signal):
             l = center_freqs[i] - erb_spacing
             h = center_freqs[i] + erb_spacing
             avg = center_freqs[i]  # center of filter
-            width = erb_spacing * 2  # width of filter
+            width = erb_spacing * 2 # width of filter
             filts[(freqs_erb > l) & (freqs_erb < h), i] = numpy.cos(
                 (freqs_erb[(freqs_erb > l) & (freqs_erb < h)] - avg) / width * numpy.pi)
         return Filter(data=filts, samplerate=samplerate, fir='TF')
