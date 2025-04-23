@@ -350,28 +350,12 @@ class HRTF:
         Returns:
             (numpy.ndarray): vertical-polar coordinates (azimuth, elevation, distance).
         """
-        # radius = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-        # z_div_r = np.divide(
-        #     z, radius, out=np.zeros_like(radius, dtype=float), where=radius != 0)
-        # colatitude = np.arccos(z_div_r)
-        # azimuth = np.mod(np.arctan2(y, x), 2 * np.pi)
-        #
-        # vertical_polar = numpy.zeros_like(cartesian)
-        # vertical_polar[:, 2] = numpy.sqrt(cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2 + cartesian[:, 2] ** 2)  # radius
-        # z_div_r = numpy.divide(cartesian[:, 2], vertical_polar[:, 2],
-        #                        out=numpy.zeros_like(vertical_polar[:, 2], dtype=float), where=vertical_polar[:, 2] != 0)
-        # vertical_polar[:, 1] = numpy.arccos(z_div_r)
-        # vertical_polar[:, 0] = numpy.mod(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]), 2 * numpy.pi)
-
-
         vertical_polar = numpy.zeros_like(cartesian)
-        xy = cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2
-        vertical_polar[:, 0] = numpy.rad2deg(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]))
-        vertical_polar[vertical_polar[:, 0] < 0, 0] += 360
-        vertical_polar[:, 1] = 90 - numpy.rad2deg(numpy.arctan2(numpy.sqrt(xy), cartesian[:, 2]))
-        vertical_polar[:, 2] = numpy.sqrt(xy + cartesian[:, 2] ** 2)
-        # vertical_polar[:, 1] = numpy.arccos(cartesian[:, 2]/ vertical_polar[:, 2])  # doesnt work
-
+        vertical_polar[:, 2] = numpy.sqrt(cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2 + cartesian[:, 2] ** 2)
+        z_div_r = numpy.divide(cartesian[:, 2], vertical_polar[:, 2],
+                               out=numpy.zeros_like(vertical_polar[:, 2], dtype=float), where=vertical_polar[:, 2] != 0)
+        vertical_polar[:, 1] = numpy.arccos(z_div_r)
+        vertical_polar[:, 0] = numpy.mod(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]), 2 * numpy.pi)
         return vertical_polar
 
     @staticmethod
