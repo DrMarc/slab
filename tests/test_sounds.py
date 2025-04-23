@@ -30,6 +30,7 @@ def test_sound_generation():
     # test if .name attribute of loaded sound object is the path string
     assert loaded1.name == f"{tmpdir / 'sound.wav'}"
 
+
 def test_read_write():
     for _ in range(20):
         for normalize in [True, False]:
@@ -99,3 +100,11 @@ def test_frames():
             center1 = window[frame_dur][0]
             center2 = sound[numpy.where(sound.times == center)[0][0]][0]
             numpy.testing.assert_almost_equal(center1, center2, decimal=1)
+
+
+def test_spectral_coverage():
+    sig1 = slab.Sound.harmoniccomplex(f0=50, amplitude=[0,0,0])
+    sig2 = slab.Sound.harmoniccomplex(f0=50, amplitude=[0,0,0,0,0])
+    sig3 = slab.Sound.pinknoise()
+    assert sig1.spectral_coverage(threshold='otsu') < sig2.spectral_coverage(threshold='otsu')
+    assert sig2.spectral_coverage() < sig3.spectral_coverage()

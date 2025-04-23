@@ -67,9 +67,13 @@ def test_cos_filterbank():
         length = numpy.random.randint(1000, 5000)
         low_cutoff = numpy.random.randint(0, 500)
         high_cutoff = numpy.random.choice([numpy.random.randint(5000, 15000), None])
+        filter_width_factor = numpy.random.uniform(0.1, 2.5)
         n_filters = []
         for bandwidth in numpy.linspace(0.1, 0.9, 9):
-            fbank = slab.Filter.cos_filterbank(length=length, bandwidth=bandwidth, low_cutoff=low_cutoff, high_cutoff=high_cutoff, pass_bands=False, samplerate=sound.samplerate)
+            fbank = slab.Filter.cos_filterbank(length=length, bandwidth=bandwidth,
+                                               filter_width_factor=filter_width_factor,
+                                               low_cutoff=low_cutoff, high_cutoff=high_cutoff,
+                                               pass_bands=False, samplerate=sound.samplerate)
             n_filters.append(fbank.n_filters)
             filtsound = fbank.apply(sound)
             assert filtsound.n_channels == fbank.n_filters
