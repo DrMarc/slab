@@ -1009,7 +1009,7 @@ class HRTF:
         """
         if type(coordinates) == str:
             if coordinates.lower() not in ['vertical_polar', 'interaural_polar']:
-                raise ValueError('Coordinates can be this or that.')
+                raise ValueError('Coordinates must be vertical_polar or interaural_polar.')
         else:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
@@ -1022,7 +1022,8 @@ class HRTF:
         elif type(azimuth) in [int, float, numpy.float16]:
             # only return precise match
             az_mask = sources[sourceidx, 0] == azimuth
-            # # return nearest  # todo
+
+            # # return nearest
             # az_mask = numpy.zeros(len(sources), dtype=bool)
             # az_mask[self.cone_sources(azimuth)] = True
             #
@@ -1036,6 +1037,7 @@ class HRTF:
             # # idx = numpy.searchsorted(sources[sourceidx, 0], azimuth, side="left")
             # az_mask = numpy.zeros_like(sources[sourceidx, 0])
             # az_mask[idx_nearest] = True
+
         else:
             raise TypeError('Azimuth range must be a float, int, list or tuple.')
         if not any(az_mask):
