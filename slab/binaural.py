@@ -2,6 +2,8 @@ import copy
 import numpy
 import math
 import sys
+import pathlib
+import pickle
 from slab.sound import Sound
 from slab.signal import Signal
 from slab.filter import Filter
@@ -128,13 +130,15 @@ class Binaural(Sound):
     def ild(self, dB=None):
         """
         Either estimate the interaural level difference of the sound or generate a new sound with the specified
-        interaural level difference. Negative ILD value means that the left channel is louder than the right
-        channel, meaning that the sound source is to the left. The level difference is achieved by adding half the ILD
-        to one channel and subtracting half from the other channel, so that the mean intensity remains constant.
+        interaural levels. Negative ILD value means that the left channel is louder than the right
+        channel, meaning that the sound source is to the left. #todo change documentation
+        The level difference is achieved by adding half the ILD to one channel and subtracting half from the
+        other channel, so that the mean intensity remains constant.
 
         Arguments:
-            dB (None | int | float): If None, estimate the sound's ITD. Given a value, a new sound is generated with
-                the desired interaural level difference in decibels.
+            #todo implement for tuples (backwards compatibility)
+            dB (None | tuple): If None, estimate the sound's ILD. Given a pair of values, a new sound is generated with
+                the desired binaural levels in decibels.
         Returns:
             (float | slab.Binaural): The sound's interaural level difference, or a new sound with the specified ILD.
         Examples::
@@ -147,7 +151,7 @@ class Binaural(Sound):
             return self.right.level - self.left.level
         out = copy.deepcopy(self)  # so that we can return a new sound
         level = numpy.mean(self.level)
-        out_levels = (level - dB/2, level + dB/2)
+        out_levels = (level + dB[0], level + dB[1]) #todo ensure that overall loudness doesnt change
         out.level = out_levels
         out.name = f'{str(dB)}-ild_{self.name}'
         return out
@@ -260,7 +264,7 @@ class Binaural(Sound):
             `make_interaural_level_spectrum()` is called. For repeated use, it is better to generate and keep the ils in
             a variable to avoid re-computing it.
         Returns:
-            (float): The interaural level difference for a sound source at a given azimuth in decibels.
+            (tuple): The binaural levels for a sound source at a given azimuth in decibels.
         Examples::
 
             ils = slab.Binaural.make_interaural_level_spectrum() # using default KEMAR HRTF
@@ -268,10 +272,15 @@ class Binaural(Sound):
         """
         if ils is None:
             ils = Binaural.make_interaural_level_spectrum()
+        level_diffs_left = ils['level_diffs'][0]
+        level_diffs_right = ils['level_diffs'][1]
         # interpolate levels at azimuth:
-        level_diffs = ils['level_diffs']
-        levels = [numpy.interp(azimuth, ils['azimuths'], level_diffs[i, :]) for i in range(level_diffs.shape[0])]
-        return numpy.interp(frequency, ils['frequencies'], levels)*-1   # interpolate level difference at frequency
+        levels_right = [numpy.interp(azimuth, ils['azimuths'], level_diffs_right[i, :]) for i in
+                        range(level_diffs_right.shape[0])]
+        levels_left = [numpy.interp(azimuth, ils['azimuths'], level_diffs_left[i, :]) for i in
+                       range(level_diffs_left.shape[0])]
+        return (numpy.interp(frequency, ils['frequencies'], levels_left),
+                            numpy.interp(frequency, ils['frequencies'], levels_right))
 
     def at_azimuth(self, azimuth=0, ils=None):
         """
@@ -353,6 +362,10 @@ class Binaural(Sound):
         """
         if not hrtf:
             hrtf = HRTF.kemar()  # load KEMAR by default
+        else:
+            kemar_ils_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_ils.pkl'
+            return pickle.load(kemar_ils_path, "r")
+
         # get the filters for the frontal horizontal arc
         idx = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) & (
             (hrtf.sources.vertical_polar[:, 0] <= 90) | (hrtf.sources.vertical_polar[:, 0] >= 270)))[0]
@@ -371,14 +384,13 @@ class Binaural(Sound):
         ils['samplerate'] = hrtf.samplerate
         ils['frequencies'] = freqs
         ils['azimuths'] = azi[sort]
-        ils['level_diffs_left'] = numpy.zeros((len(freqs), len(idx)))
-        ils['level_diffs_right'] = numpy.zeros((len(freqs), len(idx)))
+        ils['level_diffs'] = numpy.zeros((2, len(freqs), len(idx)))
         for n, i in enumerate(idx[sort]):  # put the level differences in order of increasing angle
             noise_filt = Binaural(hrtf.data[i].apply(noise))
             noise_bank_left = fbank.apply(noise_filt.left)
             noise_bank_right = fbank.apply(noise_filt.right)
-            ils['level_diffs_right'][:, n] = noise_0_bank.level - noise_bank_right.level
-            ils['level_diffs_left'][:, n] = noise_0_bank.level - noise_bank_left.level
+            ils['level_diffs'][0, :, n] = noise_0_bank.level - noise_bank_left.level
+            ils['level_diffs'][1, :, n] = noise_0_bank.level - noise_bank_right.level
         return ils
 
     def interaural_level_spectrum(self, azimuth, ils=None):
@@ -406,9 +418,8 @@ class Binaural(Sound):
             ils = Binaural.make_interaural_level_spectrum()
         ils_samplerate = ils['samplerate']
         original_samplerate = self.samplerate
-        azis = ils['azimuths']
-        level_diffs_left = ils['level_diffs_left']
-        level_diffs_right = ils['level_diffs_right']
+        level_diffs_left = ils['level_diffs'][0]
+        level_diffs_right = ils['level_diffs'][1]
         levels_right = [numpy.interp(azimuth, ils['azimuths'], level_diffs_right[i, :]) for i in
                         range(level_diffs_right.shape[0])]
         levels_left = [numpy.interp(azimuth, ils['azimuths'], level_diffs_left[i, :]) for i in
