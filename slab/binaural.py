@@ -359,11 +359,14 @@ class Binaural(Sound):
             ils['level_diffs'][5, :]  # the level difference for each azimuth in the 5th sub-band
         """
         if not hrtf:
-            hrtf = HRTF.kemar()  # load KEMAR by default
-        else:
+            # hrtf = HRTF.kemar()  # load KEMAR by default
             kemar_ils_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_ils.pkl'
-            return pickle.load(kemar_ils_path, "r")
-
+            with (open(kemar_ils_path, "rb")) as kemar_ils_file:
+                while True:
+                    try:
+                        return pickle.load(kemar_ils_file)
+                    except EOFError:
+                        break
         # get the filters for the frontal horizontal arc
         idx = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) & (
             (hrtf.sources.vertical_polar[:, 0] <= 90) | (hrtf.sources.vertical_polar[:, 0] >= 270)))[0]
