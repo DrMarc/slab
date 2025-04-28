@@ -130,15 +130,16 @@ class Binaural(Sound):
     def ild(self, dB=None):
         """
         Either estimate the interaural level difference of the sound or generate a new sound with the specified
-        interaural levels. Negative ILD value means that the left channel is louder than the right
-        channel, meaning that the sound source is to the left. #todo change documentation
-        The level difference is achieved by adding half the ILD to one channel and subtracting half from the
-        other channel, so that the mean intensity remains constant.
+        interaural level difference. Negative ILD value means that the left channel is louder than the right
+        channel, meaning that the sound source is to the left.
+        If a single value is provided, the level difference is achieved by adding half the ILD to one channel
+        and subtracting half from the other channel, so that the mean intensity remains constant.
+        If a tuple is provided, levels are added separately to each channel.
 
         Arguments:
-            #todo implement for tuples (backwards compatibility)
-            dB (None | tuple): If None, estimate the sound's ILD. Given a pair of values, a new sound is generated with
-                the desired binaural levels in decibels.
+            dB (None | int | float | tuple): If None, estimate the sound's ILD. Given a single value, a new sound
+                is generated with the desired interaural level difference in decibels. Given a tuple, a sound is
+                generated with the desired binaural levels in decibels.
         Returns:
             (float | slab.Binaural): The sound's interaural level difference, or a new sound with the specified ILD.
         Examples::
@@ -151,7 +152,12 @@ class Binaural(Sound):
             return self.right.level - self.left.level
         out = copy.deepcopy(self)  # so that we can return a new sound
         level = numpy.mean(self.level)
-        out_levels = (level + dB[0], level + dB[1]) #todo ensure that overall loudness doesnt change
+        if type(dB) == int or type(dB) == float:
+            out_levels = (level - dB / 2, level + dB / 2)
+        elif type(dB) == tuple:
+            out_levels = (level + dB[0], level + dB[1]) #todo ensure that overall loudness doesnt change
+        else:
+            raise TypeError("Argument 'dB' must be an integer, float or a tuple.")
         out.level = out_levels
         out.name = f'{str(dB)}-ild_{self.name}'
         return out
@@ -359,7 +365,7 @@ class Binaural(Sound):
             ils['level_diffs'][5, :]  # the level difference for each azimuth in the 5th sub-band
         """
         if not hrtf:
-            # hrtf = HRTF.kemar()  # load KEMAR by default
+            hrtf = HRTF.kemar()  # load KEMAR by default
             kemar_ils_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_ils.pkl'
             with (open(kemar_ils_path, "rb")) as kemar_ils_file:
                 while True:
