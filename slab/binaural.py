@@ -240,10 +240,8 @@ class Binaural(Sound):
         head_radius = head_radius / 100
         azimuth_radians = numpy.radians(azimuth)
         speed_of_sound = 344  # m/s
-        sign = numpy.sign(azimuth_radians)
-        if numpy.pi / 2 <= numpy.abs(azimuth_radians) <= numpy.pi:  # for sources from the back
+        if numpy.pi / 2 <= numpy.abs(azimuth_radians) <= numpy.pi:  # for sources behind the listener
             azimuth_radians = numpy.pi - numpy.abs(azimuth_radians)
-        azimuth_radians = sign * numpy.abs(azimuth_radians)
         itd_2000 = (head_radius / speed_of_sound) * \
                    (azimuth_radians + numpy.sin(azimuth_radians))  # Woodworth
         itd_500 = (3 * head_radius / speed_of_sound) * numpy.sin(azimuth_radians)
