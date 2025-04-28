@@ -115,7 +115,9 @@ class HRTF:
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
             self.sources = HRTF._get_coordinates(sources, 'spherical')
             if listener is None:
-                self.listener = [0, 0, 0]
+                self.listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
+                                 'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
+                                 'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
             else:
                 self.listener = listener
         elif isinstance(data, numpy.ndarray):
@@ -138,7 +140,9 @@ class HRTF:
             for idx in range(data.shape[0]):
                 self.data.append(Filter(data[idx, :, :].T, self.samplerate, fir=fir))
             if listener is None:
-                self.listener = [0, 0, 0]
+                self.listener = {'pos': numpy.array([0., 0., 0.]), 'view': numpy.array([1., 0., 0.]),
+                                 'up': numpy.array([0., 0., 1.]), 'viewvec': numpy.array([0., 0., 0., 1., 0., 0.]),
+                                 'upvec': numpy.array([0., 0., 0., 0., 0., 1.])}
             else:
                 self.listener = listener
         else:
@@ -220,10 +224,10 @@ class HRTF:
         """
         attr = dict(f.variables['Data.SamplingRate'].attrs.items())  # get attributes as dict
         unit = attr['Units']  # extract and decode Units
-        if unit in ('hertz', 'Hz'):
-            return (numpy.array(f.variables['Data.SamplingRate'], dtype='int'))
+        if unit.lower() in ('hertz', 'hz'):
+            return int(f.variables['Data.SamplingRate'][0])
         warnings.warn('Unit other than Hz. ' + unit + '. Assuming kHz.')
-        return 1000 * (numpy.array(f.variables['Data.SamplingRate'], dtype='int'))
+        return 1000 * int(f.variables['Data.SamplingRate'][0])
 
     @staticmethod
     def _sofa_get_sources(f):
@@ -342,16 +346,16 @@ class HRTF:
         Convert cartesian to vertical-polar coordinates.
 
         Arguments:
-            cartesian (numpy.ndarray): cartesian coordinates (azimuth, elevation, distance).
+            cartesian (numpy.ndarray): cartesian coordinates (x, y, z).
         Returns:
-            (numpy.ndarray): vertical-polar coordinates.
+            (numpy.ndarray): vertical-polar coordinates (azimuth, elevation, distance).
         """
         vertical_polar = numpy.zeros_like(cartesian)
-        xy = cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2
-        vertical_polar[:, 0] = numpy.rad2deg(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]))
-        vertical_polar[vertical_polar[:, 0] < 0, 0] += 360
-        vertical_polar[:, 1] = 90 - numpy.rad2deg(numpy.arctan2(numpy.sqrt(xy), cartesian[:, 2]))
-        vertical_polar[:, 2] = numpy.sqrt(xy + cartesian[:, 2] ** 2)
+        vertical_polar[:, 2] = numpy.sqrt(cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2 + cartesian[:, 2] ** 2)
+        z_div_r = numpy.divide(cartesian[:, 2], vertical_polar[:, 2],
+                               out=numpy.zeros_like(vertical_polar[:, 2], dtype=float), where=vertical_polar[:, 2] != 0)
+        vertical_polar[:, 1] = numpy.arccos(z_div_r)
+        vertical_polar[:, 0] = numpy.mod(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]), 2 * numpy.pi)
         return vertical_polar
 
     @staticmethod
@@ -483,9 +487,10 @@ class HRTF:
                 filt = self[source]
                 freqs, h = filt.tf(channels=chan, n_bins=n_bins, show=False)
                 img[:, idx] = h.flatten()
-            img[img < -25] = -25  # clip at -40 dB transfer
+            img[img < -25] = -25  # clip at -25 dB transfer
             if kind == 'image':
-                contour = axis.contourf(freqs[freqs <= xlim[1]], elevations, img.T[:, freqs <= xlim[1]], cmap='hot', origin='upper', levels=20)
+                contour = axis.contourf(freqs[freqs <= xlim[1]], elevations, img.T[:, freqs <= xlim[1]],
+                                        cmap='hot', origin='upper', levels=20)
                 divider = make_axes_locatable(axis)
                 cax = divider.append_axes('right', size='5%', pad=0.05)
                 fig.colorbar(contour, cax, orientation="vertical")
@@ -497,10 +502,11 @@ class HRTF:
                 z = spline(x, y)
                 x[x < xlim[0]] = numpy.nan  # trim edges
                 x[x > xlim[1]] = numpy.nan
-                fig, axis = plt.subplots()
-                axis.axis('off')
-                axis = plt.axes(projection='3d')
+                if axis.name != '3d':
+                    axis.axis('off')
+                    axis = plt.axes(projection='3d')
                 contour = axis.plot_surface(x, y, z, rcount=200, ccount=200, cmap='cool')
+                axis.set_zlim(z.min()*1.5, z.max()*2)
                 fig.colorbar(contour, fraction=0.046, pad=0.04, orientation="horizontal")
         else:
             raise ValueError("Unknown plot type. Use 'waterfall' or 'image'.")
@@ -567,8 +573,8 @@ class HRTF:
 
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
-            full_cone (bool): If True, return all sources that lie on the cone, otherwise, return only sources
-                in front of the listener.
+            full_cone (bool): If True, return all sources that lie on the cone, otherwise return sources
+                in front of the listener only.
         Returns:
             (list): elements of the list are the indices of sound sources on the frontal half of the cone.
         Examples::
@@ -580,21 +586,24 @@ class HRTF:
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot
         """
         cone = numpy.sin(numpy.deg2rad(cone))
-        eles = self.elevations()
+        elevations = self.elevations()
         _cartesian = self.sources.cartesian / 1.4  # get cartesian coordinates on the unit sphere
         out = []
-        for ele in eles:  # for each elevation, find the source closest to the reference y
+        for ele in elevations:  # for each elevation, find the source closest to the reference y
             if full_cone == False:  # only return cone sources in front of listener
-                subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (_cartesian[:, 0] >= 0))
+                subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele)
+                                      & (numpy.round(_cartesian[:, 0], decimals=3) >= 0))
             else:  # include cone sources behind listener
                 subidx, = numpy.where(numpy.round(self.sources.vertical_polar[:, 1]) == ele)
-            cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
-            if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
-                idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
-                        numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
-                out.append(idx[0])
-                if full_cone and len(idx) > 1:
-                    out.append(idx[1])
+            if subidx.size != 0:  # check whether sources exist
+                cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
+                if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
+                    idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
+                            numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
+                    if full_cone:
+                        out.extend(idx)
+                    else:
+                        out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
         return sorted(out, key=lambda x: self.sources.vertical_polar[x, 1])
 
     def elevation_sources(self, elevation=0):
@@ -612,7 +621,7 @@ class HRTF:
                 (self.sources.vertical_polar[:, 0] <= 90) | (self.sources.vertical_polar[:, 0] >= 270)))
         return idx[0].tolist()
 
-    def tfs_from_sources(self, sources, n_bins=96):
+    def tfs_from_sources(self, sources, n_bins=96, ear='left'):
         """
         Get the transfer function from sources in the hrtf.
 
@@ -620,15 +629,28 @@ class HRTF:
             sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method),
                 for which the transfer function is extracted.
             n_bins (int): The number of frequency bins for each transfer function.
+            ear (str): The ear to retrieve the
         Returns:
-            (numpy.ndarray): 2-dimensional array where the first dimension represents the frequency bins and the
-                second dimension represents the sources.
+            (numpy.ndarray): 3-dimensional array where the first dimension represents the sources, the second dimension
+            represents the frequency bins and the third dimension represents the channels.
         """
+        if n_bins is None:
+            n_bins = self.data[0].n_frequencies
         n_sources = len(sources)
-        tfs = numpy.zeros((n_bins, n_sources))
+        if ear == 'left':
+            chan = 0
+            tfs = numpy.zeros((n_sources, n_bins, 1))
+        elif ear == 'right':
+            chan = 1
+            tfs = numpy.zeros((n_sources, n_bins, 1))
+        elif ear == 'both':
+            chan = 'all'
+            tfs = numpy.zeros((n_sources, n_bins, 2))
+        else:
+            raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
         for idx, source in enumerate(sources):
-            _, jwd = self[source].tf(channels=0, n_bins=n_bins, show=False)
-            tfs[:, idx] = jwd.flatten()
+            _, jwd = self[source].tf(channels=chan, n_bins=n_bins, show=False)
+            tfs[idx] = jwd
         return tfs
 
     def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
@@ -763,7 +785,7 @@ class HRTF:
         n = 0
         for i in range(len(sources)):
             for j in range(i+1, len(sources)):
-                sum_corr += numpy.corrcoef(tfs[:, i], tfs[:, j])[1, 0]
+                sum_corr += numpy.corrcoef(tfs[i].flatten(), tfs[j].flatten())[1, 0]
                 n += 1
         return 1 - sum_corr / n
 
@@ -911,7 +933,7 @@ class HRTF:
         # ----------Attributes----------#
         sofa.DataType = self.datatype
         if self.datatype == 'FIR':
-            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '2.0'
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRIR', '1.0'
             delayVar = sofa.createVariable('Data.Delay', 'f8', ('I', 'R'))
             delay = numpy.zeros((i, r))
             delayVar[:, :] = delay
@@ -923,7 +945,7 @@ class HRTF:
                 IR_data.append(idx.T)
             dataIRVar[:] = numpy.asarray(IR_data)
         elif self.datatype == 'TF':
-            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '2.0'
+            sofa.SOFAConventions, sofa.SOFAConventionsVersion = 'SimpleFreeFieldHRTF', '1.0'
             dataRealVar = sofa.createVariable('Data.Real', 'f8', ('M', 'R', 'N'))  # data
             TF_data = []
             for idx in numpy.asarray(self[:]):
@@ -936,12 +958,12 @@ class HRTF:
             NVar.Units = 'hertz'
             NVar[:] = n
         sofa.RoomType = 'free field'
-        sofa.Conventions, sofa.Version = 'SOFA', '2.0'
+        sofa.Conventions, sofa.Version = 'SOFA', '2.1'
         sofa.APIName, sofa.APIVersion = 'pysofaconventions', '0.1'
         sofa.AuthorContact, sofa.License = 'Leipzig University', 'PublicLicence'
         sofa.ListenerShortName, sofa.Organization = 'sub01', 'Eurecat - UPF'
         sofa.DateCreated, sofa.DateModified = str(datetime.datetime.now()), str(datetime.datetime.now())
-        sofa.Title, sofa.DatabaseName = 'sofa_title', 'UniLeipzig Freefield'
+        sofa.Title, sofa.DatabaseName = 'sofa_title', 'Freefield Uni Leipzig'
         # ----------Variables----------#
         listenerPositionVar = sofa.createVariable('ListenerPosition', 'f8', ('I', 'C'))
         listenerPositionVar.Units = 'metre'
@@ -972,6 +994,67 @@ class HRTF:
         samplingRateVar[:] = self.samplerate
         sofa.close()
 
+    def get_source_idx(self, azimuth=(-180, 180), elevation=(-90, 90), coordinates='vertical_polar'):
+        """
+        Return the index of the filter in the HRTF nearest to specified coordinates. If coordinates are
+         provided as intervals, return the filter indices in the specified angle interval.
+        Arguments:
+            azimuth (int, float, tuple, list): Single angle or interval of azimuth angles for which the source indices
+             are returned. The azimuth range is typically restricted to the half-open interval (-180°, 180°).
+            elevation (int, float, tuple, list): Discrete angle or interval of elevation angles for which the source
+            indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
+            coordinates (str): Coordinate system in which the source coordinates are provided.
+        Returns:
+            Indices of sources in the HRTF within the specified angles.
+        """
+        if type(coordinates) == str:
+            if coordinates.lower() not in ['vertical_polar', 'interaural_polar']:
+                raise ValueError('Coordinates must be vertical_polar or interaural_polar.')
+        else:
+            raise TypeError('Coordinates must be a string.')
+        sourceidx = numpy.arange(self.n_sources)
+        sources = getattr(self.sources, coordinates)
+        # in case azimuth sources are given as interval (0°, 360°) convert to half-open interval (−180°, +180°)
+        sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
+        if type(azimuth) in [tuple, list]:
+            az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0],
+                                        sources[sourceidx, 0] <= azimuth[1])
+        elif type(azimuth) in [int, float, numpy.float16]:
+            # only return precise match
+            az_mask = sources[sourceidx, 0] == azimuth
+
+            # # return nearest
+            # az_mask = numpy.zeros(len(sources), dtype=bool)
+            # az_mask[self.cone_sources(azimuth)] = True
+            #
+            # _cartesian = self.sources.cartesian / 1.4  # cartesian unit circle coordinates
+            # r = self.sources.vertical_polar[:, 2].mean()
+            #
+            # target = self._get_coordinates((azimuth, elevation, r), 'vertical_polar').cartesian
+            # # compute distances from target direction
+            # distances = numpy.sqrt(((target - coordinates) ** 2).sum(axis=1))
+            # idx_nearest = numpy.argmin(distances)
+            # # idx = numpy.searchsorted(sources[sourceidx, 0], azimuth, side="left")
+            # az_mask = numpy.zeros_like(sources[sourceidx, 0])
+            # az_mask[idx_nearest] = True
+
+        else:
+            raise TypeError('Azimuth range must be a float, int, list or tuple.')
+        if not any(az_mask):
+            raise ValueError('Could not find sources for the specified azimuth. Returning empty list.')
+            return []
+
+        if type(elevation) in [tuple, list]:
+            ele_mask = numpy.logical_and(sources[sourceidx, 1] >= elevation[0],
+                                         sources[sourceidx, 1] <= elevation[1])
+        elif type(elevation) in [int, float, numpy.float16]:
+            ele_mask = sources[sourceidx, 1] == elevation
+        else:
+            raise TypeError('Elevation range must be a float, int, list or tuple.')
+        if not any(ele_mask):
+            raise ValueError('Could not find sources for the specified elevation range. Returning empty list.')
+            return []
+        return sourceidx[numpy.logical_and(az_mask, ele_mask)]
 
 class Room:
     """
