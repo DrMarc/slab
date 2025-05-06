@@ -1019,7 +1019,7 @@ class HRTF:
         if type(azimuth) in [tuple, list]:
             az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0],
                                         sources[sourceidx, 0] <= azimuth[1])
-        elif type(azimuth) in [int, float, numpy.float16]:
+        elif type(azimuth) in [int, float, numpy.float16, numpy.float64]:
             # only return precise match
             az_mask = sources[sourceidx, 0] == azimuth
 
