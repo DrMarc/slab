@@ -1013,7 +1013,7 @@ class HRTF:
         else:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
-        sources = getattr(self.sources, coordinates)
+        sources = copy.deepcopy(getattr(self.sources, coordinates))
         # in case azimuth sources are given as interval (0°, 360°) convert to half-open interval (−180°, +180°)
         sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
         if type(azimuth) in [tuple, list]:
