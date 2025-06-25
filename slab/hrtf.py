@@ -1003,7 +1003,7 @@ class HRTF:
              are returned. The azimuth range is typically restricted to the half-open interval (-180°, 180°).
             elevation (int, float, tuple, list): Discrete angle or interval of elevation angles for which the source
             indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
-            coordinates (str): Coordinate system of the given source coordinates.
+            coordinates (str): Coordinate system in which the source coordinates are provided.
         Returns:
             Indices of sources in the HRTF within the specified angles.
         """
@@ -1014,7 +1014,12 @@ class HRTF:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
         sources = copy.deepcopy(getattr(self.sources, coordinates))
-        # in case azimuth sources are given as interval (0°, 360°) convert to half-open interval (−180°, +180°)
+        # in case no azimuth or elevation is provided, use the full range
+        if azimuth is None:
+            azimuth = (sources[:, 0].min(), sources[:, 0].max())
+        if elevation is None:
+            elevation = (sources[:, 1].min(), sources[:, 1].max())
+        # in case azimuth sources are given as interval (0°, 360°) convert sources to half-open interval (−180°, +180°)
         sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
         if type(azimuth) in [tuple, list]:
             azimuth = (min(azimuth), max(azimuth))  # sort in case bounds are provided in the wrong order
