@@ -1003,7 +1003,7 @@ class HRTF:
              are returned. The azimuth range is typically restricted to the half-open interval (-180°, 180°).
             elevation (int, float, tuple, list): Discrete angle or interval of elevation angles for which the source
             indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
-            coordinates (str): Coordinate system in which the source coordinates are provided.
+            coordinates (str): Coordinate system of the given source coordinates.
         Returns:
             Indices of sources in the HRTF within the specified angles.
         """
@@ -1017,8 +1017,8 @@ class HRTF:
         # in case azimuth sources are given as interval (0°, 360°) convert to half-open interval (−180°, +180°)
         sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
         if type(azimuth) in [tuple, list]:
-            az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0],
-                                        sources[sourceidx, 0] <= azimuth[1])
+            azimuth = (min(azimuth), max(azimuth))  # sort in case bounds are provided in the wrong order
+            az_mask = (sources[sourceidx, 0] >= azimuth[0]) & (sources[sourceidx, 0] <= azimuth[1])
         elif type(azimuth) in [int, float, numpy.float16, numpy.float64]:
             # only return precise match
             az_mask = sources[sourceidx, 0] == azimuth
@@ -1042,18 +1042,16 @@ class HRTF:
             raise TypeError('Azimuth range must be a float, int, list or tuple.')
         if not any(az_mask):
             raise ValueError('Could not find sources for the specified azimuth. Returning empty list.')
-            return []
-
+            # todo return empty list
         if type(elevation) in [tuple, list]:
-            ele_mask = numpy.logical_and(sources[sourceidx, 1] >= elevation[0],
-                                         sources[sourceidx, 1] <= elevation[1])
+            elevation = (min(elevation), max(elevation))  # sort in case bounds are provided in the wrong order
+            ele_mask = (sources[sourceidx, 1] >= elevation[0]) & (sources[sourceidx, 1] >= elevation[1])
         elif type(elevation) in [int, float, numpy.float16]:
             ele_mask = sources[sourceidx, 1] == elevation
         else:
             raise TypeError('Elevation range must be a float, int, list or tuple.')
         if not any(ele_mask):
             raise ValueError('Could not find sources for the specified elevation range. Returning empty list.')
-            return []
         return sourceidx[numpy.logical_and(az_mask, ele_mask)]
 
 class Room:
