@@ -3,7 +3,6 @@ import numpy
 from matplotlib import pyplot as plt
 plt.ioff()
 
-
 def test_create_hrtf():
     hrtf1 = slab.HRTF.kemar()
     assert hrtf1.data[0].fir == 'IR'
@@ -32,7 +31,6 @@ def test_create_hrtf():
         assert hrtf[0].n_samples == data.shape[1]
         assert hrtf[0].n_filters == data.shape[2]
 
-
 def test_plot_hrtf():
     hrtf = slab.HRTF.kemar()
     for ear in ["left", "right", "both"]:
@@ -46,7 +44,6 @@ def test_plot_hrtf():
             # sources = hrtf.cone_sources(cone=numpy.random.uniform(-180, 180))
             hrtf.plot_tf(sourceidx=sources, kind=kind, ear=ear, axis=ax, show=False)
 
-
 def test_diffuse_field():
     hrtf = slab.HRTF.kemar()
     dfs = hrtf.diffuse_field_avg()
@@ -58,7 +55,6 @@ def test_diffuse_field():
         _, mag_eq = equalized.data[i].tf(show=False)
         assert numpy.abs(mag_eq.mean()) < numpy.abs(mag_raw.mean())
 
-
 # TODO: working per software level, but need to check if the testing logic makes sense
 def test_cone_sources():  # this is not working properly!
     hrtf = slab.HRTF.kemar()
@@ -69,7 +65,6 @@ def test_cone_sources():  # this is not working properly!
         filtered = [hrtf.apply(i, sound) for i in idx]
         ilds = [f.ild() for f in filtered]
         assert numpy.abs(numpy.diff(ilds)).max() < 20
-
 
 def test_elevation_sources():
     hrtf = slab.HRTF.kemar()
@@ -84,17 +79,16 @@ def test_elevation_sources():
         else:
             assert len(sources) == 0
 
-
 def test_tf_from_sources():
     hrtf = slab.HRTF.kemar()
     for _ in range(10):
         n_sources = numpy.random.randint(1, 100)
         n_bins = numpy.random.randint(100, 500)
         sources = numpy.random.choice(range(len(hrtf.sources.vertical_polar)), n_sources)
-        tfs = hrtf.tfs_from_sources(sources, n_bins=n_bins)
-        assert tfs.shape[0] == n_bins
-        assert tfs.shape[1] == n_sources
-
+        tfs = hrtf.tfs_from_sources(sources, n_bins=n_bins, ear='both')
+        assert tfs.shape[0] == n_sources
+        assert tfs.shape[1] == n_bins
+        assert tfs.shape[2] == 2
 
 def test_vsi():
     hrtf = slab.HRTF.kemar()
@@ -106,13 +100,11 @@ def test_vsi():
         vsis.append(hrtf.vsi(sources=sources))
     assert all(numpy.logical_and(numpy.array(vsis) > 0.4, numpy.array(vsis) < 1.1))
 
-
 def test_plot_sources():
     hrtf = slab.HRTF.kemar()
     for _ in range(10):
         idx = numpy.random.choice(range(len(hrtf.sources.vertical_polar)), numpy.random.randint(10))
         hrtf.plot_sources(idx=idx, show=False)
-
 
 def test_interpolate():
     hrtf = slab.HRTF.kemar()
@@ -130,16 +122,32 @@ def test_interpolate():
         assert numpy.corrcoef(spec_interp[:, nearer_channel], spec_origin[:, nearer_channel]).min() > 0.975
 
 
-def test_convert_coordinates():
-    hrtf = slab.HRTF.kemar()
-    vertical_polar = hrtf.sources.vertical_polar.astype('float64')
-    cartesian_from_vertical = slab.HRTF._vertical_polar_to_cartesian(vertical_polar)
-    interaural_from_vertical = slab.HRTF._vertical_polar_to_interaural_polar(vertical_polar)
-    cartesian_from_interaural = slab.HRTF._interaural_polar_to_cartesian(interaural_from_vertical)
-    numpy.testing.assert_almost_equal(cartesian_from_interaural, cartesian_from_vertical, decimal=3)
-    vertical_from_cartesian = slab.HRTF._cartesian_to_vertical_polar(cartesian_from_vertical)
-    numpy.testing.assert_almost_equal(vertical_from_cartesian, vertical_polar, decimal=3)
-
+def test_hrtf_coordinate_conversions():
+    test_vertical_polar = numpy.array([
+        [0.0,   0.0, 1.0],    # Front
+        [90.0,  0.0, 1.0],    # Left
+        [180.0, 0.0, 1.0],    # Back
+        [270.0, 0.0, 1.0],    # Right
+        [0.0,  90.0, 1.0],    # Up
+        [0.0, -90.0, 1.0],    # Down
+        [45.0, 45.0, 1.0],    # Diagonal
+    ])
+    # Vertical Polar → Cartesian
+    cartesian = slab.HRTF._vertical_polar_to_cartesian(test_vertical_polar)
+    # Cartesian → Vertical Polar
+    vertical_polar_back = slab.HRTF._cartesian_to_vertical_polar(cartesian)
+    # Cartesian → Interaural Polar → Cartesian
+    interaural_polar = slab.HRTF._cartesian_to_interaural_polar(cartesian)
+    cartesian_from_interaural = slab.HRTF._interaural_polar_to_cartesian(interaural_polar)
+    # Round-trip Cartesian check
+    assert numpy.allclose(cartesian, cartesian_from_interaural, atol=1e-6), "Interaural round-trip mismatch"
+    assert numpy.allclose(cartesian, slab.HRTF._vertical_polar_to_cartesian(vertical_polar_back), atol=1e-6), "Vertical polar round-trip mismatch"
+    # Elevation and distance checks
+    assert numpy.allclose(test_vertical_polar[:, 1], vertical_polar_back[:, 1], atol=1e-3), "Elevation mismatch"
+    assert numpy.allclose(test_vertical_polar[:, 2], vertical_polar_back[:, 2], atol=1e-6), "Distance mismatch"
+    # Azimuth: wrap around 360° difference
+    az_diff = (test_vertical_polar[:, 0] - vertical_polar_back[:, 0] + 180) % 360 - 180
+    assert numpy.allclose(az_diff, 0.0, atol=1e-3), "Azimuth mismatch"
 
 def test_estimate_hrtf():
     fs = 44800
