@@ -243,17 +243,15 @@ class Binaural(Sound):
             # compute the ITD for a sound source 90 degrees to the left for a large head
             itd = slab.Binaural.azimuth_to_itd(-90, head_radius=10)
         """
-        head_radius = head_radius / 100
-        azimuth_radians = numpy.radians(azimuth)
+        head_radius = head_radius / 100  # cm to meters
         speed_of_sound = 344  # m/s
-        if numpy.pi / 2 <= numpy.abs(azimuth_radians) <= numpy.pi:  # for sources behind the listener
-            azimuth_radians = numpy.pi - numpy.abs(azimuth_radians)
-        itd_2000 = (head_radius / speed_of_sound) * \
-                   (azimuth_radians + numpy.sin(azimuth_radians))  # Woodworth
+        azimuth = ((azimuth + 180) % 360) - 180  # wrap azimuth to [-180, 180]
+        azimuth_radians = numpy.radians(abs(azimuth))
+        itd_2000 = (head_radius / speed_of_sound) * (azimuth_radians + numpy.sin(azimuth_radians))
         itd_500 = (3 * head_radius / speed_of_sound) * numpy.sin(azimuth_radians)
         itd = numpy.interp(frequency, [500, 2000], [itd_500, itd_2000],
-                           left=itd_500, right=itd_2000)
-        return itd
+                           left=itd_500, right=itd_2000)  # interpolate based on frequency
+        return -itd if azimuth < 0 else itd
 
     @staticmethod
     def azimuth_to_ild(azimuth, frequency=2000, ils=None):
