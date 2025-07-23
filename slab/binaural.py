@@ -442,7 +442,7 @@ class Binaural(Sound):
         subbands_right = fbank.apply(resampled.right)
         # change subband levels:
         subbands_left.level = subbands_left.level + levels_left
-        subbands_right.level = subbands_right.level - levels_right
+        subbands_right.level = subbands_right.level + levels_right
         out_left = Filter.collapse_subbands(subbands_left, filter_bank=fbank)
         out_right = Filter.collapse_subbands(subbands_right, filter_bank=fbank)
         out = Binaural([out_left, out_right])
