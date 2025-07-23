@@ -256,12 +256,10 @@ class Binaural(Sound):
             itd_500 = (3 * head_radius / speed_of_sound) * numpy.sin(azimuth_rad)
         else:  # 90° to 180°
             itd_2000 = (head_radius / speed_of_sound) * (numpy.pi - azimuth_rad + numpy.sin(azimuth_rad))
-            itd_500 = (3 * head_radius / speed_of_sound) * (numpy.pi - numpy.sin(azimuth_rad))
+            itd_500 = (3 * head_radius / speed_of_sound) * (numpy.sin(azimuth_rad))
         itd = numpy.interp(frequency, [500, 2000], [itd_500, itd_2000],
                            left=itd_500, right=itd_2000)  # interpolate based on frequency
         return itd
-
-
 
     @staticmethod
     def azimuth_to_ild(azimuth, frequency=2000, ils=None):
