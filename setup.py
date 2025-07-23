@@ -28,6 +28,6 @@ setup(name='slab',
                       'docs': ['sphinx', 'sphinx-rtd-theme'],
                       'hrtf': ['h5netcdf']},
       packages=find_packages(),
-      package_data={'slab': ['data/mit_kemar_normal_pinna.bz2']},
+      package_data={'slab': ['data/mit_kemar_normal_pinna.bz2', 'data/mit_kemar_ils.pkl']},
       include_package_data=True,
       zip_safe=False)
