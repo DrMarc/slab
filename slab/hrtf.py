@@ -975,8 +975,8 @@ class HRTF:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
         sources = copy.deepcopy(getattr(self.sources, coordinates))
-        # in case azimuth sources are given as interval (0°, 360°) convert sources to half-open interval (−180°, +180°)
-        sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
+        # convert sources to half-open interval (−180°, +180°)
+        sources[:, 0] = ((sources[:, 0] + 180) % 360) - 180
         # in case no azimuth or elevation is provided, use the full range
         if azimuth is None:
             azimuth = (sources[:, 0].min(), sources[:, 0].max())

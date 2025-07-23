@@ -376,8 +376,7 @@ class Binaural(Sound):
         # at this point, we could just get the transfer function of each filter with hrtf.data[idx[i]].tf(),
         # but it may be better to get the spectral left/right differences with ERB-spaced frequency resolution:
         azi = hrtf.sources.vertical_polar[idx, 0]
-        # 270<azi<360 -> azi-360 to get negative angles on the left
-        azi[azi >= 270] = azi[azi >= 270]-360
+        azi = ((azi + 180) % 360) - 180  # convert azimuth to half open interval [-180, 180]
         sort = numpy.argsort(azi)
         fbank = Filter.cos_filterbank(samplerate=hrtf.samplerate, pass_bands=True)
         freqs = fbank.filter_bank_center_freqs()
