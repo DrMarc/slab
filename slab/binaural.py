@@ -350,10 +350,10 @@ class Binaural(Sound):
             hrtf (None | slab.HRTF): The head-related transfer function used to compute the level spectrum. If None,
                 use the recordings from the KEMAR mannequin.
         Returns:
-            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], `level_diffs_left` [n x m],
-                and `level_diffs_right` [n x m], where `frequencies` lists the centres of sub-bands for which the level
-                difference was computed, and `azimuths` lists the sound source azimuth's in the hrft. `level_diffs_left`
-                and 'level_diffs_right' are matrices of the level spectrum for each ear, sub-band and azimuth.
+            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], `level_diffs` [2, n, m],
+                where `frequencies` lists the centres of sub-bands for which the level difference was computed,
+                and `azimuths` lists the sound source azimuth's in the HRTF. `level_diffs` is a matrix of the level
+                spectrum for each ear, sub-band and azimuth.
         Examples::
 
             ils = slab.Binaural.make_interaural_level_spectrum()  # get the ils from the KEMAR recordings
@@ -371,9 +371,8 @@ class Binaural(Sound):
                         return pickle.load(kemar_ils_file)
                     except EOFError:
                         break
-        # get the filters for the frontal horizontal arc
-        idx = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) & (
-            (hrtf.sources.vertical_polar[:, 0] <= 90) | (hrtf.sources.vertical_polar[:, 0] >= 270)))[0]
+        # get the filters on the horizontal plane
+        idx = hrtf.get_source_idx(elevation=0)
         # at this point, we could just get the transfer function of each filter with hrtf.data[idx[i]].tf(),
         # but it may be better to get the spectral left/right differences with ERB-spaced frequency resolution:
         azi = hrtf.sources.vertical_polar[idx, 0]
