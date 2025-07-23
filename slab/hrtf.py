@@ -975,13 +975,13 @@ class HRTF:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
         sources = copy.deepcopy(getattr(self.sources, coordinates))
+        # in case azimuth sources are given as interval (0°, 360°) convert sources to half-open interval (−180°, +180°)
+        sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
         # in case no azimuth or elevation is provided, use the full range
         if azimuth is None:
             azimuth = (sources[:, 0].min(), sources[:, 0].max())
         if elevation is None:
             elevation = (sources[:, 1].min(), sources[:, 1].max())
-        # in case azimuth sources are given as interval (0°, 360°) convert sources to half-open interval (−180°, +180°)
-        sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
         if type(azimuth) in [tuple, list]:
             azimuth = [az - 360 if az > 180 else az for az in azimuth]  # convert azimuth to (−180°, +180°)
             az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0], sources[sourceidx, 0] <= azimuth[1])
