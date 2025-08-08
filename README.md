@@ -10,11 +10,6 @@
 **slab**: easy manipulation of sounds and psychoacoustic experiments in Python
 ======================
 
-> [!IMPORTANT]
-> Version 1.5 changes the Filter and HRTF interfaces very slightly. Existing code should be updated in the following way:
-> 1) HRTF.interpolate now returns a Filter instead of an HRTF object with a single source, so call __hrir.apply()__ instead of __hrtf[0].apply()__.
-> 2) The __fir__ attribute of the Filter class now takes a string to indicate the type of filter ('FIR', 'IR', 'TF') instead of a bool. Use __fir='TF'__ where you previously used __fir=False__, and __fir='FIR'__ or __'IR'__ where you used __fir=True__, depending on whether the filter should be applied using scipy.signal.filtfilt (intended for highpass filters and the like) or scipy.signal.fftfilt (intended for HRTFs and room responses).
-
 **Slab** ('es-lab', or sound laboratory) is an open source project and Python package that makes working with sounds and running psychoacoustic experiments simple, efficient, and fun! For instance, it takes just eight lines of code to run a pure tone audiogram using an adaptive staircase:
 ```python
 import slab
