@@ -14,31 +14,29 @@ def test_itd():
         itd = slab.Sound.in_samples(itd, 8000)
         assert itd == lateral.itd(max_lag=numpy.abs(itd))
 
-
 def test_ild():
     sound = slab.Binaural.whitenoise()
     for _ in range(100):
         ild = numpy.random.uniform(-10, 10)
         lateral = sound.ild(ild)
         numpy.testing.assert_almost_equal(lateral.ild(), ild, decimal=5)
+    # for _ in range(100):
+    #     ild = (numpy.random.uniform(-10, 10), numpy.random.uniform(-10, 10))
+    #     lateral = sound.ild(ild)
+    #     numpy.testing.assert_almost_equal(lateral.ild(), ild, decimal=5)
 
-
-def test_azimuth_to_itd_ild():
+def test_azimuth_to_itd():
     for _ in range(100):
         frequency = numpy.random.randint(50, 2000)
         headsize = numpy.random.uniform(7, 11)
-        itds = []
-        ilds = []
-        for azimuth in numpy.linspace(-90, 0, 20):
-            itds.append(slab.Binaural.azimuth_to_itd(azimuth, frequency, headsize))
-            ilds.append(slab.Binaural.azimuth_to_ild(azimuth, frequency, ils))
-        assert all([itds[i] < itds[i+1] for i in range(len(itds)-1)])
-        itds = []
-        for azimuth in numpy.linspace(90, 0, 20):
-            itds.append(slab.Binaural.azimuth_to_itd(azimuth, frequency, headsize))
-            ilds.append(slab.Binaural.azimuth_to_ild(azimuth, frequency, ils))
-            assert all([itds[i] > itds[i + 1] for i in range(len(itds) - 1)])
-
+        itds_front = []
+        for azimuth in numpy.linspace(-90, 90, 20):
+            itds_front.append(slab.Binaural.azimuth_to_itd(azimuth, frequency, headsize))
+        assert all([itds_front[i] < itds_front[i+1] for i in range(len(itds_front)-1)])
+        itds_back = []
+        for azimuth in numpy.linspace(90, 270, 20):
+            itds_back.append(slab.Binaural.azimuth_to_itd(azimuth, frequency, headsize))
+        numpy.testing.assert_almost_equal(numpy.array(itds_back), -numpy.array(itds_front))
 
 def test_at_azimuth():
     for _ in range(10):
@@ -48,8 +46,7 @@ def test_at_azimuth():
             itd = slab.Sound.in_samples(slab.Binaural.azimuth_to_itd(azimuth), 8000)
             assert numpy.abs(itd - lateral.itd()) <= 1
             ild = slab.Binaural.azimuth_to_ild(azimuth, ils=ils)
-            assert numpy.abs(ild - lateral.ild()) <= 3
-
+            assert numpy.abs(numpy.diff(ild) - lateral.ild()) <= 3
 
 def test_itd_ramp():
     for _ in range(10):
@@ -63,7 +60,6 @@ def test_itd_ramp():
         assert numpy.abs(start.itd() - slab.Sound.in_samples(from_itd, 8000)) <= 1
         assert numpy.abs(stop.itd() - slab.Sound.in_samples(to_itd, 8000)) <= 1
 
-
 def test_ild_ramp():
     for _ in range(100):
         sound = slab.Binaural.whitenoise()
@@ -76,7 +72,6 @@ def test_ild_ramp():
         numpy.testing.assert_almost_equal(numpy.diff(start.level), from_ild, decimal=0)
         numpy.testing.assert_almost_equal(numpy.diff(stop.level), to_ild, decimal=0)
 
-
 def test_externalize():
     for _ in range(10):
         idx_frontal = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) &
@@ -88,18 +83,17 @@ def test_externalize():
         assert numpy.abs(filtered.data-external.data).sum() < numpy.abs(filtered.data-sound.data).sum()
         assert numpy.abs(sound.level - external.level).max() < 0.6
 
-
 def test_interaural_level_spectrum():
     sound = slab.Binaural.whitenoise(samplerate=int(ils['samplerate']))
     azimuths = ils['azimuths']
     for i, azi in enumerate(azimuths):
-        level_differences = ils['level_diffs'][:, i]
+        level_differences = ils['level_diffs'][:, :, i]
         lateral = sound.interaural_level_spectrum(azi, ils)
         fbank = slab.Filter.cos_filterbank(samplerate=sound.samplerate, pass_bands=True)
         subbands_left = fbank.apply(lateral.left)
         subbands_right = fbank.apply(lateral.right)
-        assert -1 < (level_differences - (subbands_left.level - subbands_right.level)).mean() < 1
-
+        assert -1 < (abs(numpy.diff(level_differences, axis=0))
+                     - abs(subbands_left.level - subbands_right.level)).mean() < 1
 
 def test_overloaded_sound_generators():
     methods = ['chirp', 'click', 'clicktrain', 'dynamic_tone', 'equally_masking_noise',
@@ -109,7 +103,6 @@ def test_overloaded_sound_generators():
         func = getattr(slab.Binaural, method)
         assert func().n_channels == 2
         assert func().name != 'unnamed'
-
 
 def test_drr():
     for _ in range(10):

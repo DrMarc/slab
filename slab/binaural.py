@@ -2,6 +2,8 @@ import copy
 import numpy
 import math
 import sys
+import pathlib
+import pickle
 from slab.sound import Sound
 from slab.signal import Signal
 from slab.filter import Filter
@@ -129,12 +131,15 @@ class Binaural(Sound):
         """
         Either estimate the interaural level difference of the sound or generate a new sound with the specified
         interaural level difference. Negative ILD value means that the left channel is louder than the right
-        channel, meaning that the sound source is to the left. The level difference is achieved by adding half the ILD
-        to one channel and subtracting half from the other channel, so that the mean intensity remains constant.
+        channel, meaning that the sound source is to the left.
+        If a single value is provided, the level difference is achieved by adding half the ILD to one channel
+        and subtracting half from the other channel, so that the mean intensity remains constant.
+        If a tuple is provided, levels are added separately to each channel.
 
         Arguments:
-            dB (None | int | float): If None, estimate the sound's ITD. Given a value, a new sound is generated with
-                the desired interaural level difference in decibels.
+            dB (None | int | float | tuple): If None, estimate the sound's ILD. Given a single value, a new sound
+                is generated with the desired interaural level difference in decibels. Given a tuple, a sound is
+                generated with the desired binaural levels in decibels.
         Returns:
             (float | slab.Binaural): The sound's interaural level difference, or a new sound with the specified ILD.
         Examples::
@@ -147,7 +152,12 @@ class Binaural(Sound):
             return self.right.level - self.left.level
         out = copy.deepcopy(self)  # so that we can return a new sound
         level = numpy.mean(self.level)
-        out_levels = (level - dB/2, level + dB/2)
+        if type(dB) == int or type(dB) == float:
+            out_levels = (level - dB / 2, level + dB / 2)
+        elif type(dB) == tuple:
+            out_levels = (level + dB[0], level + dB[1]) #todo ensure that overall loudness doesnt change
+        else:
+            raise TypeError("Argument 'dB' must be an integer, float or a tuple.")
         out.level = out_levels
         out.name = f'{str(dB)}-ild_{self.name}'
         return out
@@ -224,7 +234,7 @@ class Binaural(Sound):
         Arguments:
             azimuth (int | float): The azimuth angle of the sound source, negative numbers refer to sources to the left.
             frequency (int | float): Frequency in Hz for which the ITD is estimated.
-                Use the default for for sounds with a broadband spectrum.
+                Use the default for sounds with a broadband spectrum.
             head_radius (int | float): Radius of the head in centimeters. The bigger the head, the larger the ITD.
         Returns:
             (float): The interaural time difference for a sound source at a given azimuth.
@@ -233,14 +243,22 @@ class Binaural(Sound):
             # compute the ITD for a sound source 90 degrees to the left for a large head
             itd = slab.Binaural.azimuth_to_itd(-90, head_radius=10)
         """
-        head_radius = head_radius / 100
-        azimuth_radians = numpy.radians(azimuth)
         speed_of_sound = 344  # m/s
-        itd_2000 = (head_radius / speed_of_sound) * \
-            (azimuth_radians + numpy.sin(azimuth_radians))  # Woodworth
-        itd_500 = (3 * head_radius / speed_of_sound) * numpy.sin(azimuth_radians)
+        head_radius = head_radius / 100  # convert cm to meters
+        azimuth = azimuth % 360  # wrap to [0, 360]
+        if azimuth > 180:
+            return -Binaural.azimuth_to_itd(360 - azimuth, frequency, head_radius * 100)
+        if azimuth < 0:
+            return -Binaural.azimuth_to_itd(-azimuth, frequency, head_radius * 100)
+        azimuth_rad = numpy.radians(azimuth)
+        if azimuth_rad <= numpy.pi / 2:  # 0° to 90°
+            itd_2000 = (head_radius / speed_of_sound) * (azimuth_rad + numpy.sin(azimuth_rad))
+            itd_500 = (3 * head_radius / speed_of_sound) * numpy.sin(azimuth_rad)
+        else:  # 90° to 180°
+            itd_2000 = (head_radius / speed_of_sound) * (numpy.pi - azimuth_rad + numpy.sin(azimuth_rad))
+            itd_500 = (3 * head_radius / speed_of_sound) * (numpy.sin(azimuth_rad))
         itd = numpy.interp(frequency, [500, 2000], [itd_500, itd_2000],
-                           left=itd_500, right=itd_2000)
+                           left=itd_500, right=itd_2000)  # interpolate based on frequency
         return itd
 
     @staticmethod
@@ -250,13 +268,13 @@ class Binaural(Sound):
 
         Arguments:
             azimuth (int | float): The azimuth angle of the sound source, negative numbers refer to sources to the left.
-            frequency (int | float): Frequency in Hz for which the ITD is estimated.
-                Use the default for for sounds with a broadband spectrum.
+            frequency (int | float): Frequency in Hz for which the ILD is estimated.
+                Use the default for sounds with a broadband spectrum.
             ils (dict | None): interaural level spectrum from which the ILD is taken. If None,
             `make_interaural_level_spectrum()` is called. For repeated use, it is better to generate and keep the ils in
             a variable to avoid re-computing it.
         Returns:
-            (float): The interaural level difference for a sound source at a given azimuth in decibels.
+            (tuple): The binaural levels for a sound source at a given azimuth in decibels.
         Examples::
 
             ils = slab.Binaural.make_interaural_level_spectrum() # using default KEMAR HRTF
@@ -264,10 +282,15 @@ class Binaural(Sound):
         """
         if ils is None:
             ils = Binaural.make_interaural_level_spectrum()
+        level_diffs_left = ils['level_diffs'][0]
+        level_diffs_right = ils['level_diffs'][1]
         # interpolate levels at azimuth:
-        level_diffs = ils['level_diffs']
-        levels = [numpy.interp(azimuth, ils['azimuths'], level_diffs[i, :]) for i in range(level_diffs.shape[0])]
-        return numpy.interp(frequency, ils['frequencies'], levels)*-1   # interpolate level difference at frequency
+        levels_right = [numpy.interp(azimuth, ils['azimuths'], level_diffs_right[i, :]) for i in
+                        range(level_diffs_right.shape[0])]
+        levels_left = [numpy.interp(azimuth, ils['azimuths'], level_diffs_left[i, :]) for i in
+                       range(level_diffs_left.shape[0])]
+        return (numpy.interp(frequency, ils['frequencies'], levels_left),
+                            numpy.interp(frequency, ils['frequencies'], levels_right))
 
     def at_azimuth(self, azimuth=0, ils=None):
         """
@@ -323,10 +346,10 @@ class Binaural(Sound):
     @staticmethod
     def make_interaural_level_spectrum(hrtf=None):
         """
-        Compute the frequency band specific interaural intensity differences for all sound source azimuth's in
+        Compute the frequency band specific binaural intensities for all sound source azimuth's in
         a head-related transfer function. For every azimuth in the hrtf, the respective transfer function is applied
-        to a sound. This sound is then divided into frequency sub-bands. The interaural level spectrum is the level
-        difference between right and left for each of these sub-bands for each azimuth.
+        to a sound. This sound is then divided into frequency sub-bands. The interaural level spectrum is the binaural
+        level difference at each sub-band and azimuth from the sub-bands of a sound at 0° azimuth.
         When individual HRTFs are not avilable, the level spectrum of the KEMAR mannequin may be used (default).
         Note that the computation may take a few minutes. Save the level spectrum to avoid re-computation, for instance
         with pickle or numpy.save (see documentation on readthedocs for examples).
@@ -335,10 +358,10 @@ class Binaural(Sound):
             hrtf (None | slab.HRTF): The head-related transfer function used to compute the level spectrum. If None,
                 use the recordings from the KEMAR mannequin.
         Returns:
-            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], and `level_diffs` [n x m],
-                where `frequencies` lists the centres of sub-bands for which the level difference was computed, and
-                `azimuths` lists the sound source azimuth's in the hrft. `level_diffs` is a matrix of the interaural
-                level difference for each sub-band and azimuth.
+            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], `level_diffs` [2, n, m],
+                where `frequencies` lists the centres of sub-bands for which the level difference was computed,
+                and `azimuths` lists the sound source azimuth's in the HRTF. `level_diffs` is a matrix of the level
+                spectrum for each ear, sub-band and azimuth.
         Examples::
 
             ils = slab.Binaural.make_interaural_level_spectrum()  # get the ils from the KEMAR recordings
@@ -349,28 +372,36 @@ class Binaural(Sound):
         """
         if not hrtf:
             hrtf = HRTF.kemar()  # load KEMAR by default
-        # get the filters for the frontal horizontal arc
-        idx = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) & (
-            (hrtf.sources.vertical_polar[:, 0] <= 90) | (hrtf.sources.vertical_polar[:, 0] >= 270)))[0]
+            kemar_ils_path = pathlib.Path(__file__).parent.resolve() / pathlib.Path('data') / 'mit_kemar_ils.pkl'
+            with (open(kemar_ils_path, "rb")) as kemar_ils_file:
+                while True:
+                    try:
+                        return pickle.load(kemar_ils_file)
+                    except EOFError:
+                        break
+        # get the filters on the horizontal plane
+        idx = hrtf.get_source_idx(elevation=0)
         # at this point, we could just get the transfer function of each filter with hrtf.data[idx[i]].tf(),
         # but it may be better to get the spectral left/right differences with ERB-spaced frequency resolution:
         azi = hrtf.sources.vertical_polar[idx, 0]
-        # 270<azi<360 -> azi-360 to get negative angles on the left
-        azi[azi >= 270] = azi[azi >= 270]-360
+        azi = ((azi + 180) % 360) - 180  # convert azimuth to half open interval [-180, 180]
         sort = numpy.argsort(azi)
         fbank = Filter.cos_filterbank(samplerate=hrtf.samplerate, pass_bands=True)
         freqs = fbank.filter_bank_center_freqs()
         noise = Sound.pinknoise(duration=5., samplerate=hrtf.samplerate)
+        noise_0 = Binaural(hrtf.data[idx[0]].apply(noise))
+        noise_0_bank = fbank.apply(noise_0.left)
         ils = dict()
         ils['samplerate'] = hrtf.samplerate
         ils['frequencies'] = freqs
         ils['azimuths'] = azi[sort]
-        ils['level_diffs'] = numpy.zeros((len(freqs), len(idx)))
+        ils['level_diffs'] = numpy.zeros((2, len(freqs), len(idx)))
         for n, i in enumerate(idx[sort]):  # put the level differences in order of increasing angle
             noise_filt = Binaural(hrtf.data[i].apply(noise))
             noise_bank_left = fbank.apply(noise_filt.left)
             noise_bank_right = fbank.apply(noise_filt.right)
-            ils['level_diffs'][:, n] = noise_bank_right.level - noise_bank_left.level
+            ils['level_diffs'][0, :, n] = noise_0_bank.level - noise_bank_left.level
+            ils['level_diffs'][1, :, n] = noise_0_bank.level - noise_bank_right.level
         return ils
 
     def interaural_level_spectrum(self, azimuth, ils=None):
@@ -398,17 +429,20 @@ class Binaural(Sound):
             ils = Binaural.make_interaural_level_spectrum()
         ils_samplerate = ils['samplerate']
         original_samplerate = self.samplerate
-        azis = ils['azimuths']
-        level_diffs = ils['level_diffs']
-        levels = numpy.array([numpy.interp(azimuth, azis, level_diffs[i, :]) for i in range(level_diffs.shape[0])])
+        level_diffs_left = ils['level_diffs'][0]
+        level_diffs_right = ils['level_diffs'][1]
+        levels_right = [numpy.interp(azimuth, ils['azimuths'], level_diffs_right[i, :]) for i in
+                        range(level_diffs_right.shape[0])]
+        levels_left = [numpy.interp(azimuth, ils['azimuths'], level_diffs_left[i, :]) for i in
+                       range(level_diffs_left.shape[0])]
         # resample the signal to the rate of the HRTF from which the filter was computed:
         resampled = self.resample(samplerate=ils_samplerate)
         fbank = Filter.cos_filterbank(length=resampled.n_samples, samplerate=ils_samplerate, pass_bands=True)
         subbands_left = fbank.apply(resampled.left)
         subbands_right = fbank.apply(resampled.right)
         # change subband levels:
-        subbands_left.level = subbands_left.level + levels / 2
-        subbands_right.level = subbands_right.level - levels / 2
+        subbands_left.level = subbands_left.level + levels_left
+        subbands_right.level = subbands_right.level + levels_right
         out_left = Filter.collapse_subbands(subbands_left, filter_bank=fbank)
         out_right = Filter.collapse_subbands(subbands_right, filter_bank=fbank)
         out = Binaural([out_left, out_right])

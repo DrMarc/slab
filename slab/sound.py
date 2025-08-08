@@ -275,7 +275,7 @@ class Sound(Signal):
                 setting the amplitude for one harmonic.
             phase (int | float | string | list): phase of the sinusoid, defaults to 0. Given a list (with the same
                 length as the one given for the amplitude argument) every element will be used as the phase of one
-                harmonic. Given a string, its value must be schroeder', in which case the harmonics are in
+                harmonic. Given a string, its value must be 'schroeder', in which case the harmonics are in
                 Schroeder phase, producing a complex tone with minimal peak-to-peak amplitudes (Schroeder 1970).
             samplerate (int | None): the samplerate of the sound. If None, use the default samplerate.
             level (None | int | float | list): the sounds level in decibel. For a multichannel sound, a list of values
