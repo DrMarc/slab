@@ -296,7 +296,8 @@ class Filter(Signal):
             return w, h
 
     @staticmethod
-    def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, n_filters=None, filter_width_factor=1, samplerate=None):
+    def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, n_filters=None,
+                       filter_width_factor=1, jitter=False, samplerate=None):
         """
         Generate a set of Fourier filters. Each filter's transfer function is given by the positive phase of a
         cosine wave. The amplitude of the cosine is that filters central frequency. Following the organization of the
@@ -314,6 +315,7 @@ class Filter(Signal):
                 If True, allows reconstruction of original bandwidth when collapsing subbands.
             n_filters (int | None): Number of filters. When this is not None, the `bandwidth` argument is ignored.
             filter_width_factor (float): Multiplier for the width of the filters. Default is 1; use smaller values to make the filter coverage sparser (undersampled) and larger values to make it denser (oversampled).
+            jitter (bool): if True and filter_width_factor <1, jitter the center frequencies within the original band.
             samplerate (int | None): the samplerate of the sound that the filter shall be applied to.
                 If None, use the default samplerate.
         Examples::
@@ -335,15 +337,18 @@ class Filter(Signal):
         n_freqs = len(freq_bins)
         center_freqs, bandwidth, erb_spacing = Filter._center_freqs(
             low_cutoff=low_cutoff, high_cutoff=high_cutoff, bandwidth=bandwidth, pass_bands=pass_bands, n_filters=n_filters)
-        erb_spacing = erb_spacing * filter_width_factor
+        erb_spacing_adjusted = erb_spacing * filter_width_factor
         n_filters = len(center_freqs)
         filts = numpy.zeros((n_freqs, n_filters))
         freqs_erb = Filter._freq2erb(freq_bins)
+        jitter_amp = erb_spacing * (1-filter_width_factor) # erb_spacing minus adjusted = jitter amplitude
+        width = erb_spacing_adjusted * 2 # width of filters
         for i in range(n_filters):
-            l = center_freqs[i] - erb_spacing
-            h = center_freqs[i] + erb_spacing
+            if jitter and filter_width_factor<1:
+                center_freqs[i] = center_freqs[i] + numpy.random.uniform(low=-jitter_amp, high=jitter_amp)
+            l = center_freqs[i] - erb_spacing_adjusted
+            h = center_freqs[i] + erb_spacing_adjusted
             avg = center_freqs[i]  # center of filter
-            width = erb_spacing * 2 # width of filter
             filts[(freqs_erb > l) & (freqs_erb < h), i] = numpy.cos(
                 (freqs_erb[(freqs_erb > l) & (freqs_erb < h)] - avg) / width * numpy.pi)
         return Filter(data=filts, samplerate=samplerate, fir='TF')
