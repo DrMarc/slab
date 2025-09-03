@@ -243,16 +243,22 @@ class Binaural(Sound):
             # compute the ITD for a sound source 90 degrees to the left for a large head
             itd = slab.Binaural.azimuth_to_itd(-90, head_radius=10)
         """
-        head_radius = head_radius / 100
-        azimuth_radians = numpy.radians(azimuth)
         speed_of_sound = 344  # m/s
-        if numpy.pi / 2 <= numpy.abs(azimuth_radians) <= numpy.pi:  # for sources behind the listener
-            azimuth_radians = numpy.pi - numpy.abs(azimuth_radians)
-        itd_2000 = (head_radius / speed_of_sound) * \
-                   (azimuth_radians + numpy.sin(azimuth_radians))  # Woodworth
-        itd_500 = (3 * head_radius / speed_of_sound) * numpy.sin(azimuth_radians)
+        head_radius = head_radius / 100  # convert cm to meters
+        azimuth = azimuth % 360  # wrap to [0, 360]
+        if azimuth > 180:
+            return -Binaural.azimuth_to_itd(360 - azimuth, frequency, head_radius * 100)
+        if azimuth < 0:
+            return -Binaural.azimuth_to_itd(-azimuth, frequency, head_radius * 100)
+        azimuth_rad = numpy.radians(azimuth)
+        if azimuth_rad <= numpy.pi / 2:  # 0° to 90°
+            itd_2000 = (head_radius / speed_of_sound) * (azimuth_rad + numpy.sin(azimuth_rad))
+            itd_500 = (3 * head_radius / speed_of_sound) * numpy.sin(azimuth_rad)
+        else:  # 90° to 180°
+            itd_2000 = (head_radius / speed_of_sound) * (numpy.pi - azimuth_rad + numpy.sin(azimuth_rad))
+            itd_500 = (3 * head_radius / speed_of_sound) * (numpy.sin(azimuth_rad))
         itd = numpy.interp(frequency, [500, 2000], [itd_500, itd_2000],
-                           left=itd_500, right=itd_2000)
+                           left=itd_500, right=itd_2000)  # interpolate based on frequency
         return itd
 
     @staticmethod
@@ -352,10 +358,10 @@ class Binaural(Sound):
             hrtf (None | slab.HRTF): The head-related transfer function used to compute the level spectrum. If None,
                 use the recordings from the KEMAR mannequin.
         Returns:
-            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], `level_diffs_left` [n x m],
-                and `level_diffs_right` [n x m], where `frequencies` lists the centres of sub-bands for which the level
-                difference was computed, and `azimuths` lists the sound source azimuth's in the hrft. `level_diffs_left`
-                and 'level_diffs_right' are matrices of the level spectrum for each ear, sub-band and azimuth.
+            (dict): A dictionary with keys `samplerate`, `frequencies` [n], `azimuths` [m], `level_diffs` [2, n, m],
+                where `frequencies` lists the centres of sub-bands for which the level difference was computed,
+                and `azimuths` lists the sound source azimuth's in the HRTF. `level_diffs` is a matrix of the level
+                spectrum for each ear, sub-band and azimuth.
         Examples::
 
             ils = slab.Binaural.make_interaural_level_spectrum()  # get the ils from the KEMAR recordings
@@ -373,14 +379,12 @@ class Binaural(Sound):
                         return pickle.load(kemar_ils_file)
                     except EOFError:
                         break
-        # get the filters for the frontal horizontal arc
-        idx = numpy.where((hrtf.sources.vertical_polar[:, 1] == 0) & (
-            (hrtf.sources.vertical_polar[:, 0] <= 90) | (hrtf.sources.vertical_polar[:, 0] >= 270)))[0]
+        # get the filters on the horizontal plane
+        idx = hrtf.get_source_idx(elevation=0)
         # at this point, we could just get the transfer function of each filter with hrtf.data[idx[i]].tf(),
         # but it may be better to get the spectral left/right differences with ERB-spaced frequency resolution:
         azi = hrtf.sources.vertical_polar[idx, 0]
-        # 270<azi<360 -> azi-360 to get negative angles on the left
-        azi[azi >= 270] = azi[azi >= 270]-360
+        azi = ((azi + 180) % 360) - 180  # convert azimuth to half open interval [-180, 180]
         sort = numpy.argsort(azi)
         fbank = Filter.cos_filterbank(samplerate=hrtf.samplerate, pass_bands=True)
         freqs = fbank.filter_bank_center_freqs()
@@ -438,7 +442,7 @@ class Binaural(Sound):
         subbands_right = fbank.apply(resampled.right)
         # change subband levels:
         subbands_left.level = subbands_left.level + levels_left
-        subbands_right.level = subbands_right.level - levels_right
+        subbands_right.level = subbands_right.level + levels_right
         out_left = Filter.collapse_subbands(subbands_left, filter_bank=fbank)
         out_right = Filter.collapse_subbands(subbands_right, filter_bank=fbank)
         out = Binaural([out_left, out_right])

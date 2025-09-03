@@ -266,118 +266,67 @@ class HRTF:
 
     @staticmethod
     def _get_coordinates(sources, coordinate_system):
-        """
-        Returns the sound source positions in three different coordinate systems:
-        cartesian, vertical-polar and interaural-polar.
-
-        Arguments:
-            sources (numpy.ndarray): sound source coordinates in cartesian coordinates (x, y, z),
-                vertical-polar or interaural-polar coordinates (azimuth, elevation, distance).
-            coordinate_system (string): type of the provided coordinates. Can be 'cartesian',
-                'vertical_polar' or 'interaural_polar'.
-        Returns:
-            (named tuple): cartesian, vertical-polar and interaural-polar coordinates of all sources.
-        """
         if isinstance(sources, (list, tuple)):
             sources = numpy.array(sources)
-        if len(sources.shape) == 1:  # a single location (vector) needs to be converted to a 2d matrix
+        if len(sources.shape) == 1:
             sources = sources[numpy.newaxis, ...]
         sources = sources.astype('float64')
         source_coordinates = namedtuple('sources', 'cartesian vertical_polar interaural_polar')
         if coordinate_system == 'spherical':
             vertical_polar = sources
             cartesian = HRTF._vertical_polar_to_cartesian(vertical_polar)
-            interaural_polar = HRTF._vertical_polar_to_interaural_polar(vertical_polar)
-        elif coordinate_system == 'interaural':
-            interaural_polar = sources
-            cartesian = HRTF._interaural_polar_to_cartesian(interaural_polar)
-            vertical_polar = HRTF._cartesian_to_vertical_polar(cartesian)
+            interaural_polar = HRTF._cartesian_to_interaural_polar(cartesian)
         elif coordinate_system == 'cartesian':
             cartesian = sources
             vertical_polar = HRTF._cartesian_to_vertical_polar(cartesian)
-            interaural_polar = HRTF._vertical_polar_to_interaural_polar(vertical_polar)
+            interaural_polar = HRTF._cartesian_to_interaural_polar(cartesian)
         else:
+            import warnings
             warnings.warn('Unrecognized coordinate system for source positions: ' + coordinate_system)
-            return None
-        return source_coordinates(cartesian.astype('float16'), vertical_polar.astype('float16'),
+            return Nonere
+        return source_coordinates(cartesian.astype('float16'),
+                                  vertical_polar.astype('float16'),
                                   interaural_polar.astype('float16'))
 
     @staticmethod
-    def _vertical_polar_to_cartesian(vertical_polar):
-        """
-        Convert vertical-polar to cartesian coordinates.
+    def _cartesian_to_vertical_polar(cartesian):
+        x = cartesian[:, 0]
+        y = cartesian[:, 1]
+        z = cartesian[:, 2]
+        r = numpy.linalg.norm(cartesian, axis=1)
+        az = (numpy.degrees(numpy.arctan2(y, x)) + 360) % 360
+        el = numpy.degrees(numpy.arcsin(z / r))
+        return numpy.stack((az, el, r), axis=-1)
 
-        Arguments:
-            vertical_polar (numpy.ndarray): vertical-polar coordinates (azimuth, elevation, distance).
-        Returns:
-            (numpy.ndarray): cartesian coordinates.
-        """
-        cartesian = numpy.zeros_like(vertical_polar)
-        azimuths = numpy.deg2rad(vertical_polar[:, 0])
-        elevations = numpy.deg2rad(90 - vertical_polar[:, 1])
-        r = vertical_polar[:, 2].mean()  # get radii of sound sources
-        cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
-        cartesian[:, 1] = r * numpy.sin(elevations) * numpy.sin(azimuths)
-        cartesian[:, 2] = r * numpy.cos(elevations)
-        return cartesian
+    @staticmethod
+    def _vertical_polar_to_cartesian(vertical_polar):
+        az = numpy.radians(vertical_polar[:, 0])
+        el = numpy.radians(vertical_polar[:, 1])
+        r = vertical_polar[:, 2]
+        x = r * numpy.cos(el) * numpy.cos(az)
+        y = r * numpy.cos(el) * numpy.sin(az)
+        z = r * numpy.sin(el)
+        return numpy.stack((x, y, z), axis=-1)
+
+    @staticmethod
+    def _cartesian_to_interaural_polar(cartesian):
+        x = cartesian[:, 0]
+        y = cartesian[:, 1]
+        z = cartesian[:, 2]
+        r = numpy.linalg.norm(cartesian, axis=1)
+        lateral = numpy.degrees(numpy.arcsin(numpy.clip(y / r, -1.0, 1.0)))
+        polar = numpy.degrees(numpy.arctan2(z, x))
+        return numpy.stack((lateral, polar, r), axis=-1)
 
     @staticmethod
     def _interaural_polar_to_cartesian(interaural_polar):
-        """
-        Convert interaural-polar to cartesian coordinates.
-
-        Arguments:
-            interaural_polar (numpy.ndarray): interaural-polar coordinates (azimuth, elevation, distance).
-        Returns:
-            (numpy.ndarray): cartesian coordinates.
-        """
-        cartesian = numpy.zeros_like(interaural_polar)
-        azimuths = numpy.deg2rad(interaural_polar[:, 0])
-        elevations = numpy.deg2rad(90 - interaural_polar[:, 1])
-        r = interaural_polar[:, 2].mean()  # get radii of sound sources
-        cartesian[:, 0] = r * numpy.cos(azimuths) * numpy.sin(elevations)
-        cartesian[:, 1] = r * numpy.sin(azimuths)
-        cartesian[:, 2] = r * numpy.cos(elevations) * numpy.cos(azimuths)
-        return cartesian
-
-    @staticmethod
-    def _cartesian_to_vertical_polar(cartesian):
-        """
-        Convert cartesian to vertical-polar coordinates.
-
-        Arguments:
-            cartesian (numpy.ndarray): cartesian coordinates (x, y, z).
-        Returns:
-            (numpy.ndarray): vertical-polar coordinates (azimuth, elevation, distance).
-        """
-        vertical_polar = numpy.zeros_like(cartesian)
-        vertical_polar[:, 2] = numpy.sqrt(cartesian[:, 0] ** 2 + cartesian[:, 1] ** 2 + cartesian[:, 2] ** 2)
-        z_div_r = numpy.divide(cartesian[:, 2], vertical_polar[:, 2],
-                               out=numpy.zeros_like(vertical_polar[:, 2], dtype=float), where=vertical_polar[:, 2] != 0)
-        vertical_polar[:, 1] = numpy.arccos(z_div_r)
-        vertical_polar[:, 0] = numpy.mod(numpy.arctan2(cartesian[:, 1], cartesian[:, 0]), 2 * numpy.pi)
-        return vertical_polar
-
-    @staticmethod
-    def _vertical_polar_to_interaural_polar(vertical_polar):
-        """
-        Convert vertical-polar to interaural-polar coordinates.
-
-        Arguments:
-            vertical_polar (numpy.ndarray): cartesian coordinates (azimuth, elevation, distance).
-        Returns:
-            (numpy.ndarray): interaural-polar coordinates.
-        """
-        interaural_polar = numpy.zeros_like(vertical_polar)
-        azimuths = numpy.deg2rad(vertical_polar[:, 0])
-        elevations = numpy.deg2rad(vertical_polar[:, 1])
-        interaural_polar[:, 0] = numpy.rad2deg(numpy.arcsin(numpy.cos(elevations) * numpy.sin(azimuths)))
-        with numpy.errstate(divide='ignore'):
-            interaural_polar[:, 1] = (numpy.pi / 2) - numpy.arctan(((1 / numpy.tan(elevations)) * numpy.cos(azimuths)))
-        interaural_polar[elevations < 0, 1] += numpy.pi
-        interaural_polar[:, 1] = numpy.rad2deg(interaural_polar[:, 1])
-        interaural_polar[:, 2] = vertical_polar[:, 2]
-        return interaural_polar
+        lateral_rad = numpy.radians(interaural_polar[:, 0])
+        polar_rad = numpy.radians(interaural_polar[:, 1])
+        r = interaural_polar[:, 2]
+        x = r * numpy.cos(lateral_rad) * numpy.cos(polar_rad)
+        y = r * numpy.sin(lateral_rad)
+        z = r * numpy.cos(lateral_rad) * numpy.sin(polar_rad)
+        return numpy.stack((x, y, z), axis=-1)
 
     def apply(self, source, sound, allow_resampling=True):
         """
@@ -523,6 +472,12 @@ class HRTF:
         if show:
             plt.show()
 
+    def plot_ir(self, sourceidx, show=True, axis=None):
+        """
+        Plot the impulse responses at a list of source indices.
+        """
+        return
+
     def diffuse_field_avg(self):
         """
         Compute the diffuse field average transfer function, i.e. the constant non-spatial portion of a set of HRTFs.
@@ -614,16 +569,22 @@ class HRTF:
             elevation (int | float): The elevation of the sources in degree. The default returns sources along
                 the frontal horizon.
         Returns:
-            (list): indices of the sound sources. If the hrtf does not contain the specified `elevation` an empty
+            (list): indices of the sound sources. If the HRTF does not contain the specified `elevation` an empty
                 list is returned.
         """
         idx = numpy.where((self.sources.vertical_polar[:, 1] == elevation) & (
                 (self.sources.vertical_polar[:, 0] <= 90) | (self.sources.vertical_polar[:, 0] >= 270)))
         return idx[0].tolist()
 
+    def irs_from_sources(self, sources, ear='left'):
+        """
+        Get the impulse responses from a list of sources in the HRTF.
+        """
+        return
+
     def tfs_from_sources(self, sources, n_bins=96, ear='left'):
         """
-        Get the transfer function from sources in the hrtf.
+        Get the transfer function from sources in the HRTF.
 
         Arguments:
             sources (list): Indices of the sources (as generated for instance with the `HRTF.cone_sources` method),
@@ -769,7 +730,7 @@ class HRTF:
 
         Arguments:
             sources (None | list): indices of sources for which to compute the VSI. If None use the vertical midline.
-            equalize (bool): If True, apply the `diffuse_field_equalization` method (set to False if the hrtf object
+            equalize (bool): If True, apply the `diffuse_field_equalization` method (set to False if the HRTF object
                 is already diffuse-field equalized).
         Returns:
             (float): the vertical spectral information between the specified `sources`.
@@ -1005,7 +966,7 @@ class HRTF:
             indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
             coordinates (str): Coordinate system in which the source coordinates are provided.
         Returns:
-            Indices of sources in the HRTF within the specified angles.
+            List of source indices in the HRTF within the specified angles.
         """
         if type(coordinates) == str:
             if coordinates.lower() not in ['vertical_polar', 'interaural_polar']:
@@ -1014,13 +975,13 @@ class HRTF:
             raise TypeError('Coordinates must be a string.')
         sourceidx = numpy.arange(self.n_sources)
         sources = copy.deepcopy(getattr(self.sources, coordinates))
+        # convert sources to half-open interval (−180°, +180°)
+        sources[:, 0] = ((sources[:, 0] + 180) % 360) - 180
         # in case no azimuth or elevation is provided, use the full range
         if azimuth is None:
             azimuth = (sources[:, 0].min(), sources[:, 0].max())
         if elevation is None:
             elevation = (sources[:, 1].min(), sources[:, 1].max())
-        # in case azimuth sources are given as interval (0°, 360°) convert sources to half-open interval (−180°, +180°)
-        sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
         if type(azimuth) in [tuple, list]:
             azimuth = (min(azimuth), max(azimuth))  # sort in case bounds are provided in the wrong order
             az_mask = (sources[sourceidx, 0] >= azimuth[0]) & (sources[sourceidx, 0] <= azimuth[1])
@@ -1057,7 +1018,8 @@ class HRTF:
             raise TypeError('Elevation range must be a float, int, list or tuple.')
         if not any(ele_mask):
             raise ValueError('Could not find sources for the specified elevation range. Returning empty list.')
-        return sourceidx[numpy.logical_and(az_mask, ele_mask)]
+        # source_idx = sourceidx[numpy.logical_and(az_mask, ele_mask)].tolist()
+        return sourceidx[numpy.logical_and(az_mask, ele_mask)].tolist()
 
 class Room:
     """

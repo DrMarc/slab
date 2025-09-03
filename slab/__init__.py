@@ -2,7 +2,7 @@ import sys
 import os
 import pathlib
 
-__version__ = '1.8.0'
+__version__ = '1.8.1'
 
 # The variable _in_notebook is used to enable audio playing in Jupiter notebooks
 # and on Google colab (see slab.sound.play())
