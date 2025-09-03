@@ -266,6 +266,18 @@ class HRTF:
 
     @staticmethod
     def _get_coordinates(sources, coordinate_system):
+        """
+        Returns the sound source positions in three different coordinate systems:
+        cartesian, vertical-polar and interaural-polar.
+
+        Arguments:
+            sources (numpy.ndarray): sound source coordinates in cartesian coordinates (x, y, z),
+                vertical-polar or interaural-polar coordinates (azimuth, elevation, distance).
+            coordinate_system (string): type of the provided coordinates. Can be 'cartesian',
+                'vertical_polar' or 'interaural_polar'.
+        Returns:
+            (named tuple): cartesian, vertical-polar and interaural-polar coordinates of all sources.
+        """
         if isinstance(sources, (list, tuple)):
             sources = numpy.array(sources)
         if len(sources.shape) == 1:
@@ -283,7 +295,7 @@ class HRTF:
         else:
             import warnings
             warnings.warn('Unrecognized coordinate system for source positions: ' + coordinate_system)
-            return Nonere
+            return None
         return source_coordinates(cartesian.astype('float16'),
                                   vertical_polar.astype('float16'),
                                   interaural_polar.astype('float16'))
@@ -982,13 +994,17 @@ class HRTF:
             azimuth = (sources[:, 0].min(), sources[:, 0].max())
         if elevation is None:
             elevation = (sources[:, 1].min(), sources[:, 1].max())
-        if type(azimuth) in [tuple, list]:
-            azimuth = [az - 360 if az > 180 else az for az in azimuth]  # convert azimuth to (−180°, +180°)
-            az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0], sources[sourceidx, 0] <= azimuth[1])
+        # in case target or source azimuth is given as interval (0°, 360°) convert to half-open interval (−180°, +180°)
+        sources[:, 0] = [az - 360 if az > 180 else az for az in sources[:, 0]]
+        if type(azimuth) in [list, tuple]:
+            azimuth = [az - 360 if az > 180 else az for az in azimuth]
+            azimuth = (min(azimuth), max(azimuth))  # sort in case bounds are provided in the wrong order
+            az_mask = (sources[sourceidx, 0] >= azimuth[0]) & (sources[sourceidx, 0] <= azimuth[1])
         elif type(azimuth) in [int, float, numpy.float16, numpy.float64]:
             if azimuth > 180:
-                azimuth -= 360
-            az_mask = sources[sourceidx, 0] == azimuth # only return precise match
+                azimuth = azimuth - 360
+            # only return precise match
+            az_mask = sources[sourceidx, 0] == azimuth
 
             # # return nearest
             # az_mask = numpy.zeros(len(sources), dtype=bool)
@@ -1009,7 +1025,9 @@ class HRTF:
             raise TypeError('Azimuth range must be a float, int, list or tuple.')
         if not any(az_mask):
             raise ValueError('Could not find sources for the specified azimuth. Returning empty list.')
+            # todo return empty list
         if type(elevation) in [tuple, list]:
+            elevation = (min(elevation), max(elevation))  # sort in case bounds are provided in the wrong order
             ele_mask = numpy.logical_and(sources[sourceidx, 1] >= elevation[0], sources[sourceidx, 1] <= elevation[1])
         elif type(elevation) in [int, float, numpy.float16]:
             ele_mask = sources[sourceidx, 1] == elevation
@@ -1017,8 +1035,7 @@ class HRTF:
             raise TypeError('Elevation range must be a float, int, list or tuple.')
         if not any(ele_mask):
             raise ValueError('Could not find sources for the specified elevation range. Returning empty list.')
-        # source_idx = sourceidx[numpy.logical_and(az_mask, ele_mask)].tolist()
-        return sourceidx[numpy.logical_and(az_mask, ele_mask)].tolist()
+        return sourceidx[numpy.logical_and(az_mask, ele_mask)]
 
 class Room:
     """
