@@ -283,7 +283,7 @@ class HRTF:
         else:
             import warnings
             warnings.warn('Unrecognized coordinate system for source positions: ' + coordinate_system)
-            return Nonere
+            return None
         return source_coordinates(cartesian.astype('float16'),
                                   vertical_polar.astype('float16'),
                                   interaural_polar.astype('float16'))
@@ -520,18 +520,21 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir='TF', samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0, full_cone=False):
+    def cone_sources(self, cone=0, full_cone=False, plane='azimuth'):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
+        Alternatively, return sources that lie on the same elevation.
         Note: This currently only works as intended for HRTFs recorded in horizontal rings.
 
         Arguments:
             cone (int | float): azimuth of the cone center in degree.
             full_cone (bool): If True, return all sources that lie on the cone, otherwise return sources
                 in front of the listener only.
+            plane (string): The plane in which the cone is returned. Can be 'azimuth', to return sources on the
+                cone of confusion, or 'elevation' to return sources that share the same elevation.
         Returns:
-            (list): elements of the list are the indices of sound sources on the frontal half of the cone.
+            (list): elements of the list are the indices of sound sources on the specified cone.
         Examples::
 
             import HRTF
@@ -540,41 +543,48 @@ class HRTF:
             print(hrtf.sources[sourceidx])  # print the coordinates of the source indices
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot
         """
-        cone = numpy.sin(numpy.deg2rad(cone))
-        elevations = self.elevations()
+        _polar = self.sources.vertical_polar
         _cartesian = self.sources.cartesian / 1.4  # get cartesian coordinates on the unit sphere
         out = []
-        for ele in elevations:  # for each elevation, find the source closest to the reference y
-            if full_cone == False:  # only return cone sources in front of listener
-                subidx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele)
-                                      & (numpy.round(_cartesian[:, 0], decimals=3) >= 0))
-            else:  # include cone sources behind listener
-                subidx, = numpy.where(numpy.round(self.sources.vertical_polar[:, 1]) == ele)
-            if subidx.size != 0:  # check whether sources exist
-                cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
-                if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
-                    idx, = numpy.where((numpy.round(self.sources.vertical_polar[:, 1]) == ele) & (
-                            numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
-                    if full_cone:
-                        out.extend(idx)
-                    else:
-                        out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
-        return sorted(out, key=lambda x: self.sources.vertical_polar[x, 1])
-
-    def elevation_sources(self, elevation=0):
-        """
-        Get the indices of sources along a horizontal sphere slice at the given `elevation`.
-
-        Arguments:
-            elevation (int | float): The elevation of the sources in degree. The default returns sources along
-                the frontal horizon.
-        Returns:
-            (list): indices of the sound sources. If the HRTF does not contain the specified `elevation` an empty
-                list is returned.
-        """
-        idx = numpy.where((self.sources.vertical_polar[:, 1] == elevation) & (
-                (self.sources.vertical_polar[:, 0] <= 90) | (self.sources.vertical_polar[:, 0] >= 270)))
-        return idx[0].tolist()
+        if plane == 'azimuth':
+            cone = numpy.sin(numpy.deg2rad(cone))
+            elevations = self.elevations()
+            for ele in elevations:  # for each elevation, find the source closest to the reference y
+                if full_cone == False:  # only return cone sources in front of listener
+                    subidx, = numpy.where((numpy.round(_polar[:, 1]) == ele)
+                                          & (numpy.round(_cartesian[:, 0], decimals=3) >= 0))
+                else:  # include cone sources behind listener
+                    subidx, = numpy.where(numpy.round(_polar[:, 1]) == ele)
+                if subidx.size != 0:  # check whether sources exist
+                    cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
+                    if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
+                        idx, = numpy.where((numpy.round(_polar[:, 1]) == ele) & (
+                                numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
+                        if full_cone:
+                            out.extend(idx)
+                        else:
+                            out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
+            return sorted(out, key=lambda x: _polar[x, 1])
+        elif plane == "elevation":
+            # Elevation cone across all azimuths
+            cone = numpy.sin(numpy.deg2rad(cone))  # z-axis reference value
+            azimuths = numpy.unique(numpy.round(_polar[:, 0]))
+            for az in azimuths:
+                if not full_cone:
+                    subidx, = numpy.where((numpy.round(_polar[:, 0]) == az) &
+                        (numpy.round(_cartesian[:, 0], decimals=3) >= 0))
+                else:
+                    subidx, = numpy.where(numpy.round(_polar[:, 0]) == az)
+                if subidx.size != 0:
+                    cmin = numpy.min(numpy.abs(_cartesian[subidx, 2] - cone).astype("float16"))
+                    if cmin < 0.05:
+                        idx, = numpy.where((numpy.round(_polar[:, 0]) == az) &
+                            (numpy.abs(_cartesian[:, 2] - cone).astype("float16") == cmin))
+                        if full_cone:
+                            out.extend(idx)
+                        else:
+                            out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
+            return out
 
     def irs_from_sources(self, sources, ear='left'):
         """
