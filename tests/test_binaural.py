@@ -1,4 +1,4 @@
-import inspect
+import pytest
 import slab
 import numpy
 from copy import deepcopy
@@ -121,3 +121,27 @@ def test_drr():
             drr = impulse.drr()
         assert 0 > drr > -100
         assert isinstance(drr, float)
+
+def test_itd_to_azimuth_with_kemar_filters():
+    hrtf = slab.HRTF.kemar()
+    tone = slab.Sound.tone(frequency=1000, duration=0.1, samplerate=hrtf.samplerate)
+    for idx, (azimuth, elevation, _) in enumerate(hrtf.sources.vertical_polar):
+        if elevation != 0:
+            continue  # horizontal plane only
+        stereo = hrtf[idx].apply(tone)
+        itd = slab.Binaural.extract_itd(stereo)
+        estimated_az = slab.Binaural.itd_to_azimuth(itd)
+        assert numpy.isclose(estimated_az, azimuth, atol=5.0), \
+            f"ITD test failed: {azimuth}° → {itd:.6f}s → {estimated_az:.1f}°"
+
+def test_ild_to_azimuth_with_kemar_filters():
+    hrtf = slab.HRTF.kemar()
+    tone = slab.Sound.tone(frequency=1000, duration=0.1)
+    for idx, (azimuth, elevation) in enumerate(hrtf.sources.vertical_polar):
+        if elevation != 0:
+            continue  # horizontal plane only
+        stereo = hrtf[idx].apply(tone)
+        ild = slab.Binaural.extract_ild(stereo)
+        estimated_az = slab.Binaural.ild_to_azimuth(ild)
+        assert numpy.isclose(estimated_az, azimuth, atol=5.0), \
+            f"ILD test failed: {azimuth}° → {ild:.2f} dB → {estimated_az:.1f}°"

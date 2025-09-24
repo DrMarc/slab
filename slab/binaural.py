@@ -608,3 +608,75 @@ class Binaural(Sound):
     def equally_masking_noise(**kwargs):
         """ Identical to slab.Sound.erb_noise, but with two channels. """
         return Binaural(Sound.equally_masking_noise(**kwargs))
+
+    def extract_itd(self, sound):
+        """
+        Extract the interaural time difference (ITD) from a binaural sound.
+
+        Arguments:
+        sound (slab.Sound | slab.Binaural): The sound to extract the ITD from (must have 2 chanels).
+        Returns:
+        (float): ITD in seconds. Positive values indicate right-ear leading.
+        """
+        if sound.n_channels != 2:
+            raise ValueError("Sound must have two channels (binaural).")
+        left, right = sound.channel(0), sound.channel(1)
+        corr = numpy.correlate(right, left, mode='full')
+        lag = numpy.argmax(corr) - (len(left) - 1)
+        return lag / sound.samplerate
+
+    def extract_ild(self, sound):
+        """
+        Extract the interaural level difference (ILD) from a binaural sound.
+
+        Arguments:
+        sound (slab.Sound | slab.Binaural): The sound to extract the ILD from (must have 2 chanels).
+        Returns:
+        (float) ILD in decibels (dB). Positive values indicate right ear louder.
+        """
+        if sound.n_channels != 2:
+            raise ValueError("Sound must have two channels (binaural).")
+        left, right = sound.channel(0), sound.channel(1)
+        rms_left = numpy.sqrt(numpy.mean(left ** 2))
+        rms_right = numpy.sqrt(numpy.mean(right ** 2))
+        return 20 * numpy.log10(rms_right / rms_left)
+
+    def itd_to_azimuth(self, itd):
+        """
+        Convert an ITD value to an azimuth angle in degrees.
+
+        Arguments:
+        itd (float): Interaural time difference in seconds.
+        Returns:
+        (float): Estimated azimuth in degrees.
+        """
+        azimuths = numpy.arange(-90, 91)
+        itds = [self.azimuth_to_itd(az) for az in azimuths]
+
+        min_itd, max_itd = numpy.min(itds), numpy.max(itds)
+        if not (min_itd <= itd <= max_itd):
+            raise ValueError(
+                f"ITD value {itd:.6f} s is outside the interpolation range "
+                f"({min_itd:.6f} – {max_itd:.6f} s); extrapolation is not supported."
+            )
+
+        return float(numpy.interp(itd, itds, azimuths))
+
+    def ild_to_azimuth(self, ild):
+        """
+        Convert an ILD value to an azimuth angle in degrees.
+
+        Arguments:
+        ild (float): Interaural level difference in dB.
+        Returns:
+        (float): Estimated azimuth in degrees.
+        """
+        azimuths = numpy.arange(-90, 91)
+        ilds = [self.azimuth_to_ild(az) for az in azimuths]
+        min_ild, max_ild = numpy.min(ilds), numpy.max(ilds)
+        if not (min_ild <= ild <= max_ild):
+            raise ValueError(
+                f"ILD value {ild:.2f} dB is outside the interpolation range "
+                f"({min_ild:.2f} – {max_ild:.2f} dB); extrapolation is not supported."
+            )
+        return float(numpy.interp(ild, ilds, azimuths))
