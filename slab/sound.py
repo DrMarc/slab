@@ -1345,7 +1345,7 @@ class Sound(Signal):
             out_all = Signal(data=out_all, samplerate=self.samplerate)  # cast as Signal
         return out_all
 
-    def vocode(self, bandwidth=1/3, filter_width_factor=1):
+    def vocode(self, bandwidth=1/3, filter_width_factor=1, jitter=False):
         """
         Returns a noise vocoded version of the sound by computing the envelope in different frequency subbands,
         filling these envelopes with noise, and collapsing the subbands into one sound. This removes most spectral
@@ -1356,6 +1356,9 @@ class Sound(Signal):
             filter_width_factor (float): Multiplier for the width of the filters. Default is 1;
                 use smaller values to make the filter coverage sparser and larger values to make
                 it denser. Intended to keep energetic masking constant when changing bandwidth.
+            jitter (bool): if True and filter_width_factor is <1, jitter the center frequencies
+                of the vocoding bands. This allows multiple acoustically different instances of
+                vocoding from the same original sound.
         Returns:
             (slab.Sound): a vocoded copy of the sound.
         """
@@ -1368,7 +1371,7 @@ class Sound(Signal):
                                  samplerate=self.samplerate)  # make white noise
         fbank = Filter.cos_filterbank(length=self.n_samples, bandwidth=bandwidth, low_cutoff=30,
                                       pass_bands=True, filter_width_factor=filter_width_factor,
-                                      samplerate=self.samplerate)
+                                      jitter=jitter, samplerate=self.samplerate)
         subbands_noise = fbank.apply(noise)  # divide into same subbands as sound
         subbands_noise *= envs  # apply envelopes
         subbands_noise.level = subbands.level

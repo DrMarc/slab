@@ -955,15 +955,15 @@ class HRTF:
         samplingRateVar[:] = self.samplerate
         sofa.close()
 
-    def get_source_idx(self, azimuth=None, elevation=None, coordinates='vertical_polar'):
+    def get_source_idx(self, azimuth=(-180, 180), elevation=(-90, 90), coordinates='vertical_polar'):
         """
         Return the index of the filter in the HRTF nearest to specified coordinates. If coordinates are
          provided as intervals, return the filter indices in the specified angle interval.
         Arguments:
             azimuth (int, float, tuple, list): Single angle or interval of azimuth angles for which the source indices
-             are returned. The azimuth range is restricted to the half-open interval (-180°, 180°).
+             are returned. The azimuth range is typically restricted to the half-open interval (-180°, 180°).
             elevation (int, float, tuple, list): Discrete angle or interval of elevation angles for which the source
-             indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
+            indices are returned. Elevation ranges are expressed in the interval (-90°, 90°).
             coordinates (str): Coordinate system in which the source coordinates are provided.
         Returns:
             List of source indices in the HRTF within the specified angles.
@@ -983,12 +983,11 @@ class HRTF:
         if elevation is None:
             elevation = (sources[:, 1].min(), sources[:, 1].max())
         if type(azimuth) in [tuple, list]:
-            azimuth = [az - 360 if az > 180 else az for az in azimuth]  # convert azimuth to (−180°, +180°)
-            az_mask = numpy.logical_and(sources[sourceidx, 0] >= azimuth[0], sources[sourceidx, 0] <= azimuth[1])
+            azimuth = (min(azimuth), max(azimuth))  # sort in case bounds are provided in the wrong order
+            az_mask = (sources[sourceidx, 0] >= azimuth[0]) & (sources[sourceidx, 0] <= azimuth[1])
         elif type(azimuth) in [int, float, numpy.float16, numpy.float64]:
-            if azimuth > 180:
-                azimuth -= 360
-            az_mask = sources[sourceidx, 0] == azimuth # only return precise match
+            # only return precise match
+            az_mask = sources[sourceidx, 0] == azimuth
 
             # # return nearest
             # az_mask = numpy.zeros(len(sources), dtype=bool)
@@ -1009,8 +1008,10 @@ class HRTF:
             raise TypeError('Azimuth range must be a float, int, list or tuple.')
         if not any(az_mask):
             raise ValueError('Could not find sources for the specified azimuth. Returning empty list.')
+            # todo return empty list
         if type(elevation) in [tuple, list]:
-            ele_mask = numpy.logical_and(sources[sourceidx, 1] >= elevation[0], sources[sourceidx, 1] <= elevation[1])
+            elevation = (min(elevation), max(elevation))  # sort in case bounds are provided in the wrong order
+            ele_mask = (sources[sourceidx, 1] >= elevation[0]) & (sources[sourceidx, 1] >= elevation[1])
         elif type(elevation) in [int, float, numpy.float16]:
             ele_mask = sources[sourceidx, 1] == elevation
         else:
