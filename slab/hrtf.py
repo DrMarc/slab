@@ -966,49 +966,49 @@ class HRTF:
         samplingRateVar[:] = self.samplerate
         sofa.close()
 
-def get_source_idx(self, azimuth=None, elevation=None, tolerance=0.05):
-    """
-    Return indices of the filters in the HRTF nearest to specified coordinates.
-    This uses cross-sections of `cone_sources` in the vertical and horizontal plane.
-    Arguments:
-    azimuth (int, float, tuple, list, or None): Single angle or interval of azimuth angles for which source indices
-        are returned. Interval is expressed in degrees. If None, full azimuth range is used.
-    elevation (int, float, tuple, list, or None): Single angle or interval of elevation angles for which source indices
-        are returned. Interval is expressed in degrees. If None, uses full elevation range.
-    tolerance (float): Cartesian tolerance in meters. Default 0.05 (5 cm). Set to 0 for exact matches only.
-    Returns:
-    (list): Indices of sources that satisfy the azimuth and elevation conditions.
-    """
-    az_idx = None
-    ele_idx = None
-    # azimuth cross-section
-    if azimuth is not None:
-        if isinstance(azimuth, (tuple, list)):
-            out = []
-            for az in range(int(min(azimuth)), int(max(azimuth)) + 1):
-                out.extend(self.cone_sources(cone=az, plane="azimuth", full_cone=True, tolerance=tolerance))
-            az_idx = numpy.unique(out)
+    def get_source_idx(self, azimuth=None, elevation=None, tolerance=0.05):
+        """
+        Return indices of the filters in the HRTF nearest to specified coordinates.
+        This uses cross-sections of `cone_sources` in the vertical and horizontal plane.
+        Arguments:
+        azimuth (int, float, tuple, list, or None): Single angle or interval of azimuth angles for which source indices
+            are returned. Interval is expressed in degrees. If None, full azimuth range is used.
+        elevation (int, float, tuple, list, or None): Single angle or interval of elevation angles for which source indices
+            are returned. Interval is expressed in degrees. If None, uses full elevation range.
+        tolerance (float): Cartesian tolerance in meters. Default 0.05 (5 cm). Set to 0 for exact matches only.
+        Returns:
+        (list): Indices of sources that satisfy the azimuth and elevation conditions.
+        """
+        az_idx = None
+        ele_idx = None
+        # azimuth cross-section
+        if azimuth is not None:
+            if isinstance(azimuth, (tuple, list)):
+                out = []
+                for az in range(int(min(azimuth)), int(max(azimuth)) + 1):
+                    out.extend(self.cone_sources(cone=az, plane="azimuth", full_cone=True, tolerance=tolerance))
+                az_idx = numpy.unique(out)
+            else:
+                az_idx = self.cone_sources(cone=float(azimuth), plane="azimuth", full_cone=True, tolerance=tolerance)
+        # elevation cross-section
+        if elevation is not None:
+            if isinstance(elevation, (tuple, list)):
+                out = []
+                for el in range(int(min(elevation)), int(max(elevation)) + 1):
+                    out.extend(self.cone_sources(cone=el, plane="elevation", full_cone=True, tolerance=tolerance))
+                ele_idx = numpy.unique(out)
+            else:
+                ele_idx = self.cone_sources(cone=float(elevation), plane="elevation", full_cone=True, tolerance=tolerance)
+        # combine
+        if az_idx is not None and ele_idx is not None:
+            return numpy.intersect1d(az_idx, ele_idx).tolist()
+        elif az_idx is not None:
+            return list(az_idx)
+        elif ele_idx is not None:
+            return list(ele_idx)
         else:
-            az_idx = self.cone_sources(cone=float(azimuth), plane="azimuth", full_cone=True, tolerance=tolerance)
-    # elevation cross-section
-    if elevation is not None:
-        if isinstance(elevation, (tuple, list)):
-            out = []
-            for el in range(int(min(elevation)), int(max(elevation)) + 1):
-                out.extend(self.cone_sources(cone=el, plane="elevation", full_cone=True, tolerance=tolerance))
-            ele_idx = numpy.unique(out)
-        else:
-            ele_idx = self.cone_sources(cone=float(elevation), plane="elevation", full_cone=True, tolerance=tolerance)
-    # combine
-    if az_idx is not None and ele_idx is not None:
-        return numpy.intersect1d(az_idx, ele_idx).tolist()
-    elif az_idx is not None:
-        return list(az_idx)
-    elif ele_idx is not None:
-        return list(ele_idx)
-    else:
-        # neither az nor el specified → return all
-        return list(numpy.arange(self.n_sources))
+            # neither az nor el specified → return all
+            return list(numpy.arange(self.n_sources))
 
 
 class Room:
