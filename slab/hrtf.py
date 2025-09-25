@@ -565,7 +565,7 @@ class HRTF:
                             out.extend(idx)
                         else:
                             out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
-            return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])
+            return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])  # sort by elevation
         elif plane == "elevation":
             # Elevation cone across all azimuths
             cone = numpy.sin(numpy.deg2rad(cone))  # z-axis reference value
@@ -585,7 +585,7 @@ class HRTF:
                             out.extend(idx)
                         else:
                             out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
-            return [int(x) for x in out]
+            return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])
 
     def irs_from_sources(self, sources, ear='left'):
         """
@@ -979,7 +979,7 @@ class HRTF:
         Returns:
         (list): Indices of sources that satisfy the azimuth and elevation conditions.
         """
-        sources = self.sources.vertical_polar
+        sources = copy.deepcopy(self.sources.vertical_polar)
         sources[:, 0] = ((sources[:, 0] + 180) % 360) - 180
         out = []
         if azimuth is None:
@@ -1003,8 +1003,9 @@ class HRTF:
             ele_idx = self.cone_sources(cone=elevation, plane="elevation", full_cone=True)
         else:
             raise TypeError('Elevation must be int, float, list, tuple, or None.')
-        idx = numpy.intersect1d(az_idx, ele_idx).tolist()
-        return idx
+        idx = numpy.intersect1d(az_idx, ele_idx)
+        return sorted(idx, key=lambda i: (self.sources.vertical_polar[i, 1],  # sort by elevation first
+                                          self.sources.vertical_polar[i, 0]))
 
 
 class Room:
