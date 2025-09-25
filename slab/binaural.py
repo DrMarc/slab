@@ -640,7 +640,8 @@ class Binaural(Sound):
         (float): Estimated azimuth in degrees.
         """
         azimuths = numpy.arange(-90, 91)
-        ilds = [Binaural.azimuth_to_ild(az) for az in azimuths]
+        ilds = [numpy.diff(Binaural.azimuth_to_ild(az)) for az in azimuths]
+        ilds = numpy.asarray(ilds).flatten()
         min_ild, max_ild = numpy.min(ilds), numpy.max(ilds)
         if not (min_ild <= ild <= max_ild):
             raise ValueError(f"ILD value {ild:.2f} dB is outside the interpolation range "
