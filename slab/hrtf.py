@@ -520,83 +520,73 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir='TF', samplerate=self.samplerate)
         return dtfs
 
-    import numpy
-
     def cone_sources(self, cone=0, full_cone=False, plane='azimuth', tolerance=0.05):
         """
-        Get all sources of the HRTF that lie on an azimuth cone of confusion (a vertical off-axis sphere
-        slice, where all sources have the same interaural level and time difference) or on an elevation arc.
-        Uses full 3D Cartesian distances, so it works for arbitrary SOFA grids.
+        Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
+        slice. All sources that lie on the cone have the same interaural level and time difference.
+        Alternatively, return sources that lie on the same elevation.
+        Note: This currently only works as intended for HRTFs recorded in horizontal rings.
 
         Arguments:
-        cone : float
-            Angle of the cone in degrees. Interpreted as azimuth (if plane='azimuth')
-            or elevation (if plane='elevation').
-        full_cone : bool
-            If True, return sources from front and back hemispheres. Otherwise only
-            sources in front (x >= 0).
-        plane : str
-            'azimuth' for a cone of confusion (same ITD/ILD),
-            'elevation' for an elevation arc.
-        tolerance : float
-            Maximum Euclidean distance (in Cartesian coordinates on the unit sphere)
-            between the target direction and candidate sources. Default 0.05 ≈ 5 cm.
-
+            cone (int | float): azimuth of the cone center in degree.
+            full_cone (bool): If True, return all sources that lie on the cone, otherwise return sources
+                in front of the listener only.
+            plane (string): The plane in which the cone is returned. Can be 'azimuth', to return sources on the
+                cone of confusion, or 'elevation' to return sources that share the same elevation.
+            tolerance (float): Cartesian tolerance in meters. Default 0.05 (5 cm). Set to 0 for exact matches only.
         Returns:
-        list of int
-            Indices of the sources on the specified cone.
-
+            (list): elements of the list are the indices of sound sources on the specified cone.
         Examples::
+
             import HRTF
             hrtf = slab.HRTF.kemar()
             sourceidx = hrtf.cone_sources(20)  # get the source indices
             print(hrtf.sources[sourceidx])  # print the coordinates of the source indices
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot
         """
-        # Normalize cone angle into (-180, 180]
-        cone = ((cone + 180) % 360) - 180
         _polar = self.sources.vertical_polar
-        _cartesian = self.sources.cartesian / self.sources.vertical_polar[0,2]  # normalize radius
+        # get cartesian coordinates on the unit sphere
+        _cartesian = self.sources.cartesian / self.sources.vertical_polar[0,2]
         out = []
         if plane == 'azimuth':
-            az_rad = numpy.deg2rad(cone)
-            elevations = numpy.unique(numpy.round(_polar[:, 1]))
-            for ele in elevations:
-                el_rad = numpy.deg2rad(ele)
-                # target vector at this (az, ele)
-                target = numpy.array([numpy.cos(el_rad) * numpy.cos(az_rad),
-                    numpy.cos(el_rad) * numpy.sin(az_rad), numpy.sin(el_rad)])
-                subidx, = numpy.where(numpy.round(_polar[:, 1]) == ele)
-                if not full_cone:
-                    subidx = subidx[_cartesian[subidx, 0] >= 0]
-                if subidx.size == 0:
-                    continue
-                dists = numpy.linalg.norm(_cartesian[subidx] - target, axis=1)
-                cmin = dists.min()
-                if cmin < tolerance:
-                    idx = subidx[dists == cmin]
-                    out.extend(idx.tolist())
-            return sorted(out, key=lambda i: _polar[i, 1])  # sort by elevation
-        elif plane == 'elevation':
-            el_rad = numpy.deg2rad(cone)
+            cone = numpy.sin(numpy.deg2rad(cone))
+            elevations = self.elevations()
+            for ele in elevations:  # for each elevation, find the source closest to the reference y
+                if full_cone == False:  # only return cone sources in front of listener
+                    subidx, = numpy.where((numpy.round(_polar[:, 1]) == ele)
+                                          & (numpy.round(_cartesian[:, 0], decimals=3) >= 0))
+                else:  # include cone sources behind listener
+                    subidx, = numpy.where(numpy.round(_polar[:, 1]) == ele)
+                if subidx.size != 0:  # check whether sources exist
+                    cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
+                    if cmin < tolerance:  # only include elevation where the closest source is less than 5 cm away
+                        idx, = numpy.where((numpy.round(_polar[:, 1]) == ele) & (
+                                numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
+                        if full_cone:
+                            out.extend(idx)
+                        else:
+                            out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
+            return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])  # sort by elevation
+        elif plane == "elevation":
+            # Elevation cone across all azimuths
+            cone = numpy.sin(numpy.deg2rad(cone))  # z-axis reference value
             azimuths = numpy.unique(numpy.round(_polar[:, 0]))
             for az in azimuths:
-                az_rad = numpy.deg2rad(az)
-                target = numpy.array([ numpy.cos(el_rad) * numpy.cos(az_rad),
-                                       numpy.cos(el_rad) * numpy.sin(az_rad), numpy.sin(el_rad)])
-                subidx, = numpy.where(numpy.round(_polar[:, 0]) == az)
                 if not full_cone:
-                    subidx = subidx[_cartesian[subidx, 0] >= 0]
-                if subidx.size == 0:
-                    continue
-                dists = numpy.linalg.norm(_cartesian[subidx] - target, axis=1)
-                cmin = dists.min()
-                if cmin < tolerance:
-                    idx = subidx[dists == cmin]
-                    out.extend(idx.tolist())
-            return sorted(out, key=lambda i: _polar[i, 0])  # sort by azimuth
-        else:
-            raise ValueError("plane must be 'azimuth' or 'elevation'")
+                    subidx, = numpy.where((numpy.round(_polar[:, 0]) == az) &
+                        (numpy.round(_cartesian[:, 0], decimals=3) >= 0))
+                else:
+                    subidx, = numpy.where(numpy.round(_polar[:, 0]) == az)
+                if subidx.size != 0:
+                    cmin = numpy.min(numpy.abs(_cartesian[subidx, 2] - cone).astype("float16"))
+                    if cmin < tolerance:
+                        idx, = numpy.where((numpy.round(_polar[:, 0]) == az) &
+                            (numpy.abs(_cartesian[:, 2] - cone).astype("float16") == cmin))
+                        if full_cone:
+                            out.extend(idx)
+                        else:
+                            out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
+            return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])
 
     def irs_from_sources(self, sources, ear='left'):
         """
