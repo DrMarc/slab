@@ -979,52 +979,32 @@ def get_source_idx(self, azimuth=None, elevation=None, tolerance=0.05):
     Returns:
     (list): Indices of sources that satisfy the azimuth and elevation conditions.
     """
-
-    az_idx = numpy.arange(self.n_sources)
-    ele_idx = numpy.arange(self.n_sources)
-    if azimuth is not None:
-        if isinstance(azimuth, (tuple, list)):
-            out = []
-            for az in range(int(min(azimuth)), int(max(azimuth)) + 1):
-                out.extend(self.cone_sources(cone=azimuth, plane="azimuth", full_cone=True, tolerance=tolerance))
-            az_idx = numpy.unique(out)
-        elif isinstance(azimuth, (int, float, numpy.floating)):
-            az_idx = self.cone_sources(cone=azimuth, plane="azimuth", full_cone=True, tolerance=tolerance)
-        else:
-            raise TypeError('Azimuth must be int, float, list, tuple, or None.')
-    if elevation is not None:
-        if isinstance(elevation, (tuple, list)):
-            out = []
-            for el in range(int(min(elevation)), int(max(elevation)) + 1):
-                out.extend(self.cone_sources(cone=el, plane="elevation", full_cone=True))
-            ele_idx = numpy.unique(out)
-        elif isinstance(elevation, (int, float, numpy.floating)):
-            ele_idx = self.cone_sources(cone=elevation, plane="elevation", full_cone=True)
-        else:
-            raise TypeError('Elevation must be int, float, list, tuple, or None.')
-    idx = numpy.intersect1d(az_idx, ele_idx).tolist()
-    return idx
-
-    # --- elevation mask ---
+    sources = self.sources.vertical_polar
+    sources[:, 0] = ((sources[:, 0] + 180) % 360) - 180
+    out = []
+    if azimuth is None:
+        azimuth = (sources[:, 0].min(), sources[:, 0].max())
+    if isinstance(azimuth, (tuple, list)):
+        for az in range(int(min(azimuth)), int(max(azimuth)) + 1):
+            out.extend(self.cone_sources(cone=az, plane="azimuth", full_cone=True, tolerance=tolerance))
+        az_idx = numpy.unique(out)
+    elif isinstance(azimuth, (int, float, numpy.floating)):
+        az_idx = self.cone_sources(cone=azimuth, plane="azimuth", full_cone=True, tolerance=tolerance)
+    else:
+        raise TypeError('Azimuth must be int, float, list, tuple, or None.')
+    out = []
     if elevation is None:
         elevation = (sources[:, 1].min(), sources[:, 1].max())
     if isinstance(elevation, (tuple, list)):
-        elevation = (min(elevation), max(elevation))
-        ele_mask = (sources[:, 1] >= elevation[0]) & (sources[:, 1] <= elevation[1])
+        for el in range(int(min(elevation)), int(max(elevation)) + 1):
+            out.extend(self.cone_sources(cone=el, plane="elevation", full_cone=True))
+        ele_idx = numpy.unique(out)
     elif isinstance(elevation, (int, float, numpy.floating)):
-        ele_mask = sources[:, 1] == elevation
-        if nearest and not ele_mask.any():
-            # use cone_sources in elevation plane
-            ele_idx = self.cone_sources(angle=elevation, plane="elevation", tolerance=tolerance)
-            ele_mask = numpy.zeros(len(sources), dtype=bool)
-            ele_mask[ele_idx] = True
+        ele_idx = self.cone_sources(cone=elevation, plane="elevation", full_cone=True)
     else:
         raise TypeError('Elevation must be int, float, list, tuple, or None.')
-
-    if not ele_mask.any():
-        return []
-
-    return sourceidx[numpy.logical_and(az_mask, ele_mask)].tolist()
+    idx = numpy.intersect1d(az_idx, ele_idx).tolist()
+    return idx
 
 
 class Room:
