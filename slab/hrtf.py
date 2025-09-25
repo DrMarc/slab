@@ -553,8 +553,10 @@ class HRTF:
             print(hrtf.sources[sourceidx])  # print the coordinates of the source indices
             hrtf.plot_sources(sourceidx)  # show the sources in a 3D plot
         """
+        # Normalize cone angle into (-180, 180]
+        cone = ((cone + 180) % 360) - 180
         _polar = self.sources.vertical_polar
-        _cartesian = self.sources.cartesian / 1.4  # normalize radius (KEMAR head ~0.14 m)
+        _cartesian = self.sources.cartesian / self.sources.vertical_polar[0,2]  # normalize radius
         out = []
         if plane == 'azimuth':
             az_rad = numpy.deg2rad(cone)
