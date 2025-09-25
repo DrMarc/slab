@@ -520,7 +520,7 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir='TF', samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0, full_cone=False, plane='azimuth'):
+    def cone_sources(self, cone=0, full_cone=False, plane='azimuth', tolerance=0.05):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
@@ -533,6 +533,7 @@ class HRTF:
                 in front of the listener only.
             plane (string): The plane in which the cone is returned. Can be 'azimuth', to return sources on the
                 cone of confusion, or 'elevation' to return sources that share the same elevation.
+            tolerance (float): Include sources that are within this tolerance in meters away from the cone.
         Returns:
             (list): elements of the list are the indices of sound sources on the specified cone.
         Examples::
@@ -557,14 +558,14 @@ class HRTF:
                     subidx, = numpy.where(numpy.round(_polar[:, 1]) == ele)
                 if subidx.size != 0:  # check whether sources exist
                     cmin = numpy.min(numpy.abs(_cartesian[subidx, 1] - cone).astype('float16'))
-                    if cmin < 0.05:  # only include elevation where the closest source is less than 5 cm away
+                    if cmin < tolerance:  # only include elevation where the closest source is less than 5 cm away
                         idx, = numpy.where((numpy.round(_polar[:, 1]) == ele) & (
                                 numpy.abs(_cartesian[:, 1] - cone).astype('float16') == cmin))  # avoid rounding error
                         if full_cone:
                             out.extend(idx)
                         else:
                             out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
-            return sorted(out, key=lambda x: _polar[x, 1])
+            return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])
         elif plane == "elevation":
             # Elevation cone across all azimuths
             cone = numpy.sin(numpy.deg2rad(cone))  # z-axis reference value
@@ -577,14 +578,14 @@ class HRTF:
                     subidx, = numpy.where(numpy.round(_polar[:, 0]) == az)
                 if subidx.size != 0:
                     cmin = numpy.min(numpy.abs(_cartesian[subidx, 2] - cone).astype("float16"))
-                    if cmin < 0.05:
+                    if cmin < tolerance:
                         idx, = numpy.where((numpy.round(_polar[:, 0]) == az) &
                             (numpy.abs(_cartesian[:, 2] - cone).astype("float16") == cmin))
                         if full_cone:
                             out.extend(idx)
                         else:
                             out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
-            return out
+            return [int(x) for x in out]
 
     def irs_from_sources(self, sources, ear='left'):
         """
@@ -1030,6 +1031,96 @@ class HRTF:
             raise ValueError('Could not find sources for the specified elevation range. Returning empty list.')
         # source_idx = sourceidx[numpy.logical_and(az_mask, ele_mask)].tolist()
         return sourceidx[numpy.logical_and(az_mask, ele_mask)].tolist()
+
+import numpy
+
+def get_source_idx(self, azimuth=None, elevation=None, coordinates='vertical_polar', tolerance=0.05):
+    """
+    Return indices of the filters in the HRTF nearest to specified coordinates.
+
+    This uses cross-sections of `cone_sources`:
+    - one in the azimuth plane (same ITD/ILD cone of confusion)
+    - one in the elevation plane (same elevation arc)
+
+    The final indices are the intersection of both.
+
+    Parameters
+    ----------
+    azimuth : int, float, tuple, list, or None
+        Single angle or interval of azimuth angles for which source indices
+        are returned. Interval is expressed in degrees (-180, 180).
+        If None, full azimuth range is used.
+    elevation : int, float, tuple, list, or None
+        Single angle or interval of elevation angles for which source indices
+        are returned. Interval is expressed in degrees (-90, 90).
+        If None, full elevation range is used.
+    coordinates : str
+        Coordinate system ('vertical_polar' or 'interaural_polar').
+    tolerance : float
+        Cartesian tolerance in meters. Default 0.05 (5 cm).
+        Set to 0 for exact matches only.
+
+    Returns
+    -------
+    list of int
+        Indices of sources that satisfy the azimuth and elevation conditions.
+    """
+    if not isinstance(coordinates, str) or coordinates.lower() not in ['vertical_polar', 'interaural_polar']:
+        raise ValueError('Coordinates must be "vertical_polar" or "interaural_polar".')
+
+    az_idx = numpy.arange(self.n_sources)
+    ele_idx = numpy.arange(self.n_sources)
+
+    # --- azimuth cross-section ---
+    if azimuth is not None:
+        if isinstance(azimuth, (tuple, list)):
+            out = []
+            for az in range(int(min(azimuth)), int(max(azimuth)) + 1):
+                out.extend(self.cone_sources(cone=azimuth, plane="azimuth", full_cone=True, tolerance=tolerance))
+            az_idx = numpy.unique(out)
+        elif isinstance(azimuth, (int, float, numpy.floating)):
+            az_idx = self.cone_sources(cone=azimuth, plane="azimuth", full_cone=True, tolerance=tolerance)
+        else:
+            raise TypeError('Azimuth must be int, float, list, tuple, or None.')
+
+    # --- elevation cross-section ---
+    if elevation is not None:
+        if isinstance(elevation, (tuple, list)):
+            out = []
+            for el in range(int(min(elevation)), int(max(elevation)) + 1):
+                out.extend(self.cone_sources(cone=el, plane="elevation", full_cone=True))
+            ele_idx = numpy.unique(out)
+        elif isinstance(elevation, (int, float, numpy.floating)):
+            ele_idx = self.cone_sources(cone=elevation, plane="elevation", full_cone=True)
+        else:
+            raise TypeError('Elevation must be int, float, list, tuple, or None.')
+
+    # --- combine cross-sections ---
+    idx = numpy.intersect1d(az_idx, ele_idx).tolist()
+    return idx
+
+
+    # --- elevation mask ---
+    if elevation is None:
+        elevation = (sources[:, 1].min(), sources[:, 1].max())
+    if isinstance(elevation, (tuple, list)):
+        elevation = (min(elevation), max(elevation))
+        ele_mask = (sources[:, 1] >= elevation[0]) & (sources[:, 1] <= elevation[1])
+    elif isinstance(elevation, (int, float, numpy.floating)):
+        ele_mask = sources[:, 1] == elevation
+        if nearest and not ele_mask.any():
+            # use cone_sources in elevation plane
+            ele_idx = self.cone_sources(angle=elevation, plane="elevation", tolerance=tolerance)
+            ele_mask = numpy.zeros(len(sources), dtype=bool)
+            ele_mask[ele_idx] = True
+    else:
+        raise TypeError('Elevation must be int, float, list, tuple, or None.')
+
+    if not ele_mask.any():
+        return []
+
+    return sourceidx[numpy.logical_and(az_mask, ele_mask)].tolist()
+
 
 class Room:
     """
