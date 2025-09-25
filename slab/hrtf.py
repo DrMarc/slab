@@ -563,12 +563,9 @@ class HRTF:
             elevations = numpy.unique(numpy.round(_polar[:, 1]))
             for ele in elevations:
                 el_rad = numpy.deg2rad(ele)
-                # unit vector for (cone az, current elevation)
-                target = numpy.array([
-                    numpy.cos(el_rad) * numpy.cos(az_rad),
-                    numpy.cos(el_rad) * numpy.sin(az_rad),
-                    numpy.sin(el_rad)
-                ])
+                # target vector at this (az, ele)
+                target = numpy.array([numpy.cos(el_rad) * numpy.cos(az_rad),
+                    numpy.cos(el_rad) * numpy.sin(az_rad), numpy.sin(el_rad)])
                 subidx, = numpy.where(numpy.round(_polar[:, 1]) == ele)
                 if not full_cone:
                     subidx = subidx[_cartesian[subidx, 0] >= 0]
@@ -585,11 +582,8 @@ class HRTF:
             azimuths = numpy.unique(numpy.round(_polar[:, 0]))
             for az in azimuths:
                 az_rad = numpy.deg2rad(az)
-                target = numpy.array([
-                    numpy.cos(el_rad) * numpy.cos(az_rad),
-                    numpy.cos(el_rad) * numpy.sin(az_rad),
-                    numpy.sin(el_rad)
-                ])
+                target = numpy.array([ numpy.cos(el_rad) * numpy.cos(az_rad),
+                                       numpy.cos(el_rad) * numpy.sin(az_rad), numpy.sin(el_rad)])
                 subidx, = numpy.where(numpy.round(_polar[:, 0]) == az)
                 if not full_cone:
                     subidx = subidx[_cartesian[subidx, 0] >= 0]
