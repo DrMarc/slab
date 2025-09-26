@@ -560,6 +560,52 @@ class Binaural(Sound):
         return out
 
     @staticmethod
+    def itd_to_azimuth(itd, frequency=2000, head_radius=8.75):
+        """
+        Convert an ITD value to an azimuth angle in degrees.
+
+        Arguments:
+        itd (float): Interaural time difference in seconds.
+        frequency (int | float): Frequency in Hz for which the ITD is estimated.
+            Use the default for sounds with a broadband spectrum.
+        head_radius (int | float): Radius of the head in centimeters. The bigger the head, the larger the ITD.
+        Returns:
+        (float): Estimated azimuth in degrees.
+        """
+        azimuths = numpy.arange(-90, 91)
+        itds = [Binaural.azimuth_to_itd(az, frequency, head_radius) for az in azimuths]
+        if not (numpy.min(itds) <= itd <= numpy.max(itds)):
+            raise ValueError(f"ITD value {itd:.6f} s is outside the interpolation range "
+                f"({numpy.min(itds):.6f} – {numpy.max(itds):.6f} s); extrapolation is not supported.")
+        return float(numpy.interp(itd, itds, azimuths))
+
+    @staticmethod
+    def ild_to_azimuth(ild, frequency=2000, ils=None):
+        """
+        Convert an ILD value to an azimuth angle in degrees.
+
+        Arguments:
+        ild (float): Interaural level difference in dB.
+        frequency (int | float): Frequency in Hz for which the ILD is estimated.
+                Use the default for sounds with a broadband spectrum.
+        ils (dict | None): interaural level spectrum from which the ILD is taken. If None,
+        `make_interaural_level_spectrum()` is called. For repeated use, it is better to generate and keep the ils in
+            a variable to avoid re-computing it.
+        Returns:
+        (float): Estimated azimuth in degrees.
+        """
+        azimuths = numpy.arange(-90, 91)
+        if not ils:
+            Binaural.make_interaural_level_spectrum()
+        ilds = [numpy.diff(Binaural.azimuth_to_ild(az, frequency, ils)) for az in azimuths]
+        ilds = numpy.asarray(ilds).flatten()
+        min_ild, max_ild = numpy.min(ilds), numpy.max(ilds)
+        if not (min_ild <= ild <= max_ild):
+            raise ValueError(f"ILD value {ild:.2f} dB is outside the interpolation range "
+                f"({min_ild:.2f} – {max_ild:.2f} dB); extrapolation is not supported.")
+        return float(numpy.interp(ild, ilds, azimuths))
+
+    @staticmethod
     def tone(**kwargs):
         """ Identical to slab.Sound.tone, but with two channels. """
         return Binaural(Sound.tone(n_channels=2, **kwargs))
@@ -608,42 +654,3 @@ class Binaural(Sound):
     def equally_masking_noise(**kwargs):
         """ Identical to slab.Sound.erb_noise, but with two channels. """
         return Binaural(Sound.equally_masking_noise(**kwargs))
-
-    @staticmethod
-    def itd_to_azimuth(itd):
-        """
-        Convert an ITD value to an azimuth angle in degrees.
-
-        Arguments:
-        itd (float): Interaural time difference in seconds.
-        Returns:
-        (float): Estimated azimuth in degrees.
-        """
-        azimuths = numpy.arange(-90, 91)
-        itds = [Binaural.azimuth_to_itd(az) for az in azimuths]
-        min_itd, max_itd = numpy.min(itds), numpy.max(itds)
-        if not (min_itd <= itd <= max_itd):
-            raise ValueError(
-                f"ITD value {itd:.6f} s is outside the interpolation range "
-                f"({min_itd:.6f} – {max_itd:.6f} s); extrapolation is not supported."
-            )
-        return float(numpy.interp(itd, itds, azimuths))
-
-    @staticmethod
-    def ild_to_azimuth(ild):
-        """
-        Convert an ILD value to an azimuth angle in degrees.
-
-        Arguments:
-        ild (float): Interaural level difference in dB.
-        Returns:
-        (float): Estimated azimuth in degrees.
-        """
-        azimuths = numpy.arange(-90, 91)
-        ilds = [numpy.diff(Binaural.azimuth_to_ild(az)) for az in azimuths]
-        ilds = numpy.asarray(ilds).flatten()
-        min_ild, max_ild = numpy.min(ilds), numpy.max(ilds)
-        if not (min_ild <= ild <= max_ild):
-            raise ValueError(f"ILD value {ild:.2f} dB is outside the interpolation range "
-                f"({min_ild:.2f} – {max_ild:.2f} dB); extrapolation is not supported.")
-        return float(numpy.interp(ild, ilds, azimuths))
