@@ -396,8 +396,8 @@ class Binaural(Sound):
         ils['frequencies'] = freqs
         ils['azimuths'] = azi[sort]
         ils['level_diffs'] = numpy.zeros((2, len(freqs), len(idx)))
-        for n, i in enumerate(idx[sort]):  # put the level differences in order of increasing angle
-            noise_filt = Binaural(hrtf.data[i].apply(noise))
+        for n, src_idx in enumerate(numpy.array(idx)[sort]):  # put the level differences in order of increasing angle
+            noise_filt = Binaural(hrtf.data[src_idx].apply(noise))
             noise_bank_left = fbank.apply(noise_filt.left)
             noise_bank_right = fbank.apply(noise_filt.right)
             ils['level_diffs'][0, :, n] = noise_0_bank.level - noise_bank_left.level
@@ -486,7 +486,7 @@ class Binaural(Sound):
         """
         azimuths = numpy.arange(-90, 91)
         if not ils:
-            Binaural.make_interaural_level_spectrum()
+            ils = Binaural.make_interaural_level_spectrum()
         ilds = [numpy.diff(Binaural.azimuth_to_ild(az, frequency, ils)) for az in azimuths]
         ilds = numpy.asarray(ilds).flatten()
         min_ild, max_ild = numpy.min(ilds), numpy.max(ilds)
