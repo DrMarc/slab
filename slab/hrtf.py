@@ -266,6 +266,18 @@ class HRTF:
 
     @staticmethod
     def _get_coordinates(sources, coordinate_system):
+        """
+        Returns the sound source positions in three different coordinate systems:
+        cartesian, vertical-polar and interaural-polar.
+
+        Arguments:
+            sources (numpy.ndarray): sound source coordinates in cartesian coordinates (x, y, z),
+                vertical-polar or interaural-polar coordinates (azimuth, elevation, distance).
+            coordinate_system (string): type of the provided coordinates. Can be 'cartesian',
+                'vertical_polar' or 'interaural_polar'.
+        Returns:
+            (named tuple): cartesian, vertical-polar and interaural-polar coordinates of all sources.
+        """
         if isinstance(sources, (list, tuple)):
             sources = numpy.array(sources)
         if len(sources.shape) == 1:
