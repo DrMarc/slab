@@ -354,15 +354,12 @@ class HRTF:
             (slab.Binaural): a spatialized copy of `sound`.
         """
         from slab.binaural import Binaural  # importing here to avoid circular import at top of class
-        if self.datatype == 'FIR':
-            if (sound.samplerate != self.samplerate) and (not allow_resampling):
-                raise ValueError('Filter and sound must have same sampling rates.')
-            original_rate = sound.samplerate
-            sound = sound.resample(self.samplerate)  # does nothing if samplerates are the same
-            out = self[source].apply(sound)
-            return Binaural(out.resample(original_rate))
-        if self.datatype == 'TF':  # Filter.apply DTF as Fourier filter
-            return self[source].apply(sound)
+        if (sound.samplerate != self.samplerate) and (not allow_resampling):
+            raise ValueError('Filter and sound must have same sampling rates.')
+        original_rate = sound.samplerate
+        sound = sound.resample(self.samplerate)  # does nothing if samplerates are the same
+        out = self[source].apply(sound)
+        return Binaural(out.resample(original_rate))
 
     def elevations(self):
         """
@@ -414,6 +411,8 @@ class HRTF:
                                     linesep=linesep, n_bins=n_bins, kind='waterfall', xscale=xscale)
             else:
                 raise ValueError("'Kind' must be either 'waterfall' or 'image'!")
+            fig1.set_title('Left Ear')
+            fig2.set_title('Right Ear')
             return fig1, fig2
         else:
             raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
@@ -483,6 +482,7 @@ class HRTF:
                      xscale=xscale)
         if show:
             plt.show()
+        return fig
 
     def plot_ir(self, sourceidx, show=True, axis=None):
         """
@@ -788,7 +788,7 @@ class HRTF:
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         if axis is None:
-            ax = plt.subplot(projection='3d')
+            fig, ax = plt.subplot(projection='3d')
         else:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
