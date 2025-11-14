@@ -472,11 +472,79 @@ class HRTF:
         if show:
             plt.show()
 
-    def plot_ir(self, sourceidx, show=True, axis=None):
+    def plot_ir(self, sourceidx, ear='left', tlim=None, show=True, axis=None):
         """
         Plot the impulse responses at a list of source indices.
+
+        Arguments:
+            sourceidx (list of int): indices of the sources to plot.
+            ear (str): 'left', 'right', or 'both'.
+            tlim (tuple | None): time limits for the x-axis in milliseconds, e.g. (0, 10).
+                If None, plot the full impulse response.
+            show (bool): If True, show the plot immediately.
+            axis (matplotlib.axes._subplots.AxesSubplot or list[Axes] or None):
+                Axis to draw the plot on. For ear='both', this must be a list of two axes.
+        Returns:
+            If ear is 'left' or 'right': (matplotlib.figure.Figure)
+            If ear is 'both': (fig_left, fig_right)
         """
-        return
+        if matplotlib is False:
+            raise ImportError('Plotting HRTFs requires matplotlib.')
+
+        # --- ear selection and recursion for 'both' ---
+        if ear == 'left':
+            chan = 0
+        elif ear == 'right':
+            chan = 1
+        elif ear == 'both':
+            if axis is not None and not isinstance(axis, (list, numpy.ndarray)):
+                raise ValueError("Axis must be a list of length two when plotting left and right ear!")
+            elif axis is None:
+                axis = [None, None]
+            fig1 = self.plot_ir(sourceidx, ear='left', tlim=tlim, show=show, axis=axis[0])
+            fig2 = self.plot_ir(sourceidx, ear='right', tlim=tlim, show=show, axis=axis[1])
+            return fig1, fig2
+        else:
+            raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
+
+        # --- prepare axis ---
+        if axis is None:
+            fig, axis = plt.subplots()
+        else:
+            fig = axis.figure
+
+        # --- plotting ---
+        for idx, source in enumerate(sourceidx):
+            filt = self[source]
+            t, h = filt.ir(channels=chan, show=False)
+            # h has shape (n_samples, 1) if single channel
+            h_plot = h[:, 0] if h.ndim == 2 else h
+
+            # convert time axis to ms for plotting
+            t_ms = t * 1000.0
+            if tlim is not None:
+                mask = (t_ms >= tlim[0]) & (t_ms <= tlim[1])
+                t_ms = t_ms[mask]
+                h_plot = h_plot[mask]
+
+            axis.plot(t_ms, h_plot, linewidth=0.75, alpha=0.7, label=f'source {source}')
+
+        axis.set(
+            xlabel='Time [ms]',
+            ylabel='Amplitude',
+        )
+        if tlim is not None:
+            axis.set_xlim(tlim)
+        axis.grid(True)
+        # Only add legend if it won't get insane (heuristic)
+        if len(sourceidx) <= 10:
+            axis.legend(fontsize=6)
+
+        if show:
+            plt.show()
+
+        return fig
+
 
     def diffuse_field_avg(self):
         """
@@ -625,6 +693,42 @@ class HRTF:
             _, jwd = self[source].tf(channels=chan, n_bins=n_bins, show=False)
             tfs[idx] = jwd
         return tfs
+
+    def irs_from_sources(self, sources, ear='left'):
+        """
+        Get the impulse responses from a list of sources in the HRTF.
+
+        Arguments:
+            sources (list): Indices of the sources (as generated for instance with the
+                `HRTF.cone_sources` or `HRTF.get_source_idx` methods), for which the
+                impulse responses are extracted.
+            ear (str): 'left', 'right', or 'both'.
+        Returns:
+            (numpy.ndarray): 3D array where the first dimension represents the sources,
+                the second dimension represents time samples, and the third dimension
+                represents channels (1 for a single ear, 2 for 'both').
+        """
+        n_sources = len(sources)
+        # assume all filters have same length
+        n_samples = self.data[0].n_taps
+
+        if ear == 'left':
+            chan = 0
+            irs = numpy.zeros((n_sources, n_samples, 1))
+        elif ear == 'right':
+            chan = 1
+            irs = numpy.zeros((n_sources, n_samples, 1))
+        elif ear == 'both':
+            chan = 'all'
+            irs = numpy.zeros((n_sources, n_samples, 2))
+        else:
+            raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
+
+        for idx, source in enumerate(sources):
+            _, h = self[source].ir(channels=chan, n_samples=n_samples, show=False)
+            irs[idx] = h
+
+        return irs
 
     def interpolate(self, azimuth=0, elevation=0, method='nearest', plot_tri=False):
         """
