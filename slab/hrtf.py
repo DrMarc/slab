@@ -1105,19 +1105,19 @@ class HRTF:
             if isinstance(azimuth, (tuple, list)):
                 out = []
                 for az in range(int(min(azimuth)), int(max(azimuth)) + 1):
-                    out.extend(self.cone_sources(cone=az, plane="azimuth", full_cone=True, tolerance=tolerance))
+                    out.extend(self.cone_sources(cone=az, plane="vertical", full_cone=True, tolerance=tolerance))
                 az_idx = numpy.unique(out)
             else:
-                az_idx = self.cone_sources(cone=float(azimuth), plane="azimuth", full_cone=True, tolerance=tolerance)
+                az_idx = self.cone_sources(cone=float(azimuth), plane="vertical", full_cone=True, tolerance=tolerance)
         # elevation cross-section
         if elevation is not None:
             if isinstance(elevation, (tuple, list)):
                 out = []
                 for el in range(int(min(elevation)), int(max(elevation)) + 1):
-                    out.extend(self.cone_sources(cone=el, plane="elevation", full_cone=True, tolerance=tolerance))
+                    out.extend(self.cone_sources(cone=el, plane="horizontal", full_cone=True, tolerance=tolerance))
                 ele_idx = numpy.unique(out)
             else:
-                ele_idx = self.cone_sources(cone=float(elevation), plane="elevation", full_cone=True, tolerance=tolerance)
+                ele_idx = self.cone_sources(cone=float(elevation), plane="horizontal", full_cone=True, tolerance=tolerance)
         # combine
         if az_idx is not None and ele_idx is not None:
             return numpy.intersect1d(az_idx, ele_idx).tolist()
