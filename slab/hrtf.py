@@ -666,9 +666,9 @@ class HRTF:
                             out.extend(idx)
                         else:
                             out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
-            else:
-                raise ValueError('"plane" must be either "vertical" or "horizontal"')
-            return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])
+        else:
+            raise ValueError('"plane" must be either "vertical" or "horizontal"')
+        return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])
 
     def irs_from_sources(self, sources, ear='left'):
         """
