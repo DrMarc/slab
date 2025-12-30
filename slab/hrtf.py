@@ -888,13 +888,13 @@ class HRTF:
             idx (list of int): indices to highlight in the plot
             show (bool): whether to show plot (set to False if plotting into an axis and you want to add other elements)
             label (bool): if True, show the index of each source in self.sources as text label, if idx is also given,
-                then only theses sources are labeled
+                then only these sources are labeled
             axis (mpl_toolkits.mplot3d.axes3d.Axes3D): axis to draw the plot on
         """
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         if axis is None:
-            fig, ax = plt.subplot(projection='3d')
+            fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
         else:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
