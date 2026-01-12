@@ -411,8 +411,8 @@ class HRTF:
                                     linesep=linesep, n_bins=n_bins, kind='waterfall', xscale=xscale)
             else:
                 raise ValueError("'Kind' must be either 'waterfall' or 'image'!")
-            fig1.set_title('Left Ear')
-            fig2.set_title('Right Ear')
+            fig1.suptitle('Left Ear')
+            fig2.suptitle('Right Ear')
             return fig1, fig2
         else:
             raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
