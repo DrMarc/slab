@@ -532,7 +532,7 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir='TF', samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0, full_cone=False, plane='azimuth', tolerance=0.05):
+    def cone_sources(self, cone=0, full_cone=False, plane='vertical', tolerance=0.05):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
@@ -543,8 +543,8 @@ class HRTF:
             cone (int | float): azimuth of the cone center in degree.
             full_cone (bool): If True, return all sources that lie on the cone, otherwise return sources
                 in front of the listener only.
-            plane (string): The plane in which the cone is returned. Can be 'azimuth', to return sources on the
-                cone of confusion, or 'elevation' to return sources that share the same elevation.
+            plane (string): The plane in which the cone is returned. Can be 'vertical', to return sources on the
+                cone of confusion, or 'horizontal' to return sources that share the same elevation.
             tolerance (float): Cartesian tolerance in meters. Default 0.05 (5 cm). Set to 0 for exact matches only.
         Returns:
             (list): elements of the list are the indices of sound sources on the specified cone.
@@ -560,7 +560,7 @@ class HRTF:
         # get cartesian coordinates on the unit sphere
         _cartesian = self.sources.cartesian / self.sources.vertical_polar[0,2]
         out = []
-        if plane == 'azimuth':
+        if plane == 'vertical':
             cone = numpy.sin(numpy.deg2rad(cone))
             elevations = self.elevations()
             for ele in elevations:  # for each elevation, find the source closest to the reference y
@@ -579,7 +579,7 @@ class HRTF:
                         else:
                             out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
             return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])  # sort by elevation
-        elif plane == "elevation":
+        elif plane == 'horizontal':
             # Elevation cone across all azimuths
             cone = numpy.sin(numpy.deg2rad(cone))  # z-axis reference value
             azimuths = numpy.unique(numpy.round(_polar[:, 0]))
@@ -999,19 +999,19 @@ class HRTF:
             if isinstance(azimuth, (tuple, list)):
                 out = []
                 for az in range(int(min(azimuth)), int(max(azimuth)) + 1):
-                    out.extend(self.cone_sources(cone=az, plane="azimuth", full_cone=True, tolerance=tolerance))
+                    out.extend(self.cone_sources(cone=az, plane='vertical', full_cone=True, tolerance=tolerance))
                 az_idx = numpy.unique(out)
             else:
-                az_idx = self.cone_sources(cone=float(azimuth), plane="azimuth", full_cone=True, tolerance=tolerance)
+                az_idx = self.cone_sources(cone=float(azimuth), plane='vertical', full_cone=True, tolerance=tolerance)
         # elevation cross-section
         if elevation is not None:
             if isinstance(elevation, (tuple, list)):
                 out = []
                 for el in range(int(min(elevation)), int(max(elevation)) + 1):
-                    out.extend(self.cone_sources(cone=el, plane="elevation", full_cone=True, tolerance=tolerance))
+                    out.extend(self.cone_sources(cone=el, plane='horizontal', full_cone=True, tolerance=tolerance))
                 ele_idx = numpy.unique(out)
             else:
-                ele_idx = self.cone_sources(cone=float(elevation), plane="elevation", full_cone=True, tolerance=tolerance)
+                ele_idx = self.cone_sources(cone=float(elevation), plane='horizontal', full_cone=True, tolerance=tolerance)
         # combine
         if az_idx is not None and ele_idx is not None:
             return numpy.intersect1d(az_idx, ele_idx).tolist()

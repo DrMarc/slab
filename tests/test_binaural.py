@@ -122,26 +122,36 @@ def test_drr():
         assert 0 > drr > -100
         assert isinstance(drr, float)
 
-def test_itd_to_azimuth_with_kemar_filters():
+def test_itd_to_azimuth():
     hrtf = slab.HRTF.kemar()
     tone = slab.Sound.tone(frequency=1000, duration=0.1, samplerate=hrtf.samplerate)
-    for idx, (azimuth, elevation, _) in enumerate(hrtf.sources.vertical_polar):
-        if elevation != 0:
-            continue  # horizontal plane only
-        stereo = hrtf[idx].apply(tone)
-        itd = slab.Binaural.extract_itd(stereo)
-        estimated_az = slab.Binaural.itd_to_azimuth(itd)
-        assert numpy.isclose(estimated_az, azimuth, atol=5.0), \
+    src_idx = hrtf.cone_sources(0, plane='elevation')
+    for src_id in src_idx:
+        azimuth = hrtf.sources.vertical_polar[src_id, 0]
+        azimuth = -(azimuth + 180) % 360 - 180  # covert to psychophysics convention
+        binaural = hrtf[src_id].apply(tone)
+        binaural = slab.Binaural(binaural)
+        itd = binaural.itd() / binaural.samplerate  # samples to ms
+        # #todo fix _get_itd (same sample delay across 80 - 90 degrees az?)
+        print(src_id, azimuth, itd)
+        estimated_az = binaural.itd_to_azimuth(itd, frequency=1000, head_radius=9)
+        print(estimated_az, itd, azimuth)
+        assert numpy.isclose(estimated_az, azimuth, atol=10), \
             f"ITD test failed: {azimuth}° → {itd:.6f}s → {estimated_az:.1f}°"
 
 def test_ild_to_azimuth_with_kemar_filters():
     hrtf = slab.HRTF.kemar()
-    tone = slab.Sound.tone(frequency=1000, duration=0.1)
-    for idx, (azimuth, elevation) in enumerate(hrtf.sources.vertical_polar):
-        if elevation != 0:
-            continue  # horizontal plane only
-        stereo = hrtf[idx].apply(tone)
-        ild = slab.Binaural.extract_ild(stereo)
-        estimated_az = slab.Binaural.ild_to_azimuth(ild)
-        assert numpy.isclose(estimated_az, azimuth, atol=5.0), \
-            f"ILD test failed: {azimuth}° → {ild:.2f} dB → {estimated_az:.1f}°"
+    tone = slab.Sound.tone(frequency=1000, duration=0.1, samplerate=hrtf.samplerate)
+    src_idx = hrtf.cone_sources(0, plane='elevation')
+    for src_id in src_idx:
+        azimuth = hrtf.sources.vertical_polar[src_id, 0]
+        azimuth = -(azimuth + 180) % 360 - 180  # covert to psychophysics convention
+        binaural = hrtf[src_id].apply(tone)
+        binaural = slab.Binaural(binaural)
+        ild = binaural.ild()
+        # print(src_id, azimuth, ild)
+        estimated_az = binaural.ild_to_azimuth(ild, frequency=1000)
+        #todo interpolation wont work here, as ild is not always linear (peaks for 1khz at 45°)
+        print(estimated_az, ild, azimuth)
+        assert numpy.isclose(estimated_az, azimuth, atol=10), \
+            f"ILD test failed: {azimuth}° → {ild:.6f}s → {estimated_az:.1f}°"

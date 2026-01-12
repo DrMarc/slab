@@ -449,6 +449,13 @@ class Binaural(Sound):
         out.name = f'ils_{self.name}'
         return out.resample(samplerate=original_samplerate)
 
+    def get_azimuth(self):
+        itd = self._get_itd(max_lag=0.001)
+        ild = self.ild()
+        itd_azimuth = self.itd_to_azimuth(itd) #todo set frequency range
+        ild_azimuth = self.ild_to_azimuth(ild) #
+        azimuth = itd_azimuth + ild_azimuth / 2 # frequency dependent weight
+
     @staticmethod
     def itd_to_azimuth(itd, frequency=2000, head_radius=8.75):
         """
@@ -484,7 +491,7 @@ class Binaural(Sound):
         Returns:
         (float): Estimated azimuth in degrees.
         """
-        azimuths = numpy.arange(-90, 91)
+        azimuths = numpy.arange(-180, 180)
         if not ils:
             ils = Binaural.make_interaural_level_spectrum()
         ilds = [numpy.diff(Binaural.azimuth_to_ild(az, frequency, ils)) for az in azimuths]

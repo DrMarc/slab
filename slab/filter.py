@@ -295,6 +295,9 @@ class Filter(Signal):
         else:
             return w, h
 
+    def ir(self):
+        return None
+
     @staticmethod
     def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, n_filters=None,
                        filter_width_factor=1, jitter=False, samplerate=None):
