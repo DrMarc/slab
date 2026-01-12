@@ -295,8 +295,99 @@ class Filter(Signal):
         else:
             return w, h
 
-    def ir(self):
-        return None
+    def ir(self, channels='all', n_samples=None, show=True, axis=None):
+        """
+        Compute a filter's impulse response in the time domain and optionally plot it.
+
+        For FIR/IR filters, this returns the stored time-domain data (optionally
+        truncated or zero-padded to `n_samples`). For TF filters, the impulse
+        response is obtained via an inverse real FFT (assuming zero phase).
+
+        Arguments:
+            channels (str | list | int): the filter channels to compute the impulse
+                response for. Defaults to "all". Use an int for a single channel,
+                or a list of ints for multiple channels.
+            n_samples (None | int): number of samples in the impulse response.
+                For IR/FIR filters:
+                    - If None, use the existing number of taps.
+                    - If < current taps, truncate.
+                    - If > current taps, zero-pad.
+                For TF filters:
+                    - If None, use the natural irfft length (2 * (n_frequencies - 1)).
+                    - Otherwise, pass `n_samples` to irfft.
+            show (bool): whether to show the plot right after drawing.
+            axis (matplotlib.axes.Axes | None): axis to plot to. If None create a new plot.
+        Returns:
+            (numpy.ndarray): time axis in seconds.
+            (numpy.ndarray): impulse responses with shape (n_samples, n_channels).
+            None: If `show` is True OR `axis` was specified, a plot is drawn and nothing is returned.
+        """
+        # --- normalize channels argument (same pattern as tf) ---
+        if isinstance(channels, int):
+            if channels >= self.n_filters:
+                raise IndexError("Channel index out of range!")
+            channels = [channels]
+        elif isinstance(channels, list):
+            if len(channels) != len(set(channels)):
+                raise ValueError("There should be no duplicates in the list of channels!")
+            if min(channels) < 0 or max(channels) >= self.n_filters:
+                raise IndexError("Channel index out of range!")
+            if not all(isinstance(i, int) for i in channels):
+                raise ValueError("Channels must be integers!")
+        elif channels == 'all':
+            channels = list(range(self.n_filters))
+        else:
+            raise ValueError("channels must be 'all', an int, or a list of ints")
+
+        # --- determine number of samples in IR ---
+        if 'IR' in self.fir:
+            base_len = self.n_taps
+            if n_samples is None:
+                n_samples = base_len
+        else:  # TF filter: data is magnitude in frequency domain
+            n_freqs = self.n_frequencies
+            if n_samples is None:
+                # natural length of irfft for rfft of length n_freqs
+                n_samples = 2 * (n_freqs - 1)
+
+        # --- compute IR data ---
+        ir = numpy.empty((n_samples, len(channels)))
+        if 'IR' in self.fir:
+            # direct time-domain data (FIR/IR)
+            for i, idx in enumerate(channels):
+                h = self.channel(idx).data.flatten()
+                if len(h) >= n_samples:
+                    ir[:, i] = h[:n_samples]
+                else:
+                    ir[:, i] = numpy.pad(h, (0, n_samples - len(h)))
+        else:
+            # TF: inverse real FFT with zero phase assumption
+            for i, idx in enumerate(channels):
+                mag = self.data[:, idx].flatten()
+                # ensure no zeros to avoid weird numerical issues
+                mag[mag == 0] += numpy.finfo(float).eps
+                spec = mag.astype(complex)  # zero phase
+                ir[:, i] = numpy.fft.irfft(spec, n=n_samples)
+
+        t = numpy.arange(n_samples) / self.samplerate
+
+        # --- plotting (analogous to tf) ---
+        if show or (axis is not None):
+            if plt is False:
+                raise ImportError('Plotting impulse responses requires matplotlib.')
+            if axis is None:
+                _, axis = plt.subplots()
+            axis.plot(t, ir)
+            axis.set(
+                xlabel='Time [s]',
+                ylabel='Amplitude',
+                title='Impulse response'
+            )
+            axis.grid(True)
+            if show:
+                plt.show()
+        else:
+            return t, ir
 
     @staticmethod
     def cos_filterbank(length=5000, bandwidth=1/3, low_cutoff=0, high_cutoff=None, pass_bands=False, n_filters=None,
