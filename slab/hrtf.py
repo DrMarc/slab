@@ -891,11 +891,12 @@ class HRTF:
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         if axis is None:
-            fig, ax = plt.subplot(projection='3d')
+            fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
         else:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
             ax = axis
+
         coordinates = self.sources.cartesian
         ax.scatter(coordinates[:, 0], coordinates[:, 1], coordinates[:, 2], c='b', marker='.')
         ax.axes.set_xlim3d(left=numpy.min(coordinates), right=numpy.max(coordinates))
