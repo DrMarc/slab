@@ -71,7 +71,7 @@ def test_elevation_sources():
     elevations = numpy.unique(hrtf.sources.vertical_polar[:, 1])
     elevations = numpy.concatenate([elevations, [-35, 3, 21]])
     for e in elevations:
-        sources = hrtf.elevation_sources(e)
+        sources = hrtf.cone_sources(cone=e, mode='elevation')
         if e in numpy.unique(hrtf.sources.vertical_polar[:, 1]):
             assert all(numpy.logical_or(hrtf.sources.vertical_polar[sources][:, 0] <= 90,
                                         hrtf.sources.vertical_polar[sources][:, 0] >= 270))
