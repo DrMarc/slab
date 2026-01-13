@@ -449,59 +449,6 @@ class Binaural(Sound):
         out.name = f'ils_{self.name}'
         return out.resample(samplerate=original_samplerate)
 
-    def get_azimuth(self):
-        itd = self._get_itd(max_lag=0.001)
-        ild = self.ild()
-        itd_azimuth = self.itd_to_azimuth(itd) #todo set frequency range
-        ild_azimuth = self.ild_to_azimuth(ild) #
-        azimuth = itd_azimuth + ild_azimuth / 2 # frequency dependent weight
-
-    @staticmethod
-    def itd_to_azimuth(itd, frequency=2000, head_radius=8.75):
-        """
-        Convert an ITD value to an azimuth angle in degrees.
-
-        Arguments:
-        itd (float): Interaural time difference in seconds.
-        frequency (int | float): Frequency in Hz for which the ITD is estimated.
-            Use the default for sounds with a broadband spectrum.
-        head_radius (int | float): Radius of the head in centimeters. The bigger the head, the larger the ITD.
-        Returns:
-        (float): Estimated azimuth in degrees.
-        """
-        azimuths = numpy.arange(-90, 91)
-        itds = [Binaural.azimuth_to_itd(az, frequency, head_radius) for az in azimuths]
-        if not (numpy.min(itds) <= itd <= numpy.max(itds)):
-            raise ValueError(f"ITD value {itd:.6f} s is outside the interpolation range "
-                f"({numpy.min(itds):.6f} – {numpy.max(itds):.6f} s); extrapolation is not supported.")
-        return float(numpy.interp(itd, itds, azimuths))
-
-    @staticmethod
-    def ild_to_azimuth(ild, frequency=2000, ils=None):
-        """
-        Convert an ILD value to an azimuth angle in degrees.
-
-        Arguments:
-        ild (float): Interaural level difference in dB.
-        frequency (int | float): Frequency in Hz for which the ILD is estimated.
-                Use the default for sounds with a broadband spectrum.
-        ils (dict | None): interaural level spectrum from which the ILD is taken. If None,
-        `make_interaural_level_spectrum()` is called. For repeated use, it is better to generate and keep the ils in
-            a variable to avoid re-computing it.
-        Returns:
-        (float): Estimated azimuth in degrees.
-        """
-        azimuths = numpy.arange(-180, 180)
-        if not ils:
-            ils = Binaural.make_interaural_level_spectrum()
-        ilds = [numpy.diff(Binaural.azimuth_to_ild(az, frequency, ils)) for az in azimuths]
-        ilds = numpy.asarray(ilds).flatten()
-        min_ild, max_ild = numpy.min(ilds), numpy.max(ilds)
-        if not (min_ild <= ild <= max_ild):
-            raise ValueError(f"ILD value {ild:.2f} dB is outside the interpolation range "
-                f"({min_ild:.2f} – {max_ild:.2f} dB); extrapolation is not supported.")
-        return float(numpy.interp(ild, ilds, azimuths))
-
     def drr(self, winlength=0.0025):
         """
         Calculate the direct-to-reverberant-ratio, DRR for the impulse input. This is calculated by

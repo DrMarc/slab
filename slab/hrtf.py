@@ -885,7 +885,7 @@ class HRTF:
             idx (list of int): indices to highlight in the plot
             show (bool): whether to show plot (set to False if plotting into an axis and you want to add other elements)
             label (bool): if True, show the index of each source in self.sources as text label, if idx is also given,
-                then only theses sources are labeled
+                then only these sources are labeled
             axis (mpl_toolkits.mplot3d.axes3d.Axes3D): axis to draw the plot on
         """
         if matplotlib is False or Axes3D is False:
@@ -896,7 +896,6 @@ class HRTF:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
             ax = axis
-
         coordinates = self.sources.cartesian
         ax.scatter(coordinates[:, 0], coordinates[:, 1], coordinates[:, 2], c='b', marker='.')
         ax.axes.set_xlim3d(left=numpy.min(coordinates), right=numpy.max(coordinates))
