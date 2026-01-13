@@ -486,9 +486,9 @@ class Binaural(Sound):
         win_start_index = max(0, peak_index - correction)
         win_end_index = peak_index + winlength
         direct = impulse[win_start_index: win_end_index]
-        direct_e = numpy.trapz(numpy.square(direct))
+        direct_e = numpy.trapezoid(numpy.square(direct))
         reverb = impulse[win_end_index + 1:]
-        reverb_e = numpy.trapz(numpy.square(reverb))
+        reverb_e = numpy.trapezoid(numpy.square(reverb))
         # Calculate DRR as a value in dB
         if direct_e == 0:
             raise ValueError("Direct energy is 0. Please check that your input parameters are reasonable.")
