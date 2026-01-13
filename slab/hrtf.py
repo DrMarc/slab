@@ -411,8 +411,8 @@ class HRTF:
                                     linesep=linesep, n_bins=n_bins, kind='waterfall', xscale=xscale)
             else:
                 raise ValueError("'Kind' must be either 'waterfall' or 'image'!")
-            fig1.set_title('Left Ear')
-            fig2.set_title('Right Ear')
+            fig1.suptitle('Left Ear')
+            fig2.suptitle('Right Ear')
             return fig1, fig2
         else:
             raise ValueError("Unknown value for ear. Use 'left', 'right', or 'both'")
@@ -600,7 +600,7 @@ class HRTF:
             dtfs.data[source] = Filter(data=h, fir='TF', samplerate=self.samplerate)
         return dtfs
 
-    def cone_sources(self, cone=0, full_cone=False, plane='vertical', tolerance=0.05):
+    def cone_sources(self, cone=0, full_cone=False, mode='cone', tolerance=0.05):
         """
         Get all sources of the HRTF that lie on a "cone of confusion". The cone is a vertical off-axis sphere
         slice. All sources that lie on the cone have the same interaural level and time difference.
@@ -608,11 +608,11 @@ class HRTF:
         Note: This currently only works as intended for HRTFs recorded in horizontal rings.
 
         Arguments:
-            cone (int | float): azimuth of the cone center in degree.
+            cone (int | float): angle in degrees defining the cone of confusion or elevation.
             full_cone (bool): If True, return all sources that lie on the cone, otherwise return sources
                 in front of the listener only.
-            plane (string): The plane in which the cone is returned. Can be 'vertical', to return sources on the
-                cone of confusion, or 'horizontal' to return sources that share the same elevation.
+            mode (str): Selection mode; "cone": sources lying on a cone of confusion;
+                "elevation": sources sharing the same elevation
             tolerance (float): Cartesian tolerance in meters. Default 0.05 (5 cm). Set to 0 for exact matches only.
         Returns:
             (list): elements of the list are the indices of sound sources on the specified cone.
@@ -628,11 +628,11 @@ class HRTF:
         # get cartesian coordinates on the unit sphere
         _cartesian = self.sources.cartesian / self.sources.vertical_polar[0,2]
         out = []
-        if plane == 'vertical':
+        if mode == 'cone':
             cone = numpy.sin(numpy.deg2rad(cone))
             elevations = self.elevations()
             for ele in elevations:  # for each elevation, find the source closest to the reference y
-                if full_cone == False:  # only return cone sources in front of listener
+                if not full_cone:  # only return cone sources in front of listener
                     subidx, = numpy.where((numpy.round(_polar[:, 1]) == ele)
                                           & (numpy.round(_cartesian[:, 0], decimals=3) >= 0))
                 else:  # include cone sources behind listener
@@ -647,8 +647,7 @@ class HRTF:
                         else:
                             out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
             return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])  # sort by elevation
-        elif plane == "horizontal":
-            # Elevation cone across all azimuths
+        elif mode == 'elevation':
             cone = numpy.sin(numpy.deg2rad(cone))  # z-axis reference value
             azimuths = numpy.unique(numpy.round(_polar[:, 0]))
             for az in azimuths:
@@ -667,7 +666,7 @@ class HRTF:
                         else:
                             out.extend(idx[numpy.where(_cartesian[idx][:, 0] >= 0)])
         else:
-            raise ValueError('"plane" must be either "vertical" or "horizontal"')
+            raise ValueError('"mode" must be either "cone" or "elevation".')
         return sorted([int(x) for x in out], key=lambda x: _polar[x, 1])
 
     def irs_from_sources(self, sources, ear='left'):
@@ -894,7 +893,7 @@ class HRTF:
         if matplotlib is False or Axes3D is False:
             raise ImportError('Plotting 3D sources requires matplotlib and mpl_toolkits')
         if axis is None:
-            fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+            fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
         else:
             if not isinstance(axis, Axes3D):
                 raise ValueError("Axis must be instance of Axes3D!")
@@ -1105,19 +1104,19 @@ class HRTF:
             if isinstance(azimuth, (tuple, list)):
                 out = []
                 for az in range(int(min(azimuth)), int(max(azimuth)) + 1):
-                    out.extend(self.cone_sources(cone=az, plane="vertical", full_cone=True, tolerance=tolerance))
+                    out.extend(self.cone_sources(cone=az, plane="azimuth", full_cone=True, tolerance=tolerance))
                 az_idx = numpy.unique(out)
             else:
-                az_idx = self.cone_sources(cone=float(azimuth), plane="vertical", full_cone=True, tolerance=tolerance)
+                az_idx = self.cone_sources(cone=float(azimuth), plane="azimuth", full_cone=True, tolerance=tolerance)
         # elevation cross-section
         if elevation is not None:
             if isinstance(elevation, (tuple, list)):
                 out = []
                 for el in range(int(min(elevation)), int(max(elevation)) + 1):
-                    out.extend(self.cone_sources(cone=el, plane="horizontal", full_cone=True, tolerance=tolerance))
+                    out.extend(self.cone_sources(cone=el, plane="elevation", full_cone=True, tolerance=tolerance))
                 ele_idx = numpy.unique(out)
             else:
-                ele_idx = self.cone_sources(cone=float(elevation), plane="horizontal", full_cone=True, tolerance=tolerance)
+                ele_idx = self.cone_sources(cone=float(elevation), plane="elevation", full_cone=True, tolerance=tolerance)
         # combine
         if az_idx is not None and ele_idx is not None:
             return numpy.intersect1d(az_idx, ele_idx).tolist()
