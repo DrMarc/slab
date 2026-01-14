@@ -396,8 +396,8 @@ class Binaural(Sound):
         ils['frequencies'] = freqs
         ils['azimuths'] = azi[sort]
         ils['level_diffs'] = numpy.zeros((2, len(freqs), len(idx)))
-        for n, i in enumerate(idx[sort]):  # put the level differences in order of increasing angle
-            noise_filt = Binaural(hrtf.data[i].apply(noise))
+        for n, src_idx in enumerate(numpy.array(idx)[sort]):  # put the level differences in order of increasing angle
+            noise_filt = Binaural(hrtf.data[src_idx].apply(noise))
             noise_bank_left = fbank.apply(noise_filt.left)
             noise_bank_right = fbank.apply(noise_filt.right)
             ils['level_diffs'][0, :, n] = noise_0_bank.level - noise_bank_left.level
@@ -486,9 +486,12 @@ class Binaural(Sound):
         win_start_index = max(0, peak_index - correction)
         win_end_index = peak_index + winlength
         direct = impulse[win_start_index: win_end_index]
-        direct_e = numpy.trapz(numpy.square(direct))
+        trapezoid = getattr(numpy, "trapezoid", None)  # workaround for numpy versions < 1.20
+        if trapezoid is None:
+            trapezoid = numpy.trapz
+        direct_e = trapezoid(numpy.square(direct))
         reverb = impulse[win_end_index + 1:]
-        reverb_e = numpy.trapz(numpy.square(reverb))
+        reverb_e = trapezoid(numpy.square(reverb))
         # Calculate DRR as a value in dB
         if direct_e == 0:
             raise ValueError("Direct energy is 0. Please check that your input parameters are reasonable.")

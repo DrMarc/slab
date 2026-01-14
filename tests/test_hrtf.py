@@ -66,19 +66,6 @@ def test_cone_sources():  # this is not working properly!
         ilds = [f.ild() for f in filtered]
         assert numpy.abs(numpy.diff(ilds)).max() < 20
 
-def test_elevation_sources():
-    hrtf = slab.HRTF.kemar()
-    elevations = numpy.unique(hrtf.sources.vertical_polar[:, 1])
-    elevations = numpy.concatenate([elevations, [-35, 3, 21]])
-    for e in elevations:
-        sources = hrtf.elevation_sources(e)
-        if e in numpy.unique(hrtf.sources.vertical_polar[:, 1]):
-            assert all(numpy.logical_or(hrtf.sources.vertical_polar[sources][:, 0] <= 90,
-                                        hrtf.sources.vertical_polar[sources][:, 0] >= 270))
-            assert all(hrtf.sources.vertical_polar[sources][:, 1] == e)
-        else:
-            assert len(sources) == 0
-
 def test_tf_from_sources():
     hrtf = slab.HRTF.kemar()
     for _ in range(10):
