@@ -532,12 +532,11 @@ class Sound(Signal):
         if samplerate is None:
             samplerate = slab.get_default_samplerate()
         duration = Sound.in_samples(duration, samplerate)
-        t = numpy.arange(0, duration, 1) / samplerate  # generate a time vector
-        t.shape = (t.size, 1)  # ensures C-order
+        t = numpy.arange(0, duration, 1) / samplerate  # 1-D time vector for scipy
         if not to_frequency:
             to_frequency = samplerate / 2
         chirp = scipy.signal.chirp(
-            t, from_frequency, t[-1, 0], to_frequency, method=kind, vertex_zero=True)
+            t, from_frequency, float(t[-1]), to_frequency, method=kind, vertex_zero=True)
         out = Sound(chirp, samplerate=samplerate)
         out.level = level
         out.name = 'chirp'
