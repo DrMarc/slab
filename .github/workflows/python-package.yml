@@ -12,7 +12,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: linux
     strategy:
       matrix:
         python-version: ['3.9.0', '3.12.0']
